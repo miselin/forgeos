@@ -87,10 +87,7 @@ LINT_PHASE2_FLAGS := --error-exitcode=1 -q --enable=style,performance,portabilit
 
 .PHONY: objdirs analyse clean
 
-
-.PHONY: objdirs analyse clean kboot
-
-all: objdirs analyse kboot $(KERNEL) $(CDIMAGE)
+all: objdirs analyse $(KERNEL) $(CDIMAGE)
 
 objdirs:
 	-@for d in $(DIRS); do \
