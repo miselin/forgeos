@@ -1,0 +1,32 @@
+Mattise: a new operating system
+===============================
+
+Compiling
+=========
+
+You'll need to have an i586-elf cross-compiler available to build Mattise.
+
+You'll also need 'clang', 'cppcheck', and 'mkisofs' installed.
+
+If one does not exist, create a 'make.config' file with the following
+contents:
+
+XCOMPILER_PREFIX := /path/to/your/cross/compiler/bin
+XCOMPILER_TARGET := {i[3456]86, arm, ppc}
+
+This just makes sure the build system knows where everything is on your
+particular system.
+
+Once everything's set up, just type:
+
+make
+
+And the compilation will begin.
+
+Running
+=======
+
+Just boot the 'mattise.iso' disc image in the 'build' directory.
+
+For your convenience, a script to run QEMU is provided in the 'scripts'
+directory.
