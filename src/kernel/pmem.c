@@ -15,6 +15,7 @@
  */
 
 #include <stdint.h>
+#include <compiler.h>
 #include <malloc.h>
 #include <assert.h>
 #include <io.h>
@@ -35,9 +36,9 @@ paddr_t pmem_alloc() {
 	assert(page_stack->addr != 0);
 
 	// Remove from the top of the stack.
-	/// \todo Atomicity.
-	page = page_stack;
-	page_stack = page_stack->next;
+	do {
+		page = page_stack;
+	} while(!atomic_bool_compare_and_swap(&page_stack, page, page->next));
 	ret = page->addr;
 	free(page);
 
@@ -49,10 +50,9 @@ void pmem_dealloc(paddr_t p) {
 
 	page = (struct phys_page *) malloc(sizeof(struct phys_page));
 	page->addr = p;
-
-	/// \todo Atomicity
-	page->next = page_stack;
-	page_stack = page;
+	do {
+		page->next = page_stack;
+	} while(!atomic_bool_compare_and_swap(&page_stack, page->next, page));
 }
 
 void pmem_pin(paddr_t p) {
