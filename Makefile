@@ -1,7 +1,9 @@
-XCOMPILER_TARGET := i586
+XCOMPILER_TARGET := i686
 XCOMPILER_FORMAT := elf
 XCOMPILER_PREFIX := ~/xcompiler/bin
 XCOMPILER_TUPLE := $(XCOMPILER_TARGET)-$(XCOMPILER_FORMAT)
+
+-include make.config
 
 CC := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-gcc
 LD := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-ld
@@ -17,9 +19,9 @@ DIRS := src src/arch/$(ARCH_TARGET) src/mach/$(MACH_TARGET) src/include
 INCDIRS := -I src/include -I src/arch/$(ARCH_TARGET) -I src/mach/$(MACH_TARGET)
 LIBDIRS :=
 
-ASMFILES := $(shell find $(DIRS) -type f -maxdepth 1 -name "*.s")
-SRCFILES := $(shell find $(DIRS) -type f -maxdepth 1 -name "*.c")
-HDRFILES := $(shell find $(DIRS) -type f -maxdepth 1 -name "*.h")
+ASMFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.s")
+SRCFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.c")
+HDRFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.h")
 
 OBJDIR := build
 
