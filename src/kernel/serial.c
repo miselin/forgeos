@@ -14,29 +14,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <stdint.h>
 #include <io.h>
-#include <stdarg.h>
 
-extern int vsprintf(char *buf, const char *fmt, va_list args);
+extern void serial_write(uint8_t c);
 
-/// \todo Code duplication.
-
-int dprintf(const char *fmt, ...) {
-	int len = 0;
-	char buf[512];
-	va_list args;
-	va_start(args, fmt);
-	len = vsprintf(buf, fmt, args);
-	serial_puts(buf);
-	return len;
-}
-
-int kprintf(const char *fmt, ...) {
-	int len = 0;
-	char buf[512];
-	va_list args;
-	va_start(args, fmt);
-	len = vsprintf(buf, fmt, args);
-	puts(buf);
-	return len;
+void serial_puts(const char *s) {
+	while(*s) serial_write((uint8_t) *(s++));
 }

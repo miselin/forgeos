@@ -14,8 +14,10 @@ extern void machine_clear_screen();
 
 extern void puts(const char *s);
 
+extern void serial_puts(const char *s);
+
 #ifdef DEBUG
-#define dprintf kprintf
+extern int dprintf(const char *fmt, ...);
 #else
 #define dprintf(a, ...)
 #endif
