@@ -1,0 +1,52 @@
+Design Ideas for this OS
+
+GOALS
+- Portable
+	Must be able to run on at least an x86 PC and a BeagleBoard.
+	Support for x86-64 and PowerPC would be nice as well.
+- "Fast Enough"
+	The system must be fast, but not at the expense of code readability.
+- Small footprint
+	One of my pet peeves with Pedigree was it's _immense_ memory requirements.
+	I'd like to avoid that if possible here - free() often, I'd even like to
+	see the ability to reclaim the kernel heap (dlmalloc can sbrk(< 0) - why
+	not use this?).
+	If the system can run normally in under 16 MB of RAM, I think we've done
+	well, all things considered.
+
+NOTES
+
+Machine-specific and architecture-specific code is split. This means we can
+support the same ARM chip across a bunch of different ARM boards without
+having to rework half the source tree.
+
+Machine and architecture code defines functions which are referenced by
+kernel code. Assertions and use of panic() is highly recommended to ensure
+debug builds are noisy when things go wrong.
+
+Assertions are disabled if DEBUG is undefined, so they do not affect the
+final binary for releases.
+
+Things that might go into the machine-specific code area instead of a driver
+could be:
+* Timers. Fundamental component of the system and highly machine-dependent
+* Interrupt controllers. These _don't belong_ in architectural code!
+* UARTs/Serial devices. I/O to these devices is available to the entire
+	kernel (or, will be...), so it is important that they are stubbed or
+	implemented.
+	** Not sure how to make this work with actual serial drivers that expose
+		a serial port to an application.
+* System busses. Things such as PCI that are fairly machine-specific. The
+	bus abstraction will provide the mechanism for enumerating and detecting
+	devices without machine-specific details.
+* Physical memory. Physical address space layouts changed between machines.
+
+Things that might go into the architecture-specific code area might be:
+* Virtual memory
+* CPU traps ("software interrupts")
+* Assembly stubs for initialisation, the scheduler, etc...
+
+All code outside of src/kernel/arch and src/kernel/mach should not contain
+inline assembly or any architecture- or machine-specific code. The compiler.h
+header file offers a variety of useful macros to help write compiler-portable
+code as well as handle things such as atomic operations across architectures.
