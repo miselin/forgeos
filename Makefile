@@ -56,6 +56,9 @@ LINT_IGNORE := src/kernel/dlmalloc.c
 
 .PHONY: objdirs analyse clean
 
+
+.PHONY: objdirs analyse clean
+
 all: objdirs analyse $(KERNEL) $(CDIMAGE)
 
 objdirs:
