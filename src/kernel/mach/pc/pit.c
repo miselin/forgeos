@@ -15,12 +15,36 @@
  */
 
 #include <stdint.h>
-#include <serial.h>
+#include <interrupts.h>
+#include <compiler.h>
+#include <stack.h>
 #include <pit.h>
-#include <pic.h>
+#include <io.h>
 
-void mach_init_devices() {
-	init_pic();
-	init_pit();
-	init_serial();
+/// Frequency at which we want the timer to tick.
+#define TIMER_TICK_HZ	100
+
+#define PIT_PORT		0x40
+
+volatile size_t ticks = 0;
+
+/// Timer IRQ handler
+static int pic_irq(struct intr_stack *p) {
+	ticks += 1;
+	if((ticks % TIMER_TICK_HZ) == 0)
+		kprintf("PIC: one second has passed.\n");
+	return 0;
+}
+
+void init_pit() {
+	// Set the divisor to achieve the frequency we want.
+	size_t div = 1193180 / TIMER_TICK_HZ;
+
+	// Configure the divisor
+	outb(PIT_PORT + 3, 0x36);
+	outb(PIT_PORT + 0, div & 0xFF);
+	outb(PIT_PORT + 0, (div >> 8) & 0xFF);
+
+	// Install the IRQ handler
+	interrupts_irq_reg(0, 0, pic_irq);
 }

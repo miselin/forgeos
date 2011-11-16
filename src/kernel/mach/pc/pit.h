@@ -14,13 +14,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdint.h>
-#include <serial.h>
-#include <pit.h>
-#include <pic.h>
+#ifndef _PIT_H
+#define _PIT_H
 
-void mach_init_devices() {
-	init_pic();
-	init_pit();
-	init_serial();
-}
+extern void init_pit();
+
+#endif
