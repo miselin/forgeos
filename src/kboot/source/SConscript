@@ -1,0 +1,74 @@
+#
+# Copyright (C) 2010-2011 Alex Smith
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED AS IS AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+
+Import('env', 'config', 'defaults')
+from util import FeatureSources
+
+# List of our own sources.
+sources = FeatureSources(config, [
+	('KBOOT_FS_EXT2', 'fs/ext2.c'),
+	('KBOOT_FS_ISO9660', 'fs/iso9660.c'),
+	('!KBOOT_HAVE_DISK', 'fs/tar.c'),
+
+	'lib/printf.c',
+	'lib/string.c',
+	'lib/support.c',
+
+	'loaders/kboot.c',
+
+	('KBOOT_PARTITION_MAP_MSDOS', 'partitions/msdos.c'),
+
+	'config.c',
+	'console.c',
+	'device.c',
+	('KBOOT_HAVE_DISK', 'disk.c'),
+	'elf.c',
+	'error.c',
+	'fs.c',
+	'main.c',
+	'memory.c',
+	('KBOOT_UI', 'menu.c'),
+	('KBOOT_UI', 'ui.c'),
+	('KBOOT_HAVE_VIDEO', 'video.c'),
+])
+
+# Set the include search paths (done here so it points to the build directory,
+# not the source tree).
+env['CPPPATH'] = [
+	Dir('include'),
+	Dir('arch/%s/include' % (config['SRCARCH'])),
+	Dir('platform/%s/include' % (config['PLATFORM'])),
+]
+env['CCFLAGS'] += ['-include', 'build/%s-%s/config.h' % (config['ARCH'], config['PLATFORM'])]
+env['ASFLAGS'] += ['-include', 'build/%s-%s/config.h' % (config['ARCH'], config['PLATFORM'])]
+
+# Get the list of source files from the architecture/platform.
+arch_sources = SConscript(dirs = ['arch/' + config['SRCARCH']], exports = ['env', 'defaults'])
+platform_sources = SConscript(dirs = ['platform/' + config['PLATFORM']], exports = ['env', 'defaults'])
+sources = arch_sources + platform_sources + sources
+
+# Link the bootloader.
+env.Program('loader.elf', map(env.Object, sources), LINKFLAGS = env['LINKFLAGS'] + ['-Wl,-T,$LDSCRIPT'])
+Depends('loader.elf', env['LDSCRIPT'])
+
+# Generate various information files and the stripped boot loader image.
+target = env.Command(['loader', 'loader.lst', 'loader.rde', 'loader.sym'], 'loader.elf', [
+	Action('$OBJCOPY -O binary --strip-all $SOURCE ${TARGETS[0]}', '$GENCOMSTR'),
+	Action('$OBJDUMP -d $SOURCE > ${TARGETS[1]}', None),
+	Action('$READELF -a $SOURCE > ${TARGETS[2]}', None),
+	Action('$NM -C $SOURCE | sort > ${TARGETS[3]}', None),
+])
+defaults.append(target)

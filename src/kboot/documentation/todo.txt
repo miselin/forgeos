@@ -1,0 +1,6 @@
+TODO
+====
+
+ * More build configuration options, for example to disable support for
+   certain filesystems. This is on hold until I implement a decent build
+   configuration system for Kiwi.

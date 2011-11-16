@@ -1,0 +1,58 @@
+#
+# Copyright (C) 2010-2011 Alex Smith
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+#
+
+Import('env')
+import os
+
+# Find out the name of the ncurses library.
+def lxdialog_libs():
+	for ext in ['so', 'a', 'dylib']:
+		for lib in ['ncursesw', 'ncurses', 'curses']:
+			ret = os.system(
+				'%s -print-file-name=lib%s.%s | grep -q /' % (env['CC'], lib, ext)
+			)
+			if ret == 0:
+				return [lib]
+	return []
+
+# Find the path to the ncurses header.
+def lxdialog_ccflags():
+	if os.path.exists('/usr/include/ncurses/ncurses.h'):
+		return '-I/usr/include/ncurses -DCURSES_LOC="<ncurses.h>"'
+	elif os.path.exists('/usr/include/ncurses/curses.h'):
+		return '-I/usr/include/ncurses -DCURSES_LOC="<ncurses/curses.h>"'
+	elif os.path.exists('/usr/include/ncurses.h'):
+		return '-DCURSES_LOC="<ncurses.h>"'
+	else:
+		return '-DCURSES_LOC="<curses.h>"'
+
+# Build the menu configuration utility.
+env['MCONF'] = env.Program('mconf', [
+	'mconf.c',
+	'zconf.tab.c',
+	'lxdialog/checklist.c',
+	'lxdialog/util.c',
+	'lxdialog/inputbox.c',
+	'lxdialog/textbox.c',
+	'lxdialog/yesno.c',
+	'lxdialog/menubox.c',
+], CCFLAGS = lxdialog_ccflags(), LIBS = lxdialog_libs(), CPPDEFINES = ['KBUILD_NO_NLS'])
+
+# Add a config menu builder.
+def dep_emitter(target, source, env):
+	Depends(target, env['MCONF'])
+	return (target, source)
+env['BUILDERS']['ConfigMenu'] = Builder(action = Action('$MCONF $SOURCE', None), emitter = dep_emitter)
