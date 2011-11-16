@@ -15,6 +15,7 @@
  */
 
 #include <stdint.h>
+#include <compiler.h>
 #include <system.h>
 #include <panic.h>
 #include <vmem.h>
@@ -29,13 +30,13 @@ struct gdt_entry {
 	uint8_t		access;
 	uint8_t		gran;
 	uint8_t		base_high;
-} __attribute__((packed));
+} PACKED ALIGNED(4);
 static struct gdt_entry gdt[16];
 
 struct gdt_ptr {
 	uint16_t	limit;
 	uintptr_t	base;
-} __attribute__((packed));
+} PACKED ALIGNED(4);
 static struct gdt_ptr gdtr;
 
 #define FLAGS_PRESENT		0x01
@@ -225,7 +226,7 @@ void arch_vmem_init() {
 	gdtr.base = (uintptr_t) gdt;
 
 	// Make sure GCC doesn't attempt to reorder instructions here
-	__asm__ volatile("" ::: "memory");
+	MEMORY_BARRIER;
 
 	// Flush the GDT
 	__asm__ volatile("lgdt %0; \

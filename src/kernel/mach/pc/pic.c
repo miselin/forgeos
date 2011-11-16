@@ -19,8 +19,6 @@
 #include <stack.h>
 #include <io.h>
 
-/// \todo Install some IRQ handlers.
-
 #define IRQ_INT_BASE		32
 
 struct irqhandler {

@@ -24,7 +24,7 @@ struct phys_page {
 	struct phys_page *next;
 };
 
-/*@null@*/ static struct phys_page * volatile page_stack = 0;
+static struct phys_page * volatile page_stack = 0;
 
 paddr_t pmem_alloc() {
 	struct phys_page *page = 0;

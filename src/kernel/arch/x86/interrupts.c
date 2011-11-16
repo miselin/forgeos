@@ -15,6 +15,7 @@
  */
 
 #include <stdint.h>
+#include <compiler.h>
 #include <interrupts.h>
 #include <stack.h>
 #include <util.h>
@@ -22,7 +23,7 @@
 
 extern int interrupt_handlers;
 
-// 7 bytes: cli, pushl/nop nop, pushl, jmp (no 8-bit displacement)
+// 10 bytes: cli, pushl/nop nop, pushl, jmp (no 8-bit displacement)
 #define INTERRUPT_STUB_LENGTH		10UL
 
 static inthandler_t interrupts[256];
@@ -33,12 +34,12 @@ static struct idt_entry {
 	uint8_t always0;
 	uint8_t flags;
 	uint16_t base_high;
-} __attribute__((packed)) idt[256];
+} PACKED ALIGNED(4) idt[256];
 
 static struct idt_ptr {
 	uint16_t limit;
 	uint32_t base;
-} __attribute__((packed)) idtr;
+} PACKED ALIGNED(4) idtr;
 
 const char* trapnames[] =
 {
@@ -130,7 +131,7 @@ void arch_interrupts_init() {
 	idtr.limit = (sizeof(struct idt_entry) * 256) - 1;
 	idtr.base = (uintptr_t) idt;
 
-	__asm__ volatile("" ::: "memory");
+	MEMORY_BARRIER;
 
 	__asm__ volatile("lidt %0" :: "m" (idtr));
 }
