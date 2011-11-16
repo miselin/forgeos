@@ -43,13 +43,16 @@ MKISOFS := mkisofs
 WARNINGS := -Wall -Wextra -pedantic -Wshadow -Wpointer-arith -Wcast-align \
 			-Wwrite-strings -Wredundant-decls -Wnested-externs -Winline \
 			-Wno-long-long -Wuninitialized -Wconversion
-CFLAGS := $(ARCH_DEFINE) -DDEBUG -O3 -g -std=gnu99 -fno-builtin -nostdinc -nostdlib -ffreestanding $(WARNINGS)
+
+# TODO: arch-specific CFLAGS
+CFLAGS := -m32 $(ARCH_DEFINE) -DDEBUG -O3 -g -std=gnu99 -fno-builtin -nostdinc -nostdlib -ffreestanding $(WARNINGS)
 LDFLAGS := -nostdlib -nostartfiles
 ASFLAGS :=
 
-LINT := splint
-LINT_FLAGS := +nolib +charint -predboolint -paramuse -nullret -temptrans -usedef -branchstate -compdef -retvalint $(ARCH_DEFINE) $(INCDIRS)
-
+# Using clang for static analysis, for the win.
+LINT := clang
+LINT_FLAGS := $(CFLAGS) $(INCDIRS) -o /dev/null -c
+LINT_IGNORE := src/kernel/dlmalloc.c
 
 .PHONY: objdirs analyse clean
 
@@ -60,10 +63,18 @@ objdirs:
 		mkdir -p $(OBJDIR)/$$d; \
 	done;
 
-analyse:
+analyse: $(OBJFILES)
 	@echo
-	@echo Static analysis...
-	# @$(LINT) $(LINT_FLAGS) $(SRCFILES)
+	@for f in $(SRCFILES); do \
+		if [[ "$$f" =~ "$(LINT_IGNORE)" ]]; then \
+			continue; \
+		fi; \
+		echo Analysing $$f...; \
+		$(LINT) $(LINT_FLAGS) $$f; \
+		if [ $$? -ne 0 ]; then \
+			exit 1; \
+		fi; \
+	done
 	@echo
 
 clean:
