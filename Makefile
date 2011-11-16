@@ -1,9 +1,10 @@
 XCOMPILER_TARGET := i686
 XCOMPILER_FORMAT := elf
 XCOMPILER_PREFIX := ~/xcompiler/bin
-XCOMPILER_TUPLE := $(XCOMPILER_TARGET)-$(XCOMPILER_FORMAT)
 
 -include make.config
+
+XCOMPILER_TUPLE := $(XCOMPILER_TARGET)-$(XCOMPILER_FORMAT)
 
 CC := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-gcc
 LD := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-ld
@@ -14,9 +15,9 @@ ARCH_TARGET := x86
 ARCH_SUBTARGET := x86
 MACH_TARGET := pc
 
-DIRS := src src/arch/$(ARCH_TARGET) src/mach/$(MACH_TARGET) src/include
+DIRS := src/kernel src/kernel/arch/$(ARCH_TARGET) src/kernel/mach/$(MACH_TARGET) src/kernel/include
 
-INCDIRS := -I src/include -I src/arch/$(ARCH_TARGET) -I src/mach/$(MACH_TARGET)
+INCDIRS := -I src/kernel/include -I src/kernel/arch/$(ARCH_TARGET) -I src/kernel/mach/$(MACH_TARGET)
 LIBDIRS :=
 
 ASMFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.s")
@@ -30,7 +31,7 @@ DEPFILES := $(patsubst %.c,$(OBJDIR)/%.d,$(SRCFILES))
 
 KERNEL := $(OBJDIR)/kernel
 
-KERNEL_LSCRIPT := src/arch/$(ARCH_TARGET)/linker-$(ARCH_SUBTARGET).ld
+KERNEL_LSCRIPT := src/kernel/arch/$(ARCH_TARGET)/linker-$(ARCH_SUBTARGET).ld
 
 CDIMAGE := $(OBJDIR)/mattise.iso
 
@@ -48,6 +49,9 @@ ASFLAGS :=
 
 LINT := splint
 LINT_FLAGS := +nolib +charint -predboolint -paramuse -nullret -temptrans -usedef -branchstate -compdef -retvalint $(ARCH_DEFINE) $(INCDIRS)
+
+
+.PHONY: objdirs analyse clean
 
 all: objdirs analyse $(KERNEL) $(CDIMAGE)
 
