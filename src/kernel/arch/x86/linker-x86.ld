@@ -21,6 +21,14 @@ SECTIONS {
     	. = ALIGN(4096);
     	code = .; _code = .; __code = .;
     	*(.text*);
+
+    	__begin_tests_0 = .;
+    	*(.__test.0*);
+    	__begin_tests_1 = .;
+    	*(.__test.1*);
+    	__begin_tests_2 = .;
+    	*(.__test.2*);
+    	__end_tests = .;
     }
 
     .data : AT(ADDR(.data) - 0xBFF00000) {

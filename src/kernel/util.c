@@ -15,6 +15,7 @@
  */
 
 #include <stdint.h>
+#include <test.h>
 
 void memset(void *p, char c, size_t len)
 {
@@ -29,3 +30,27 @@ void *memcpy(void *dest, void *src, size_t len) {
 	while(len--) *s2++ = *s1++;
 	return dest;
 }
+
+/*
+ * Tests for the above functions. Using the ',' operator and macros to
+ * create some truly convoluted things here. Note that none of this exists
+ * in the output file unless _TESTING is defined.
+ */
+
+DEFINE_TEST(memset_std, ORDER_PRIMARY, 1,
+			TEST_INIT_VAR(char, buf[4], {1, 2, 3, 4}),
+			memset(buf, 0, 4),
+			(buf[0] == 0 && buf[1] == 0 &&
+			 buf[2] == 0 && buf[3] == 0) ? 1 : 0)
+
+DEFINE_TEST(memset_nonzero, ORDER_PRIMARY, 1,
+			TEST_INIT_VAR(char, buf[4], {1, 2, 3, 4}),
+			memset(buf, 3, 4),
+			(buf[0] == 3 && buf[1] == 3 &&
+			 buf[2] == 3 && buf[3] == 3) ? 1 : 0)
+
+DEFINE_TEST(memset_empty, ORDER_PRIMARY, 1,
+			TEST_INIT_VAR(char, buf[4], {1, 2, 3, 4}),
+			memset(buf, 0, 0),
+			(buf[0] == 1 && buf[1] == 2 &&
+			 buf[2] == 3 && buf[3] == 4) ? 1 : 0)

@@ -21,6 +21,11 @@
 #define ALIGN(n)	__attribute__((align(n)))
 #define ALIGNED(n)	__attribute__((aligned(n)))
 
+#define SECTION(s)	__attribute__((section(s)))
+#define UNUSED		__attribute__((unused))
+
+#define NOP			__asm__ volatile("nop")
+
 #define MEMORY_BARRIER __sync_synchronize()
 
 // Atomicity.

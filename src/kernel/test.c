@@ -14,20 +14,35 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <io.h>
-#include <test.h>
+#ifdef _TESTING
 
-int strlen(const char *s) {
-	int ret = 0;
-	if(s == 0)
-		return ret;
-	while(*s++) {
-		ret++;
+#include <test.h>
+#include <io.h>
+
+extern int __begin_tests_0, __end_tests;
+
+int perform_tests() {
+	uintptr_t begin = (uintptr_t) &__begin_tests_0;
+	uintptr_t end = (uintptr_t) &__end_tests;
+	size_t testcount = (end - begin) / sizeof(struct __test), n = 0;
+
+	kprintf("==== Performing Tests... ====\n");
+
+	kprintf("Tests begin at %x, end at %x [%d tests]\n", begin, end, testcount);
+
+	while(begin < end) {
+		struct __test *test = (struct __test *) begin;
+		kprintf("Test %d of %d: %s ", n++, testcount, test->name);
+		if(!test->routine())
+			kprintf("PASS\n");
+		else {
+			kprintf("FAIL\n");
+			return -1;
+		}
+		begin += sizeof(struct __test);
 	}
-	return ret;
+
+	return 0;
 }
 
-DEFINE_TEST(strlen_zero, ORDER_SECONDARY, 0, NOP, strlen(""))
-DEFINE_TEST(strlen_hello, ORDER_SECONDARY, 5, NOP, strlen("Hello"))
-DEFINE_TEST(strlen_midnull, ORDER_SECONDARY, 3, NOP, strlen("Hel\0lo"))
-DEFINE_TEST(strlen_isnull, ORDER_SECONDARY, 0, NOP, strlen(0))
+#endif

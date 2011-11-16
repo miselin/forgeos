@@ -22,6 +22,7 @@
 #include <multiboot.h>
 #include <dlmalloc.h>
 #include <assert.h>
+#include <test.h>
 
 void _kmain(struct multiboot_info *mboot) {
 	clrscr();
@@ -43,10 +44,14 @@ void _kmain(struct multiboot_info *mboot) {
 	kprintf("Initialising machine devices...\n");
 	init_devices();
 
+#ifdef _TESTING
+	perform_tests();
+#else
 	kprintf("Enabling interrupts...\n");
 	interrupts_enable();
 
 	kprintf("Startup complete!\n");
+#endif
 
 	while(1) __asm__ volatile("hlt");
 }
