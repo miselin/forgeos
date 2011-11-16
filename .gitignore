@@ -1,2 +1,5 @@
 build
 .DS_Store
+make.config
+*~
+mattise.kdev4
