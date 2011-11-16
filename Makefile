@@ -54,6 +54,13 @@ LINT := clang
 LINT_FLAGS := $(CFLAGS) $(INCDIRS) -o /dev/null -c
 LINT_IGNORE := src/kernel/dlmalloc.c
 
+# Phase 2 is merely for post-clang analysis.
+# clang does nice things like check inline assembly, while cppcheck
+# will pick up on less important issues such as style.
+# (eg, checking whether an unsigned variable is < 0)
+LINT_PHASE2 := cppcheck
+LINT_PHASE2_FLAGS := --error-exitcode=1 -q --enable=style,performance,portability --std=c99 $(INCDIRS)
+
 .PHONY: objdirs analyse clean
 
 
@@ -77,6 +84,7 @@ analyse: $(OBJFILES)
 		if [ $$? -ne 0 ]; then \
 			exit 1; \
 		fi; \
+		$(LINT_PHASE2) $(LINT_PHASE2_FLAGS) $$f; \
 	done
 	@echo
 
