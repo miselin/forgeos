@@ -14,6 +14,11 @@ XCOMPILER_TUPLE := $(XCOMPILER_TARGET)-$(XCOMPILER_FORMAT)
 CC := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-gcc
 LD := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-ld
 AS := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-as
+OBJCOPY := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-objcopy
+
+# This is needed for recursive make
+export ARCH_DEFINE ARCH_TARGET ARCH_SUBTARGET MACH_TARGET
+export CC LD AS OBJCOPY
 
 DIRS := src/kernel src/kernel/arch/$(ARCH_TARGET) src/kernel/mach/$(MACH_TARGET) src/kernel/include
 
@@ -25,10 +30,12 @@ SRCFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.c")
 HDRFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.h")
 
 OBJDIR := build
+export OBJDIR
 
 OBJFILES := $(patsubst %.s,$(OBJDIR)/%.o,$(ASMFILES)) $(patsubst %.c,$(OBJDIR)/%.o,$(SRCFILES))
 DEPFILES := $(patsubst %.c,$(OBJDIR)/%.d,$(SRCFILES))
 
+KBOOT := $(OBJDIR)/kboot
 KERNEL := $(OBJDIR)/kernel
 
 KERNEL_LSCRIPT := src/kernel/arch/$(ARCH_TARGET)/linker-$(ARCH_SUBTARGET).ld
@@ -66,7 +73,7 @@ LINT_PHASE2_FLAGS := --error-exitcode=1 -q --enable=style,performance,portabilit
 
 .PHONY: objdirs analyse clean
 
-all: objdirs analyse $(KERNEL) $(CDIMAGE)
+all: objdirs analyse $(KBOOT) $(KERNEL) $(CDIMAGE)
 
 objdirs:
 	-@for d in $(DIRS); do \
@@ -92,6 +99,7 @@ clean:
 	-@rm -f $(DEPFILES)
 	-@rm -f $(OBJFILES)
 	-@rm -f $(KERNEL)
+	-@make -C src/kboot clean
 
 $(CDIMAGE): $(KERNEL)
 	@echo Building ISO image...
@@ -101,6 +109,9 @@ $(CDIMAGE): $(KERNEL)
 				boot/grub/stage2_eltorito=$(GRUB_ELTORITO) \
 				boot/grub/menu.lst=$(GRUB_MENU) \
 				boot/kernel=$(KERNEL)
+
+$(KBOOT): objdirs
+	$(MAKE) -C src/kboot all
 
 $(KERNEL): $(OBJFILES)
 	@echo Linking kernel...
