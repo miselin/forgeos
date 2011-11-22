@@ -28,12 +28,12 @@ stdinc = $(shell $(CC) -print-file-name=include)
 INCLUDES := -Isource/include -Isource/arch/$(ARCH)/include -Isource/platform/$(PLATFORM)/include
 INCLUDES += -isystem $(stdinc)
 
-ARCH_SOURCES := $(shell cd source && find arch/$(ARCH) -name '*.c' -o -name '*.S')
+ARCH_SOURCES := $(shell find source/arch/$(ARCH) -name '*.c' -o -name '*.S')
 
 # This is correct for the PC platform only!
 PLATFORM_SOURCES := loaders/chainload.c loaders/enter.S bios.S console.c
 PLATFORM_SOURCES += disk.c memory.c platform.c pxe.c start.S video.c
-PLATFORM_SOURCES := $(addprefix platform/$(PLATFORM)/, $(PLATFORM_SOURCES))
+PLATFORM_SOURCES := $(addprefix source/platform/$(PLATFORM)/, $(PLATFORM_SOURCES))
 
 # Common source files for the loader itself.
 LOADER_SOURCES := fs/ext2.c fs/iso9660.c
@@ -42,23 +42,15 @@ LOADER_SOURCES += loaders/kboot.c
 LOADER_SOURCES += partitions/msdos.c
 LOADER_SOURCES += config.c console.c device.c disk.c elf.c error.c fs.c main.c memory.c menu.c
 LOADER_SOURCES += ui.c video.c
+LOADER_SOURCES := $(addprefix source/, $(LOADER_SOURCES))
 
 SOURCES := $(ARCH_SOURCES) $(PLATFORM_SOURCES) $(LOADER_SOURCES)
 
-OBJECTS := $(addsuffix .o, $(basename $(SOURCES)))
-
-ifndef OBJDIR
-OBJDIR ?= build/
-else
-OBJDIR := $(OBJDIR)/kboot
-endif
-
-VPATH = $(CURDIR)/source/
-OBJECTS := $(addprefix $(OBJDIR)/, $(OBJECTS))
+OBJECTS = $(addsuffix .o, $(basename $(SOURCES)))
 
 # Base flags to start with
 CFLAGS   := -std=gnu99
-CCFLAGS  := -gdwarf-2 -pipe -nostdlib -nostdinc -ffreestanding -fno-stack-protector
+CCFLAGS   := -gdwarf-2 -pipe -nostdlib -nostdinc -ffreestanding -fno-stack-protector
 ASFLAGS  := -D __ASM__ -nostdinc
 
 # Arch (x86) Flags
@@ -75,62 +67,48 @@ ASFLAGS += -include 'source/platform/$(PLATFORM)/include/platform/config.h'
 CFLAGS += -Os
 
 # Platform (pc) Flags
-DPADD := $(OBJDIR)/source/platform/$(PLATFORM)/link.ld
+DPADD := source/platform/$(PLATFORM)/link.ld
 
 WARNINGS := -Wall -Wextra -Werror -Wno-variadic-macros -Wno-unused-parameter -Wwrite-strings
 WARNINGS += -Wmissing-declarations -Wredundant-decls -Wno-format -Wno-unused-but-set-variable
 
 CPPFLAGS := $(CCFLAGS) $(INCLUDES) $(WARNINGS)
 
-all: $(OBJDIR)/cdboot $(OBJDIR)/pxeboot $(OBJDIR)/loader
+all: cdboot pxeboot loader
 	@:
 
-$(OBJDIR)/cdboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
-$(OBJDIR)/cdboot.elf: $(OBJDIR)/source/platform/$(PLATFORM)/stage1/cdboot.o
-	@echo "  LINKING     cdboot.elf"
+cdboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
+cdboot.elf: source/platform/$(PLATFORM)/stage1/cdboot.o
 	@$(LD) $(LDFLAGS) -o $@ $<
 
-$(OBJDIR)/cdboot: $(OBJDIR)/cdboot.elf
-	@echo "  OBJCOPY     cdboot"
-	@$(OBJCOPY) -O binary --strip-all -R '.note.*' -R .comment $< $@
+cdboot: cdboot.elf
+	echo "  OBJCOPY     cdboot"
+	$(OBJCOPY) -O binary --strip-all -R '.note.*' -R .comment $< $@
 
-
-$(OBJDIR)/pxeboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
-$(OBJDIR)/pxeboot.elf: $(OBJDIR)/source/platform/$(PLATFORM)/stage1/pxeboot.o
-	@echo "  LINKING     pxeboot.elf"
+pxeboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
+pxeboot.elf: source/platform/$(PLATFORM)/stage1/pxeboot.o
 	@$(LD) $(LDFLAGS) -o $@ $<
 
-$(OBJDIR)/pxeboot: $(OBJDIR)/pxeboot.elf
+
+pxeboot: pxeboot.elf
 	@echo "  OBJCOPY     pxeboot"
 	@$(OBJCOPY) -O binary --strip-all -R '.note.*' -R .comment $< $@
 
-
-$(OBJDIR)/loader.elf: LDFLAGS += -T $(OBJDIR)/source/platform/$(PLATFORM)/link.ld
-$(OBJDIR)/loader.elf: $(OBJECTS) $(DPADD)
-	@echo "  LINKING     loader.elf"
+loader.elf: LDFLAGS += -T source/platform/$(PLATFORM)/link.ld
+loader.elf: $(OBJECTS) $(DPADD)
 	@$(LD) $(LDFLAGS) -o $@  $(OBJECTS) $(LIBS)
 
-$(OBJDIR)/loader: $(OBJDIR)/loader.elf
+
+loader: loader.elf
 	@echo "  OBJCOPY     loader"
 	@$(OBJCOPY) -O binary --strip-all $< $@
 
 CLEANFILES = cdboot cdboot.elf pxeboot pxeboot.elf loader loader.elf
 
 clean:
-	-@rm -f $(OBJECTS) $(DPADD) source/platform/$(PLATFORM)/stage1/*.o $(CLEANFILES)
+	@echo Clean $(CLEANDIR)
+	rm -f $(OBJECTS) source/platform/$(PLATFORM)/stage1/*.o $(CLEANFILES)
 
-# Rules to use when building
-$(OBJDIR)/%.o: %.c Makefile
-	@echo Compiling $<...
-	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
-	$(CC) $(CFLAGS) $(CPPFLAGS) -MMD -MP -c $< -o $@
-
-$(OBJDIR)/%.o: %.S Makefile
-	@echo Assembling $<...
-	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
-	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
-
-$(OBJDIR)/%.ld: %.ld.in
+%.ld: %.ld.in
 	@echo "  Preprocessing linker script"
-	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
-	$(CPP) $(ASFLAGS) $(INCLUDES) -x c $< | grep -v '^\#' > $@
+	@$(CPP) $(ASFLAGS) $(INCLUDES) -x c $< | grep -v '^\#' > $@
