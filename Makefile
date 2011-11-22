@@ -16,10 +16,6 @@ NM := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-nm
 OBJCOPY := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-objcopy
 OBJDUMP := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-objdump
 
-# This is needed for recursive make
-export ARCH_DEFINE ARCH_TARGET ARCH_SUBTARGET MACH_TARGET
-export AS CC LD NM OBJCOPY OBJDUMP
-
 DIRS := src/kernel src/kernel/arch/$(ARCH_TARGET) src/kernel/mach/$(MACH_TARGET) src/kernel/include
 
 INCDIRS := -I src/kernel/include -I src/kernel/arch/$(ARCH_TARGET) -I src/kernel/mach/$(MACH_TARGET)
