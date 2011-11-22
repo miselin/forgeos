@@ -79,14 +79,16 @@ all: cdboot pxeboot loader
 
 cdboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
 cdboot.elf: source/platform/$(PLATFORM)/stage1/cdboot.o
+	@echo "  LINKING     cdboot.elf"
 	@$(LD) $(LDFLAGS) -o $@ $<
 
 cdboot: cdboot.elf
 	echo "  OBJCOPY     cdboot"
-	$(OBJCOPY) -O binary --strip-all -R '.note.*' -R .comment $< $@
+	@$(OBJCOPY) -O binary --strip-all -R '.note.*' -R .comment $< $@
 
 pxeboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
 pxeboot.elf: source/platform/$(PLATFORM)/stage1/pxeboot.o
+	@echo "  LINKING     pxeboot.elf"
 	@$(LD) $(LDFLAGS) -o $@ $<
 
 
@@ -96,6 +98,7 @@ pxeboot: pxeboot.elf
 
 loader.elf: LDFLAGS += -T source/platform/$(PLATFORM)/link.ld
 loader.elf: $(OBJECTS) $(DPADD)
+	@echo "  LINKING     loader.elf"
 	@$(LD) $(LDFLAGS) -o $@  $(OBJECTS) $(LIBS)
 
 
@@ -106,8 +109,7 @@ loader: loader.elf
 CLEANFILES = cdboot cdboot.elf pxeboot pxeboot.elf loader loader.elf
 
 clean:
-	@echo Clean $(CLEANDIR)
-	rm -f $(OBJECTS) source/platform/$(PLATFORM)/stage1/*.o $(CLEANFILES)
+	-@rm -f $(OBJECTS) source/platform/$(PLATFORM)/stage1/*.o $(CLEANFILES)
 
 %.ld: %.ld.in
 	@echo "  Preprocessing linker script"
