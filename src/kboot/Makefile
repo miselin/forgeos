@@ -96,8 +96,8 @@ pxeboot: pxeboot.elf
 	@echo "  OBJCOPY     pxeboot"
 	@$(OBJCOPY) -O binary --strip-all -R '.note.*' -R .comment $< $@
 
-loader.elf: LDFLAGS += -T source/platform/$(PLATFORM)/link.ld
-loader.elf: $(OBJECTS) $(DPADD)
+$(OBJDIR)/loader.elf: LDFLAGS += -T $(OBJDIR)/source/platform/$(PLATFORM)/link.ld
+$(OBJDIR)/loader.elf: $(OBJECTS) $(DPADD)
 	@echo "  LINKING     loader.elf"
 	@$(LD) $(LDFLAGS) -o $@  $(OBJECTS) $(LIBS)
 
@@ -109,7 +109,7 @@ loader: loader.elf
 CLEANFILES = cdboot cdboot.elf pxeboot pxeboot.elf loader loader.elf
 
 clean:
-	-@rm -f $(OBJECTS) source/platform/$(PLATFORM)/stage1/*.o $(CLEANFILES)
+	-@rm -f $(OBJECTS) $(DPADD) source/platform/$(PLATFORM)/stage1/*.o $(CLEANFILES)
 
 %.ld: %.ld.in
 	@echo "  Preprocessing linker script"
