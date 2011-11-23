@@ -46,11 +46,19 @@ LOADER_SOURCES := $(addprefix source/, $(LOADER_SOURCES))
 
 SOURCES := $(ARCH_SOURCES) $(PLATFORM_SOURCES) $(LOADER_SOURCES)
 
-OBJECTS = $(addsuffix .o, $(basename $(SOURCES)))
+OBJECTS := $(addsuffix .o, $(basename $(SOURCES)))
+
+ifndef OBJDIR
+OBJDIR ?= build/
+else
+OBJDIR := $(OBJDIR)/kboot
+endif
+
+OBJECTS := $(addprefix $(OBJDIR)/, $(OBJECTS))
 
 # Base flags to start with
 CFLAGS   := -std=gnu99
-CCFLAGS   := -gdwarf-2 -pipe -nostdlib -nostdinc -ffreestanding -fno-stack-protector
+CCFLAGS  := -gdwarf-2 -pipe -nostdlib -nostdinc -ffreestanding -fno-stack-protector
 ASFLAGS  := -D __ASM__ -nostdinc
 
 # Arch (x86) Flags
@@ -67,42 +75,42 @@ ASFLAGS += -include 'source/platform/$(PLATFORM)/include/platform/config.h'
 CFLAGS += -Os
 
 # Platform (pc) Flags
-DPADD := source/platform/$(PLATFORM)/link.ld
+DPADD := $(OBJDIR)/source/platform/$(PLATFORM)/link.ld
 
 WARNINGS := -Wall -Wextra -Werror -Wno-variadic-macros -Wno-unused-parameter -Wwrite-strings
 WARNINGS += -Wmissing-declarations -Wredundant-decls -Wno-format -Wno-unused-but-set-variable
 
 CPPFLAGS := $(CCFLAGS) $(INCLUDES) $(WARNINGS)
 
-all: cdboot pxeboot loader
+all: $(OBJDIR)/cdboot $(OBJDIR)/pxeboot $(OBJDIR)/loader
 	@:
 
-cdboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
-cdboot.elf: source/platform/$(PLATFORM)/stage1/cdboot.o
+$(OBJDIR)/cdboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
+$(OBJDIR)/cdboot.elf: $(OBJDIR)/source/platform/$(PLATFORM)/stage1/cdboot.o
 	@echo "  LINKING     cdboot.elf"
 	@$(LD) $(LDFLAGS) -o $@ $<
 
-cdboot: cdboot.elf
-	echo "  OBJCOPY     cdboot"
+$(OBJDIR)/cdboot: $(OBJDIR)/cdboot.elf
+	@echo "  OBJCOPY     cdboot"
 	@$(OBJCOPY) -O binary --strip-all -R '.note.*' -R .comment $< $@
 
-pxeboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
-pxeboot.elf: source/platform/$(PLATFORM)/stage1/pxeboot.o
+
+$(OBJDIR)/pxeboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
+$(OBJDIR)/pxeboot.elf: $(OBJDIR)/source/platform/$(PLATFORM)/stage1/pxeboot.o
 	@echo "  LINKING     pxeboot.elf"
 	@$(LD) $(LDFLAGS) -o $@ $<
 
-
-pxeboot: pxeboot.elf
+$(OBJDIR)/pxeboot: $(OBJDIR)/pxeboot.elf
 	@echo "  OBJCOPY     pxeboot"
 	@$(OBJCOPY) -O binary --strip-all -R '.note.*' -R .comment $< $@
 
-loader.elf: LDFLAGS += -T source/platform/$(PLATFORM)/link.ld
-loader.elf: $(OBJECTS) $(DPADD)
+
+$(OBJDIR)/loader.elf: LDFLAGS += -T source/platform/$(PLATFORM)/link.ld
+$(OBJDIR)/loader.elf: $(OBJECTS) $(DPADD)
 	@echo "  LINKING     loader.elf"
 	@$(LD) $(LDFLAGS) -o $@  $(OBJECTS) $(LIBS)
 
-
-loader: loader.elf
+$(OBJDIR)/loader: $(OBJDIR)/loader.elf
 	@echo "  OBJCOPY     loader"
 	@$(OBJCOPY) -O binary --strip-all $< $@
 
@@ -111,6 +119,18 @@ CLEANFILES = cdboot cdboot.elf pxeboot pxeboot.elf loader loader.elf
 clean:
 	-@rm -f $(OBJECTS) source/platform/$(PLATFORM)/stage1/*.o $(CLEANFILES)
 
-%.ld: %.ld.in
+# Rules to use when building
+$(OBJDIR)/%.o: %.c Makefile
+	@echo Compiling $<...
+	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
+	$(CC) $(CFLAGS) $(CPPFLAGS) -MMD -MP -c $< -o $@
+
+$(OBJDIR)/%.o: %.S Makefile
+	@echo Assembling $<...
+	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
+	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
+
+$(OBJDIR)/%.ld: %.ld.in
 	@echo "  Preprocessing linker script"
-	@$(CPP) $(ASFLAGS) $(INCLUDES) -x c $< | grep -v '^\#' > $@
+	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
+	$(CPP) $(ASFLAGS) $(INCLUDES) -x c $< | grep -v '^\#' > $@

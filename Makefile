@@ -9,16 +9,16 @@ MACH_TARGET := pc
 
 -include make.config
 
-XCOMPILER_TUPLE := $(XCOMPILER_TARGET)-$(XCOMPILER_FORMAT)
-
+AS := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-as
 CC := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-gcc
 LD := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-ld
-AS := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-as
+NM := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-nm
 OBJCOPY := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-objcopy
+OBJDUMP := $(XCOMPILER_PREFIX)/$(XCOMPILER_TUPLE)-objdump
 
 # This is needed for recursive make
 export ARCH_DEFINE ARCH_TARGET ARCH_SUBTARGET MACH_TARGET
-export CC LD AS OBJCOPY
+export AS CC LD NM OBJCOPY OBJDUMP
 
 DIRS := src/kernel src/kernel/arch/$(ARCH_TARGET) src/kernel/mach/$(MACH_TARGET) src/kernel/include
 
@@ -29,18 +29,35 @@ ASMFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.s")
 SRCFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.c")
 HDRFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.h")
 
-OBJDIR := build
-export OBJDIR
+# override OUTPUT_DIR to place the build files somewhere other than ./build/
+OUTPUT_DIR := build
+export OUTPUT_DIR
+
+# BUILD_ENV may be 'debug' or 'release'
+BUILD_ENV := debug
+export BUILD_ENV
+
+# BUILD_DIR is the base build directory, set up like build/x86-pc/debug/
+BUILD_DIR := $(abspath $(OUTPUT_DIR)/$(ARCH_TARGET)-$(MACH_TARGET)/$(BUILD_ENV))
+
+# The directory for object files under the BUILD_DIR
+OBJDIR := $(BUILD_DIR)/obj
+
+# The directory for 'install' targets under the BUILD_DIR.
+# INSTDIR should be suitable to pass to mkisofs as the base directory to use
+# when creating a live CD.
+INSTDIR := $(BUILD_DIR)/inst
+
+export BUILD_DIR OBJDIR INSTDIR
 
 OBJFILES := $(patsubst %.s,$(OBJDIR)/%.o,$(ASMFILES)) $(patsubst %.c,$(OBJDIR)/%.o,$(SRCFILES))
 DEPFILES := $(patsubst %.c,$(OBJDIR)/%.d,$(SRCFILES))
 
-KBOOT := $(OBJDIR)/kboot
 KERNEL := $(OBJDIR)/kernel
 
 KERNEL_LSCRIPT := src/kernel/arch/$(ARCH_TARGET)/linker-$(ARCH_SUBTARGET).ld
 
-CDIMAGE := $(OBJDIR)/mattise.iso
+CDIMAGE := $(BUILD_DIR)/mattise.iso
 
 GRUB_ELTORITO := build-etc/stage2_eltorito-$(ARCH_TARGET)
 GRUB_MENU := build-etc/menu.lst
@@ -71,9 +88,9 @@ LINT_PHASE2_FLAGS := --error-exitcode=1 -q --enable=style,performance,portabilit
 .PHONY: objdirs analyse clean
 
 
-.PHONY: objdirs analyse clean
+.PHONY: objdirs analyse clean kboot
 
-all: objdirs analyse $(KBOOT) $(KERNEL) $(CDIMAGE)
+all: objdirs analyse kboot $(KERNEL) $(CDIMAGE)
 
 objdirs:
 	-@for d in $(DIRS); do \
@@ -110,7 +127,7 @@ $(CDIMAGE): $(KERNEL)
 				boot/grub/menu.lst=$(GRUB_MENU) \
 				boot/kernel=$(KERNEL)
 
-$(KBOOT): objdirs
+kboot:
 	$(MAKE) -C src/kboot all
 
 $(KERNEL): $(OBJFILES)
