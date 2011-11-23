@@ -105,7 +105,7 @@ $(OBJDIR)/pxeboot: $(OBJDIR)/pxeboot.elf
 	@$(OBJCOPY) -O binary --strip-all -R '.note.*' -R .comment $< $@
 
 
-$(OBJDIR)/loader.elf: LDFLAGS += -T source/platform/$(PLATFORM)/link.ld
+$(OBJDIR)/loader.elf: LDFLAGS += -T $(OBJDIR)/source/platform/$(PLATFORM)/link.ld
 $(OBJDIR)/loader.elf: $(OBJECTS) $(DPADD)
 	@echo "  LINKING     loader.elf"
 	@$(LD) $(LDFLAGS) -o $@  $(OBJECTS) $(LIBS)
@@ -117,7 +117,7 @@ $(OBJDIR)/loader: $(OBJDIR)/loader.elf
 CLEANFILES = cdboot cdboot.elf pxeboot pxeboot.elf loader loader.elf
 
 clean:
-	-@rm -f $(OBJECTS) source/platform/$(PLATFORM)/stage1/*.o $(CLEANFILES)
+	-@rm -f $(OBJECTS) $(DPADD) source/platform/$(PLATFORM)/stage1/*.o $(CLEANFILES)
 
 # Rules to use when building
 $(OBJDIR)/%.o: %.c Makefile
