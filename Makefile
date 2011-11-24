@@ -57,7 +57,7 @@ ASFLAGS :=
 
 # Using clang for static analysis, for the win.
 LINT := clang
-LINT_FLAGS := $(CFLAGS) $(INCDIRS) -o /dev/null -c
+LINT_FLAGS := --analyze $(CFLAGS) $(INCDIRS)
 LINT_IGNORE := src/kernel/dlmalloc.c
 
 # Phase 2 is merely for post-clang analysis.
@@ -76,11 +76,14 @@ objdirs:
 		mkdir -p $(OBJDIR)/$$d; \
 	done;
 
-analyse: $(OBJFILES)
+analyze: analyse
+	@:
+
+analyse:
 	@echo
 	@for f in $(filter-out $(LINT_IGNORE), $(SRCFILES)); do \
 		echo Analysing $$f...; \
-		$(LINT) $(LINT_FLAGS) $$f; \
+		$(LINT) $(LINT_FLAGS) -o /dev/null $$f; \
 		if [ $$? -ne 0 ]; then \
 			exit 1; \
 		fi; \
