@@ -1,0 +1,41 @@
+Timer API
+=========
+
+Ideas for the timer API.
+
+Last Changed: 24 Nov 2011
+
+Basic Requirements
+==================
+
+Each timer driver is required to provide at least one of two features:
+* The ability to call a function after a given delay
+* The ability to identify a timer-specific count, that regularly changes
+  (such as tick count)
+
+Extra features that should be offered, if available, are:
+* Timer modes: one-shot, repeated, etc
+
+Installation
+============
+
+A timer driver calls an API function to register a timer device, and also
+provides the following information:
+* Timer resolution (eg, nanoseconds? milliseconds? seconds, perhaps?)
+* Timer features bitmap (TIMER_ONESHOT | TIMER_PERIODIC, for example)
+* Functions to be called for timer features, ie, the exposed functionality
+  of the driver
+* A name for the timer
+
+Usage
+=====
+
+When requesting the use of a timer, the caller specifies what kind of timing
+they require, whether this be one-shot, periodic, or some other alternative.
+The API then determines the best option for the requested timer and returns
+success or failure after configuring it.
+
+The API may be able to emulate one-shot timers by using a periodic timer.
+
+This should make it easy to write code that depends on timers without being
+concerned about knowing which timers are available on the target system.

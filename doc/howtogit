@@ -1,0 +1,13 @@
+Project Git Use
+===============
+
+Branches:
+master:			'stable'
+<user>-devel:		personal development branch
+<feature>-devel:	feature development branch
+
+Releases:
+Tagged in 'master' with the version identifier.
+Major patches also tagged, with a patch number.
+
+eg, tag 0.1 for first release. tag 0.1.2 for first release, patch 2

@@ -1,0 +1,21 @@
+Wishlist
+========
+
+Last Updated: 24 Nov 2011
+
+* Timer API that allows for automatically selecting the best timer for given
+  semantics. For example, using the HPET for a one-shot alarm, and the RTC
+  for very-high-resolution timing.
+* API for interrupts that can make use of the features of more advanced
+  interrupt controllers seamlessly.
+* ARM, x64, x86 ports with feature parity.
+* Clean POSIX support, with either a custom or otherwise sane libc.
+* Hand-written POSIX headers rather than those provided by somebody else.
+* Native drivers (ie, no CDI or UDI)
+* CDI layer on top of native driver layer to allow loading of CDI drivers
+* Support for ring3 drivers
+* Fast IPC!
+* An awesome build system. One-command builds, easy target selection, buildbot
+  integration.
+* Fun project stuff like nightlies!
+* Regularish releases
