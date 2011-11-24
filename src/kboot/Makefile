@@ -28,12 +28,12 @@ stdinc = $(shell $(CC) -print-file-name=include)
 INCLUDES := -Isource/include -Isource/arch/$(ARCH)/include -Isource/platform/$(PLATFORM)/include
 INCLUDES += -isystem $(stdinc)
 
-ARCH_SOURCES := $(shell find source/arch/$(ARCH) -name '*.c' -o -name '*.S')
+ARCH_SOURCES := $(shell cd source && find arch/$(ARCH) -name '*.c' -o -name '*.S')
 
 # This is correct for the PC platform only!
 PLATFORM_SOURCES := loaders/chainload.c loaders/enter.S bios.S console.c
 PLATFORM_SOURCES += disk.c memory.c platform.c pxe.c start.S video.c
-PLATFORM_SOURCES := $(addprefix source/platform/$(PLATFORM)/, $(PLATFORM_SOURCES))
+PLATFORM_SOURCES := $(addprefix platform/$(PLATFORM)/, $(PLATFORM_SOURCES))
 
 # Common source files for the loader itself.
 LOADER_SOURCES := fs/ext2.c fs/iso9660.c
@@ -42,11 +42,19 @@ LOADER_SOURCES += loaders/kboot.c
 LOADER_SOURCES += partitions/msdos.c
 LOADER_SOURCES += config.c console.c device.c disk.c elf.c error.c fs.c main.c memory.c menu.c
 LOADER_SOURCES += ui.c video.c
-LOADER_SOURCES := $(addprefix source/, $(LOADER_SOURCES))
 
 SOURCES := $(ARCH_SOURCES) $(PLATFORM_SOURCES) $(LOADER_SOURCES)
 
-OBJECTS = $(addsuffix .o, $(basename $(SOURCES)))
+OBJECTS := $(addsuffix .o, $(basename $(SOURCES)))
+
+ifndef OBJDIR
+OBJDIR ?= build/
+else
+OBJDIR := $(OBJDIR)/kboot
+endif
+
+VPATH = $(CURDIR)/source/
+OBJECTS := $(addprefix $(OBJDIR)/, $(OBJECTS))
 
 # Base flags to start with
 CFLAGS   := -std=gnu99
