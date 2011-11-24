@@ -78,10 +78,7 @@ objdirs:
 
 analyse: $(OBJFILES)
 	@echo
-	@for f in $(SRCFILES); do \
-		if [[ "$$f" =~ "$(LINT_IGNORE)" ]]; then \
-			continue; \
-		fi; \
+	@for f in $(filter-out $(LINT_IGNORE), $(SRCFILES)); do \
 		echo Analysing $$f...; \
 		$(LINT) $(LINT_FLAGS) $$f; \
 		if [ $$? -ne 0 ]; then \
