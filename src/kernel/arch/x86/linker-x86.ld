@@ -35,6 +35,10 @@ SECTIONS {
     	. = ALIGN(4096);
     	*(.data*);
     	*(.rodata*);
+
+    	__begin_timer_table = .;
+    	*(.table.timers*);
+    	__end_timer_table = .;
     }
 
     .bss : AT(ADDR(.bss) - 0xBFF00000) {

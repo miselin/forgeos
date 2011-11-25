@@ -18,6 +18,7 @@
 #include <pmem.h>
 #include <vmem.h>
 #include <devices.h>
+#include <timer.h>
 #include <interrupts.h>
 #include <multiboot.h>
 #include <dlmalloc.h>
@@ -43,6 +44,9 @@ void _kmain(struct multiboot_info *mboot) {
 
 	kprintf("Initialising machine devices...\n");
 	init_devices();
+
+	kprintf("Initialising timers...\n");
+	timers_init();
 
 #ifdef _TESTING
 	perform_tests();

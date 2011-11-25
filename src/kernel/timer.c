@@ -15,11 +15,35 @@
  */
 
 #include <stdint.h>
-#include <serial.h>
-#include <pit.h>
-#include <pic.h>
+#include <timer.h>
+#include <io.h>
 
-void mach_init_devices() {
-	init_pic();
-	init_serial();
+extern int __begin_timer_table, __end_timer_table;
+
+void timers_init() {
+	uintptr_t begin = (uintptr_t) &__begin_timer_table;
+	uintptr_t end = (uintptr_t) &__end_timer_table;
+	struct timer_table_entry *ent = (struct timer_table_entry *) begin;
+
+	for(size_t i = 0; i < (end - begin) / sizeof(struct timer_table_entry); i++) {
+		if(ent->tmr && (ent->tmr->timer_init != 0)) {
+			kprintf("init timer %s: ", ent->tmr->name);
+			int rc = ent->tmr->timer_init();
+			if(!rc)
+				kprintf("OK\n");
+			else
+				kprintf("FAIL\n");
+		}
+	}
+}
+
+void timer_ticked(struct timer *tim, uint32_t ticks) {
+	kprintf("timer %s tick: %x\n", tim->name, ticks);
+}
+
+int install_timer(timer_handler th, uint32_t ticks, uint32_t feat) {
+	return -1;
+}
+
+void remove_timer(timer_handler th) {
 }

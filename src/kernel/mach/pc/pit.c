@@ -20,6 +20,9 @@
 #include <stack.h>
 #include <pit.h>
 #include <io.h>
+#include <timer.h>
+
+static struct timer t;
 
 /// Frequency at which we want the timer to tick.
 #define TIMER_TICK_HZ	100
@@ -29,14 +32,12 @@
 volatile size_t ticks = 0;
 
 /// Timer IRQ handler
-static int pic_irq(struct intr_stack *p) {
-	ticks += 1;
-	if((ticks % TIMER_TICK_HZ) == 0)
-		kprintf("PIC: one second has passed.\n");
+static int pit_irq(struct intr_stack *p) {
+	timer_ticked(&t, ((10 << TIMERRES_SHIFT) | TIMERRES_MILLI));
 	return 0;
 }
 
-void init_pit() {
+int init_pit() {
 	// Set the divisor to achieve the frequency we want.
 	size_t div = 1193180 / TIMER_TICK_HZ;
 
@@ -46,5 +47,20 @@ void init_pit() {
 	outb(PIT_PORT + 0, (div >> 8) & 0xFF);
 
 	// Install the IRQ handler
-	interrupts_irq_reg(0, 0, pic_irq);
+	interrupts_irq_reg(0, 0, pit_irq);
+
+	return 0;
 }
+
+static struct timer t = {
+	((10 << TIMERRES_SHIFT) | TIMERRES_MILLI),
+	TIMERFEAT_PERIODIC,
+	"Programmable Interval Timer",
+	init_pit,
+	0,
+	0,
+	0,
+	0
+};
+
+EXPORT_TIMER(pit, t);

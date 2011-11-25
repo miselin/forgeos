@@ -17,6 +17,4 @@
 #ifndef _PIT_H
 #define _PIT_H
 
-extern void init_pit();
-
 #endif
