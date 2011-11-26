@@ -43,6 +43,7 @@ ifndef BUILD_SRC
 # error if BUILD_CONFIG was specified and the file doesn't exist, but it is NOT
 # an error if the default make.config file does not exist.
 ifeq "$(origin $(BUILD_CONFIG))" "command line"
+$(info "READING CONFIG")
   # Make sure $(CONFIG) exists before reading it.
   ifeq "$(wildcard $(BUILD_CONFIG))" ""
     $(error Config file '$(BUILD_CONFIG)' does not exist)
@@ -142,6 +143,8 @@ ifeq "$(findstring clean, $(MAKECMDGOALS))" ""
 # At this point, we will create the BUILD_DIR if it does not exist, change to
 # it, and then start the actual build.
 
+#MAKEFLAGS += --no-print-directory
+
 .PHONY: _all sub-make $(MAKECMDGOALS)
 _all:
 
@@ -179,22 +182,25 @@ export LINT
 # Directories under src/ to visit
 DIRS := kboot kernel
 
-.PHONY: analyse analyze clean $(DIRS)
+.PHONY: analyse analyze clean cleanlog closelog $(DIRS)
 
-all: $(DIRS) $(CDIMAGE)
+all: $(DIRS) closelog $(CDIMAGE)
 
 analyze: analyse
 
 analyse:
-	@echo Beginning static analysis. Note that this cannot be done as a parallel job so may take a long time to complete.
+	@echo "Static Analysis Started at `date`"| tee $(BUILD_DIR)/analysis.log
+	@echo "Note that this cannot be done as a parallel job so may take a long time to complete.\n" | tee -a $(BUILD_DIR)/analysis.log
 	@for d in $(DIRS); do \
-		$(MAKE) -C $(BUILD_SRC)/src/$$d analyse; \
+		$(MAKE) --no-print-directory -C $(BUILD_SRC)/src/$$d analyse 2>&1 | tee -a $(BUILD_DIR)/analysis.log; \
 	done
+	@echo "Static Analysis Complete at `date`" | tee -a $(BUILD_DIR)/analysis.log
+	@echo "Results have been saved to: $(BUILD_DIR)/analysis.log\n"
 
 cdimage: $(CDIMAGE)
 
 $(CDIMAGE): kernel kboot
-	@echo Building ISO image...
+	@echo "Building ISO image..."
 	@mkdir -p $(INSTDIR)/boot/grub
 	@cp $(GRUB_ELTORITO) $(INSTDIR)/boot/grub/stage2_eltorito
 	@cp $(GRUB_MENU) $(INSTDIR)/boot/grub
@@ -202,10 +208,17 @@ $(CDIMAGE): kernel kboot
 	@mkisofs	-D -joliet -graft-points -quiet -input-charset ascii -R \
 				-b boot/grub/stage2_eltorito -no-emul-boot -boot-load-size 4 \
 				-boot-info-table -o $(CDIMAGE) -V 'MATTISE' $(INSTDIR)/
+	@echo "ISO image has been saved to: $(CDIMAGE)\n"
 
-$(DIRS):
-	@$(MAKE) -C $(BUILD_SRC)/src/$@
+$(DIRS): cleanlog
+	@$(MAKE) -C $(BUILD_SRC)/src/$@ 2>&1 | tee -a $(BUILD_DIR)/build.log
 
+cleanlog:
+	@echo "System build started at `date`\n" | tee $(BUILD_DIR)/build.log
+
+closelog: $(DIRS)
+	@echo "\nSystem build finished at `date`" | tee -a $(BUILD_DIR)/build.log
+	@echo "Build log has been saved to: $(BUILD_DIR)/build.log\n"
 
 endif # process-makefile
 

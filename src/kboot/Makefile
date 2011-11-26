@@ -53,7 +53,7 @@ else
 OBJDIR := $(OBJDIR)/kboot
 endif
 
-VPATH = $(CURDIR)/source/
+VPATH = source/
 OBJECTS := $(addprefix $(OBJDIR)/, $(OBJECTS))
 
 # Base flags to start with
@@ -82,7 +82,10 @@ WARNINGS += -Wmissing-declarations -Wredundant-decls -Wno-format -Wno-unused-but
 
 CPPFLAGS := $(CCFLAGS) $(INCLUDES) $(WARNINGS)
 
-all: cdboot pxeboot loader
+LINT_FLAGS := $(CFLAGS) $(CCFLAGS) $(INCLUDES)
+LINT_IGNORE :=
+
+all: $(OBJDIR)/cdboot $(OBJDIR)/pxeboot $(OBJDIR)/loader
 	@:
 
 cdboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
@@ -115,12 +118,11 @@ loader: loader.elf
 	@$(OBJCOPY) -O binary --strip-all $< $@
 
 analyse:
-	@echo "Static analysis not yet supported by KBoot"
-
-CLEANFILES = cdboot cdboot.elf pxeboot pxeboot.elf loader loader.elf
-
-clean:
-	-@rm -f $(OBJECTS) $(DPADD) source/platform/$(PLATFORM)/stage1/*.o $(CLEANFILES)
+	@echo "KBoot Static Analysis:"
+	@for f in $(filter-out $(LINT_IGNORE), $(filter-out %.S, $(addprefix source/, $(SOURCES)))); do \
+		$(LINT) $(LINT_FLAGS) -o /dev/null $$f; \
+	done
+	@echo "End KBoot Static Analysis\n"
 
 # Rules to use when building
 $(OBJDIR)/%.o: %.c Makefile

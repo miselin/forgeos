@@ -69,15 +69,11 @@ $(KERNEL): $(OBJFILES)
 -include $(DEPFILES)
 
 analyse:
-	@echo
+	@echo "Kernel Static Analysis:"
 	@for f in $(filter-out $(LINT_IGNORE), $(subst ./,,$(SRCFILES))); do \
-		echo Analysing $$f...; \
 		$(LINT) $(LINT_FLAGS) -o /dev/null $$f; \
-		if [ $$? -ne 0 ]; then \
-			exit 1; \
-		fi; \
 	done
-	@echo
+	@echo "End Kernel Static Analysis\n"
 
 
 $(OBJDIR)/%.o: %.c Makefile
