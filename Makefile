@@ -156,7 +156,7 @@ $(BUILD_DIR):
 # The "-e" below is VERY IMPORTANT so that the default configuration variables above
 # DO NOT OVERRIDE what was entered from a build configuration.
 sub-make: $(BUILD_DIR)
-	$(MAKE) -e -C $(BUILD_DIR) -f $(CURDIR)/Makefile BUILD_SRC=$(CURDIR) \
+	@$(MAKE) -e -C $(BUILD_DIR) -f $(CURDIR)/Makefile BUILD_SRC=$(CURDIR) \
 	$(filter-out _all sub-make $(BUILD_DIR), $(MAKECMDGOALS))
 
 process-makefile := 1
@@ -164,41 +164,6 @@ endif #findstring
 endif # BUILD_SRC
 
 ifeq "$(process-makefile)" ""
-# Set ARCH_CFLAGS and ARCH_DEFINE automatically depending on how ARCH_TARGET is set
-ifeq "$(ARCH_TARGET)" "x86"
-  ARCH_CFLAGS :=
-  ARCH_DEFINE := -DX86
-endif
-
-# Set ARCH_SUBTARGET_CFLAGS and ARCH_SUBTARGET_DEFINE automatically depending on how ARCH_SUBTARGET is set
-ifeq "$(ARCH_SUBTARGET)" "x86"
-  ARCH_SUBTARGET_CFLAGS := -m32
-  ARCH_SUBTARGET_DEFINE :=
-endif
-
-# And do the same for PLATFORM_CFLAGS and PLATFORM_TARGET
-ifeq "$(PLATFORM_TARGET)" "pc"
-  PLATFORM_CFLAGS :=
-  PLATFORM_DEFINES :=
-endif
-
-VPATH := $(BUILD_SRC)
-DIRS := src/kernel src/kernel/arch/$(ARCH_TARGET) src/kernel/mach/$(PLATFORM_TARGET) src/kernel/include
-
-INCDIRS := src/kernel/include src/kernel/arch/$(ARCH_TARGET) src/kernel/mach/$(PLATFORM_TARGET)
-LIBDIRS :=
-
-ASMFILES := $(shell cd $(BUILD_SRC) && find $(DIRS) -maxdepth 1 -type f -name "*.s" 2>/dev/null )
-SRCFILES := $(shell cd $(BUILD_SRC) && find $(DIRS) -maxdepth 1 -type f -name "*.c" 2>/dev/null )
-HDRFILES := $(shell cd $(BUILD_SRC) && find $(DIRS) -maxdepth 1 -type f -name "*.h" 2>/dev/null )
-
-OBJFILES := $(patsubst %.s,$(OBJDIR)/%.o,$(ASMFILES)) $(patsubst %.c,$(OBJDIR)/%.o,$(SRCFILES))
-DEPFILES := $(patsubst %.c,$(OBJDIR)/%.d,$(SRCFILES))
-
-KBOOT := $(OBJDIR)/kboot
-KERNEL := $(OBJDIR)/kernel
-
-KERNEL_LSCRIPT := $(BUILD_SRC)/src/kernel/arch/$(ARCH_TARGET)/linker-$(ARCH_SUBTARGET).ld
 
 CDIMAGE := $(BUILD_DIR)/mattise.iso
 
@@ -207,22 +172,11 @@ GRUB_MENU := $(BUILD_SRC)/build-etc/menu.lst
 
 MKISOFS := mkisofs
 
-INCLUDES := $(patsubst %, -I%, $(addprefix $(BUILD_SRC)/, $(INCDIRS)))
-
 WARNINGS := -Wall -Wextra -pedantic -Wshadow -Wpointer-arith -Wcast-align \
 			-Wwrite-strings -Wredundant-decls -Wnested-externs -Winline \
 			-Wno-long-long -Wuninitialized -Wconversion
 
 CFLAGS := -std=gnu99 -fno-builtin -nostdinc -nostdlib -ffreestanding
-
-# Examples on how to set build flags depending on the build environment
-ifeq "$(BUILD_ENV)" "debug"
-  CFLAGS += -g -O3 -DDEBUG
-endif
-
-ifeq "$(BUILD_ENV)" "release"
-  CFLAGS += -O3
-endif
 
 # TODO: Only add the following _CFLAGS and _DEFINES if they are set to avoid a lot of spaces in the command line
 CFLAGS += $(ARCH_CFLAGS) $(ARCH_DEFINE)
@@ -238,14 +192,12 @@ LINT := clang
 LINT_FLAGS := --analyze $(CFLAGS) $(INCLUDES)
 LINT_IGNORE := src/kernel/dlmalloc.c
 
-.PHONY: objdirs analyse analyze clean kboot
+# Directories to visit
+DIRS := kboot kernel
 
-all: objdirs analyse kboot $(KERNEL) $(CDIMAGE)
+.PHONY: analyse analyze clean $(DIRS)
 
-objdirs:
-	-@for d in $(DIRS); do \
-		mkdir -p $(OBJDIR)/$$d; \
-	done;
+all: analyse $(DIRS) $(CDIMAGE)
 
 analyze: analyse
 	@:
@@ -262,32 +214,22 @@ analyse:
 	done
 	@echo
 
-$(CDIMAGE): $(KERNEL)
+cdimage: $(CDIMAGE)
+
+$(CDIMAGE): kernel kboot
 	@echo Building ISO image...
 	@mkdir -p $(INSTDIR)/boot/grub
-	@cp $(GRUB_ELTORITO) $(INSTDIR)/boot/grub/stage2_eltorito
-	@cp $(GRUB_MENU) $(INSTDIR)/boot/grub
-	@cp $(KERNEL) $(INSTDIR)/boot
-	@mkisofs	-D -joliet -graft-points -quiet -input-charset ascii -R \
+	cp $(GRUB_ELTORITO) $(INSTDIR)/boot/grub/stage2_eltorito
+	cp $(GRUB_MENU) $(INSTDIR)/boot/grub
+	cp $(OBJDIR)/kernel/kernel $(INSTDIR)/boot
+	mkisofs	-D -joliet -graft-points -quiet -input-charset ascii -R \
 				-b boot/grub/stage2_eltorito -no-emul-boot -boot-load-size 4 \
 				-boot-info-table -o $(CDIMAGE) -V 'MATTISE' $(INSTDIR)/
 
-kboot:
-	@$(MAKE) -C $(BUILD_SRC)/src/kboot all
+$(DIRS):
+	@$(MAKE) -C $(BUILD_SRC)/src/$@
 
-$(KERNEL): $(OBJFILES)
-	@echo Linking kernel...
-	@$(LD) $(LDFLAGS) $(LIBDIRS) -o $@ -T $(KERNEL_LSCRIPT) $(OBJFILES)
 
--include $(DEPFILES)
-
-$(OBJDIR)/%.o: %.c Makefile
-	@echo Compiling $<...
-	@$(CC) $(CFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
-
-$(OBJDIR)/%.o: %.s Makefile
-	@echo Assembling $<...
-	@$(AS) $(ASFLAGS) $< -o $@
 endif # process-makefile
 
 clean:
