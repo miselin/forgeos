@@ -28,4 +28,11 @@ extern void delete_stack(void *s);
 extern void stack_push(void *s, void *p);
 extern void *stack_pop(void *s);
 
+extern void *create_list();
+extern void delete_list(void *p);
+
+extern void list_insert(void *list, void *data, size_t index);
+extern void *list_at(void *list, size_t index);
+extern void list_remove(void *list, size_t index);
+
 #endif
