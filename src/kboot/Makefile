@@ -114,11 +114,26 @@ loader: loader.elf
 	@echo "  OBJCOPY     loader"
 	@$(OBJCOPY) -O binary --strip-all $< $@
 
+analyse:
+	@echo "Static analysis not yet supported by KBoot"
+
 CLEANFILES = cdboot cdboot.elf pxeboot pxeboot.elf loader loader.elf
 
 clean:
 	-@rm -f $(OBJECTS) $(DPADD) source/platform/$(PLATFORM)/stage1/*.o $(CLEANFILES)
 
-%.ld: %.ld.in
-	@echo "  Preprocessing linker script"
-	@$(CPP) $(ASFLAGS) $(INCLUDES) -x c $< | grep -v '^\#' > $@
+# Rules to use when building
+$(OBJDIR)/%.o: %.c Makefile
+	@echo '  [CC] $<...'
+	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
+	$(CC) $(CFLAGS) $(CPPFLAGS) -MMD -MP -c $< -o $@
+
+$(OBJDIR)/%.o: %.S Makefile
+	@echo '  [AS] $<...'
+	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
+	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
+
+$(OBJDIR)/%.ld: %.ld.in
+	@echo '  [LDS] $<...'
+	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
+	$(CPP) $(ASFLAGS) $(INCLUDES) -x c $< | grep -v '^\#' > $@

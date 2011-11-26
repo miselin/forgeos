@@ -172,57 +172,34 @@ GRUB_MENU := $(BUILD_SRC)/build-etc/menu.lst
 
 MKISOFS := mkisofs
 
-WARNINGS := -Wall -Wextra -pedantic -Wshadow -Wpointer-arith -Wcast-align \
-			-Wwrite-strings -Wredundant-decls -Wnested-externs -Winline \
-			-Wno-long-long -Wuninitialized -Wconversion
-
-CFLAGS := -std=gnu99 -fno-builtin -nostdinc -nostdlib -ffreestanding
-
-# TODO: Only add the following _CFLAGS and _DEFINES if they are set to avoid a lot of spaces in the command line
-CFLAGS += $(ARCH_CFLAGS) $(ARCH_DEFINE)
-CFLAGS += $(ARCH_SUBTARGET_CFLAGS) $(ARCH_SUBTARGET_DEFINE)
-CFLAGS += $(PLATFORM_CFLAGS) $(PLATFORM_DEFINES)
-CFLAGS += $(WARNINGS)
-
-LDFLAGS := -nostdlib -nostartfiles
-ASFLAGS :=
-
 # Using clang for static analysis, for the win.
-LINT := clang
-LINT_FLAGS := --analyze $(CFLAGS) $(INCLUDES)
-LINT_IGNORE := src/kernel/dlmalloc.c
+LINT := clang --analyze
+export LINT
 
-# Directories to visit
+# Directories under src/ to visit
 DIRS := kboot kernel
 
 .PHONY: analyse analyze clean $(DIRS)
 
-all: analyse $(DIRS) $(CDIMAGE)
+all: $(DIRS) $(CDIMAGE)
 
 analyze: analyse
-	@:
 
 analyse:
-	@echo
-	@for f in $(filter-out $(LINT_IGNORE), $(SRCFILES)); do \
-		echo Analysing $$f...; \
-		$(LINT) $(LINT_FLAGS) -o /dev/null $(BUILD_SRC)/$$f; \
-		if [ $$? -ne 0 ]; then \
-			exit 1; \
-		fi; \
-		$(LINT_PHASE2) $(LINT_PHASE2_FLAGS) $$f; \
+	@echo Beginning static analysis. Note that this cannot be done as a parallel job so may take a long time to complete.
+	@for d in $(DIRS); do \
+		$(MAKE) -C $(BUILD_SRC)/src/$$d analyse; \
 	done
-	@echo
 
 cdimage: $(CDIMAGE)
 
 $(CDIMAGE): kernel kboot
 	@echo Building ISO image...
 	@mkdir -p $(INSTDIR)/boot/grub
-	cp $(GRUB_ELTORITO) $(INSTDIR)/boot/grub/stage2_eltorito
-	cp $(GRUB_MENU) $(INSTDIR)/boot/grub
-	cp $(OBJDIR)/kernel/kernel $(INSTDIR)/boot
-	mkisofs	-D -joliet -graft-points -quiet -input-charset ascii -R \
+	@cp $(GRUB_ELTORITO) $(INSTDIR)/boot/grub/stage2_eltorito
+	@cp $(GRUB_MENU) $(INSTDIR)/boot/grub
+	@cp $(OBJDIR)/kernel/kernel $(INSTDIR)/boot
+	@mkisofs	-D -joliet -graft-points -quiet -input-charset ascii -R \
 				-b boot/grub/stage2_eltorito -no-emul-boot -boot-load-size 4 \
 				-boot-info-table -o $(CDIMAGE) -V 'MATTISE' $(INSTDIR)/
 

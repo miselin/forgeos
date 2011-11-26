@@ -41,7 +41,7 @@ DEPFILES := $(abspath $(patsubst %.c,$(OBJDIR)/%.d,$(SRCFILES)))
 
 KERNEL := $(OBJDIR)/kernel
 
-KERNEL_LSCRIPT := $(BUILD_SRC)/src/kernel/arch/$(ARCH_TARGET)/linker-$(ARCH_SUBTARGET).ld
+KERNEL_LSCRIPT := arch/$(ARCH_TARGET)/linker-$(ARCH_SUBTARGET).ld
 
 WARNINGS := -Wall -Wextra -pedantic -Wshadow -Wpointer-arith -Wcast-align \
 			-Wwrite-strings -Wredundant-decls -Wnested-externs -Winline \
@@ -49,14 +49,18 @@ WARNINGS := -Wall -Wextra -pedantic -Wshadow -Wpointer-arith -Wcast-align \
 
 CFLAGS := -std=gnu99 -fno-builtin -nostdinc -nostdlib -ffreestanding
 
-# TODO: Only add the following _CFLAGS and _DEFINES if they are set to avoid a lot of spaces in the command line
 CFLAGS += $(ARCH_CFLAGS) $(ARCH_DEFINE)
 CFLAGS += $(ARCH_SUBTARGET_CFLAGS) $(ARCH_SUBTARGET_DEFINE)
 CFLAGS += $(PLATFORM_CFLAGS) $(PLATFORM_DEFINES)
 CFLAGS += $(WARNINGS)
 
+CFLAGS := $(strip $(CFLAGS))
+
 LDFLAGS := -nostdlib -nostartfiles
 ASFLAGS :=
+
+LINT_FLAGS := $(CFLAGS) $(INCLUDES)
+LINT_IGNORE := dlmalloc.c
 
 $(KERNEL): $(OBJFILES)
 	@echo Linking kernel...
@@ -64,12 +68,24 @@ $(KERNEL): $(OBJFILES)
 
 -include $(DEPFILES)
 
+analyse:
+	@echo
+	@for f in $(filter-out $(LINT_IGNORE), $(subst ./,,$(SRCFILES))); do \
+		echo Analysing $$f...; \
+		$(LINT) $(LINT_FLAGS) -o /dev/null $$f; \
+		if [ $$? -ne 0 ]; then \
+			exit 1; \
+		fi; \
+	done
+	@echo
+
+
 $(OBJDIR)/%.o: %.c Makefile
-	@echo Compiling $<...
+	@echo '  [CC] $<...'
 	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
 	$(CC) $(CFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
 $(OBJDIR)/%.o: %.s Makefile
-	@echo Assembling $<...
+	@echo '  [AS] $<...'
 	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
 	$(AS) $(ASFLAGS) $< -o $@
