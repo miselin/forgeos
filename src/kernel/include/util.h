@@ -35,4 +35,10 @@ extern void list_insert(void *list, void *data, size_t index);
 extern void *list_at(void *list, size_t index);
 extern void list_remove(void *list, size_t index);
 
+extern void *create_queue();
+extern void delete_queue(void *queue);
+
+extern void queue_push(void *queue, void *data);
+extern void *queue_pop(void *queue);
+
 #endif
