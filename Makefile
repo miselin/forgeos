@@ -188,9 +188,9 @@ DIRS := src/kernel src/kernel/arch/$(ARCH_TARGET) src/kernel/mach/$(PLATFORM_TAR
 INCDIRS := src/kernel/include src/kernel/arch/$(ARCH_TARGET) src/kernel/mach/$(PLATFORM_TARGET)
 LIBDIRS :=
 
-ASMFILES := $(shell cd $(BUILD_SRC) && find $(DIRS) -maxdepth 1 -type f -name "*.s")
-SRCFILES := $(shell cd $(BUILD_SRC) && find $(DIRS) -maxdepth 1 -type f -name "*.c")
-HDRFILES := $(shell cd $(BUILD_SRC) && find $(DIRS) -maxdepth 1 -type f -name "*.h")
+ASMFILES := $(shell cd $(BUILD_SRC) && find $(DIRS) -maxdepth 1 -type f -name "*.s" 2>/dev/null )
+SRCFILES := $(shell cd $(BUILD_SRC) && find $(DIRS) -maxdepth 1 -type f -name "*.c" 2>/dev/null )
+HDRFILES := $(shell cd $(BUILD_SRC) && find $(DIRS) -maxdepth 1 -type f -name "*.h" 2>/dev/null )
 
 OBJFILES := $(patsubst %.s,$(OBJDIR)/%.o,$(ASMFILES)) $(patsubst %.c,$(OBJDIR)/%.o,$(SRCFILES))
 DEPFILES := $(patsubst %.c,$(OBJDIR)/%.d,$(SRCFILES))
@@ -240,7 +240,7 @@ LINT_IGNORE := src/kernel/dlmalloc.c
 
 .PHONY: objdirs analyse analyze clean kboot
 
-all: objdirs $(KERNEL) $(CDIMAGE)
+all: objdirs analyse kboot $(KERNEL) $(CDIMAGE)
 
 objdirs:
 	-@for d in $(DIRS); do \
@@ -264,20 +264,20 @@ analyse:
 
 $(CDIMAGE): $(KERNEL)
 	@echo Building ISO image...
-	mkdir -p $(INSTDIR)/boot/grub
-	cp $(GRUB_ELTORITO) $(INSTDIR)/boot/grub/stage2_eltorito
-	cp $(GRUB_MENU) $(INSTDIR)/boot/grub
-	cp $(KERNEL) $(INSTDIR)/boot
-	mkisofs	-D -joliet -graft-points -quiet -input-charset ascii -R \
+	@mkdir -p $(INSTDIR)/boot/grub
+	@cp $(GRUB_ELTORITO) $(INSTDIR)/boot/grub/stage2_eltorito
+	@cp $(GRUB_MENU) $(INSTDIR)/boot/grub
+	@cp $(KERNEL) $(INSTDIR)/boot
+	@mkisofs	-D -joliet -graft-points -quiet -input-charset ascii -R \
 				-b boot/grub/stage2_eltorito -no-emul-boot -boot-load-size 4 \
 				-boot-info-table -o $(CDIMAGE) -V 'MATTISE' $(INSTDIR)/
 
 kboot:
-	$(MAKE) -C $(KBUILD_SRC)/src/kboot all
+	@$(MAKE) -C $(BUILD_SRC)/src/kboot all
 
 $(KERNEL): $(OBJFILES)
 	@echo Linking kernel...
-	$(LD) $(LDFLAGS) $(LIBDIRS) -o $@ -T $(KERNEL_LSCRIPT) $(OBJFILES)
+	@$(LD) $(LDFLAGS) $(LIBDIRS) -o $@ -T $(KERNEL_LSCRIPT) $(OBJFILES)
 
 -include $(DEPFILES)
 
