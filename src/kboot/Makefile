@@ -16,7 +16,7 @@
 
 # NOTE: This whole thing currently assumes x86-pc. Will fix that up later.
 
-PLATFORM = $(MACH_TARGET)
+PLATFORM = $(PLATFORM_TARGET)
 ARCH = $(ARCH_TARGET)
 
 # Compiler specific.
