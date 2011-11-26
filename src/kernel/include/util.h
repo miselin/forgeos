@@ -22,4 +22,10 @@
 extern void memset(void *p, char c, size_t len);
 extern void *memcpy(void *dest, void *src, size_t len);
 
+extern void *create_stack();
+extern void delete_stack(void *s);
+
+extern void stack_push(void *s, void *p);
+extern void *stack_pop(void *s);
+
 #endif

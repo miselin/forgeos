@@ -18,14 +18,14 @@
 #include <compiler.h>
 #include <malloc.h>
 #include <assert.h>
+#include <util.h>
 #include <io.h>
 
 struct phys_page {
 	paddr_t addr;
-	struct phys_page *next;
 };
 
-static struct phys_page * volatile page_stack = 0;
+static void *page_stack = 0;
 
 paddr_t pmem_alloc() {
 	struct phys_page *page = 0;
@@ -33,12 +33,10 @@ paddr_t pmem_alloc() {
 
 	if(page_stack == 0)
 		return 0;
-	assert(page_stack->addr != 0);
 
-	// Remove from the top of the stack.
-	do {
-		page = page_stack;
-	} while(!atomic_bool_compare_and_swap(&page_stack, page, page->next));
+	page = (struct phys_page *) stack_pop(page_stack);
+	if(!page)
+		return 0;
 	ret = page->addr;
 	free(page);
 
@@ -48,28 +46,17 @@ paddr_t pmem_alloc() {
 void pmem_dealloc(paddr_t p) {
 	struct phys_page *page = 0;
 
+	if(page_stack == 0)
+		page_stack = create_stack();
+
 	page = (struct phys_page *) malloc(sizeof(struct phys_page));
 	page->addr = p;
-	do {
-		page->next = page_stack;
-	} while(!atomic_bool_compare_and_swap(&page_stack, page->next, page));
+
+	stack_push(page_stack, page);
 }
 
 void pmem_pin(paddr_t p) {
-	struct phys_page *page = page_stack, *prev = 0;
-	if(page_stack == 0)
-		return;
-
-	while(page && (page->addr != p)) {
-		prev = page;
-		page = page->next;
-	}
-
-	if(!page)
-		return; // Page isn't in the stack.
-
-	// Make un-allocateable.
-	prev->next = page->next;
-	free(page);
+	/// \note Do we even need this function?
+	assert(0);
 }
 
