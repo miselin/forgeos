@@ -47,11 +47,7 @@ SOURCES := $(ARCH_SOURCES) $(PLATFORM_SOURCES) $(LOADER_SOURCES)
 
 OBJECTS := $(addsuffix .o, $(basename $(SOURCES)))
 
-ifndef OBJDIR
-OBJDIR ?= build/
-else
 OBJDIR := $(OBJDIR)/kboot
-endif
 
 VPATH = source/
 OBJECTS := $(addprefix $(OBJDIR)/, $(OBJECTS))
