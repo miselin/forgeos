@@ -170,9 +170,6 @@ ifeq "$(process-makefile)" ""
 
 CDIMAGE := $(BUILD_DIR)/mattise.iso
 
-GRUB_ELTORITO := $(BUILD_SRC)/build-etc/stage2_eltorito-$(ARCH_TARGET)
-GRUB_MENU := $(BUILD_SRC)/build-etc/menu.lst
-
 MKISOFS := mkisofs
 
 # Using clang for static analysis, for the win.
@@ -201,12 +198,12 @@ cdimage: $(CDIMAGE)
 
 $(CDIMAGE): kernel kboot
 	@echo "Building ISO image..."
-	@mkdir -p $(INSTDIR)/boot/grub
-	@cp $(GRUB_ELTORITO) $(INSTDIR)/boot/grub/stage2_eltorito
-	@cp $(GRUB_MENU) $(INSTDIR)/boot/grub
-	@cp $(OBJDIR)/kernel/kernel $(INSTDIR)/boot
+	@mkdir -p $(INSTDIR)/System/Boot $(INSTDIR)/System/Modules
+	@cat $(OBJDIR)/kboot/cdboot $(OBJDIR)/kboot/loader > $(INSTDIR)/System/Boot/cdboot.img
+	@cp $(BUILD_SRC)/build-etc/loader.cfg $(INSTDIR)/System/Boot/loader.cfg
+	@cp $(OBJDIR)/kernel/kernel $(INSTDIR)/System/Boot/kernel
 	@mkisofs	-D -joliet -graft-points -quiet -input-charset ascii -R \
-				-b boot/grub/stage2_eltorito -no-emul-boot -boot-load-size 4 \
+				-b System/Boot/cdboot.img -no-emul-boot -boot-load-size 4 \
 				-boot-info-table -o $(CDIMAGE) -V 'MATTISE' $(INSTDIR)/
 	@echo "ISO image has been saved to: $(CDIMAGE)\n"
 
