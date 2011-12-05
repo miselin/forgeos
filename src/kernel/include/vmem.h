@@ -17,7 +17,7 @@
 #ifndef _VMEM_H
 #define _VMEM_H
 
-#include <stdint.h>
+#include <types.h>
 
 // Zero #defines here are for readability, they serve no purpose as flags.
 

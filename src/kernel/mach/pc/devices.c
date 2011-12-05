@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdint.h>
+#include <types.h>
 #include <serial.h>
 #include <pit.h>
 #include <pic.h>

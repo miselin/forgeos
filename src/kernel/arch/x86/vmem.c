@@ -14,8 +14,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+<<<<<<< HEAD
 #include <stdint.h>
 #include <compiler.h>
+=======
+#include <types.h>
+>>>>>>> No longer use stdint.h. Now use types.h.
 #include <system.h>
 #include <panic.h>
 #include <vmem.h>

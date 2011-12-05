@@ -14,7 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdint.h>
+#include <types.h>
 
 uint8_t inb(uint16_t port) {
 	uint8_t ret = 0;

@@ -14,14 +14,16 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <stdint.h>
-#include <multiboot.h>
+#include <types.h>
+#include <kboot.h>
 #include <system.h>
 #include <pmem.h>
 #include <io.h>
 
 extern int end;
 
+int mach_phys_init(void) {
+#if 0
 int mach_phys_init(struct multiboot_info *mbi) {
 	struct multiboot_mmap *mmap = (struct multiboot_mmap *) mbi->mi_mmap_addr;
 	size_t len = 0; int n = 0;
@@ -53,6 +55,7 @@ int mach_phys_init(struct multiboot_info *mbi) {
 					(((uintptr_t) mmap) + (mmap->mm_size + sizeof(mmap->mm_size)));
 	}
 	kprintf("pmem: %d pages ready for use - ~ %d MB\n", n, (n * 4096) / 0x100000);
+#endif
 	return 0;
 }
 

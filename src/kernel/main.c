@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /*
  * Copyright (c) 2011 Matthew Iselin, Rich Edelman
  *
@@ -13,6 +14,9 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+=======
+#include <kboot.h>
+>>>>>>> No longer use stdint.h. Now use types.h.
 
 #include <io.h>
 #include <pmem.h>
@@ -20,30 +24,31 @@
 #include <devices.h>
 #include <timer.h>
 #include <interrupts.h>
-#include <multiboot.h>
 #include <dlmalloc.h>
 #include <assert.h>
 #include <test.h>
 
-void _kmain(struct multiboot_info *mboot) {
+KBOOT_IMAGE(0);
+
+void _kmain(uint32_t magic, phys_ptr_t tags) {
 	clrscr();
 
 	// This will make sure there's about 4K of space for malloc to use until physical
 	// memory management is available for proper virtual memory.
 	kprintf("Initialising malloc()...\n");
-	dlmalloc_sbrk(0);
+//	dlmalloc_sbrk(0);
 
 	kprintf("Initialising physical memory manager...\n");
-	pmem_init(mboot);
+//	pmem_init(mboot);
 
 	kprintf("Completing virtual memory initialisation...\n");
-	vmem_init();
+//	vmem_init();
 
 	kprintf("Configuring software and hardware interrupts...\n");
-	interrupts_init();
+//	interrupts_init();
 
 	kprintf("Initialising machine devices...\n");
-	init_devices();
+//	init_devices();
 
 	kprintf("Initialising timers...\n");
 	timers_init();
@@ -52,7 +57,7 @@ void _kmain(struct multiboot_info *mboot) {
 	perform_tests();
 #else
 	kprintf("Enabling interrupts...\n");
-	interrupts_enable();
+//	interrupts_enable();
 
 	kprintf("Startup complete!\n");
 #endif

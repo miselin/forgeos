@@ -17,7 +17,7 @@
 #ifndef _IO_H
 #define _IO_H
 
-#include <stdint.h>
+#include <types.h>
 
 /// Print a single character to the screen abstraction provided by the machine.
 #define putc(c)	machine_putc(c)

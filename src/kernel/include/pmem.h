@@ -17,8 +17,8 @@
 #ifndef _PMEM_H
 #define _PMEM_H
 
-#include <stdint.h>
-#include <multiboot.h>
+#include <types.h>
+
 
 /// Initialise the physical memory allocator
 #define pmem_init		mach_phys_init
@@ -36,7 +36,8 @@ extern void		pmem_dealloc(paddr_t p);
 extern void		pmem_pin(paddr_t p);
 
 // Machine-specific physical memory management
-extern int		mach_phys_init(struct multiboot_info *mbi);
+//extern int		mach_phys_init(struct multiboot_info *mbi);
+extern int      mach_phys_init(void);
 extern int		mach_phys_deinit();
 
 #endif

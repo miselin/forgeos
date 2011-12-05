@@ -17,7 +17,7 @@
 #ifndef _DLMALLOC_H
 #define _DLMALLOC_H
 
-#include <stdint.h>
+#include <types.h>
 #include <util.h>
 
 #define ABORT					dlmalloc_abort

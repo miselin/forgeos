@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /*
  * Copyright (c) 2011 Matthew Iselin, Rich Edelman
  *
@@ -16,6 +17,9 @@
 
 #include <stdint.h>
 #include <test.h>
+=======
+#include <types.h>
+>>>>>>> No longer use stdint.h. Now use types.h.
 
 void memset(void *p, char c, size_t len)
 {
