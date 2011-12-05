@@ -1,5 +1,0 @@
-timeout 0
-
-title  Mattise
-root   (cd)
-kernel /boot/kernel
