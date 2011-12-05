@@ -47,7 +47,7 @@ WARNINGS := -Wall -Wextra -pedantic -Wshadow -Wpointer-arith -Wcast-align \
 			-Wwrite-strings -Wredundant-decls -Wnested-externs -Winline \
 			-Wno-long-long -Wuninitialized -Wconversion
 
-CFLAGS := -std=gnu99 -fno-builtin -nostdinc -nostdlib -ffreestanding
+CFLAGS += -std=gnu99 -fno-builtin -nostdinc -nostdlib -ffreestanding
 
 CFLAGS += $(ARCH_CFLAGS) $(ARCH_DEFINE)
 CFLAGS += $(ARCH_SUBTARGET_CFLAGS) $(ARCH_SUBTARGET_DEFINE)
