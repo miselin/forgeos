@@ -17,7 +17,7 @@
 #ifndef _STACK_H
 #define _STACK_H
 
-#include <stdint.h>
+#include <types.h>
 
 struct intr_stack {
 	uint32_t gs, fs, es, ds;

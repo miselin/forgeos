@@ -29,7 +29,7 @@ OBJDIR := $(OBJDIR)/kernel
 
 DIRS := . arch/$(ARCH_TARGET) mach/$(PLATFORM_TARGET) include
 
-INCLUDES := -Iinclude -Iarch/$(ARCH_TARGET) -Imach/$(PLATFORM_TARGET)
+INCLUDES := -Iinclude -Iarch/$(ARCH_TARGET)/include -Imach/$(PLATFORM_TARGET)
 LIBDIRS :=
 
 ASMFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.s")
