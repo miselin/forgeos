@@ -17,7 +17,7 @@
 #ifndef _TIMER_H
 #define _TIMER_H
 
-#include <stdint.h>
+#include <types.h>
 #include <compiler.h>
 
 /// Defines the type for a timer handler.

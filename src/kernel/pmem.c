@@ -14,12 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-<<<<<<< HEAD
-#include <stdint.h>
-#include <compiler.h>
-=======
 #include <types.h>
->>>>>>> No longer use stdint.h. Now use types.h.
 #include <malloc.h>
 #include <assert.h>
 #include <util.h>
