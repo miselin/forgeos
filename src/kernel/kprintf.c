@@ -21,15 +21,18 @@ extern int vsprintf(char *buf, const char *fmt, va_list args);
 
 /// \todo Code duplication.
 
+#ifdef DEBUG
 int dprintf(const char *fmt, ...) {
 	int len = 0;
 	char buf[512];
 	va_list args;
 	va_start(args, fmt);
 	len = vsprintf(buf, fmt, args);
+    va_end(args);
 	serial_puts(buf);
 	return len;
 }
+#endif
 
 int kprintf(const char *fmt, ...) {
 	int len = 0;
@@ -37,6 +40,7 @@ int kprintf(const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	len = vsprintf(buf, fmt, args);
+    va_end(args);
 	puts(buf);
 	return len;
 }
