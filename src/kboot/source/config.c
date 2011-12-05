@@ -71,9 +71,10 @@ static int current_col;			/**< Current column in the file (minus 1). */
 
 /** Configuration file paths to try. */
 static const char *config_file_paths[] = {
-	"/system/boot/loader.cfg",
-	"/boot/loader.cfg",
-	"/kiwi/loader.cfg",
+    "/System/Boot/loader.cfg",
+    "/system/boot/loader.cfg",
+    "/Boot/loader.cfg",
+    "/boot/loader.cfg",
 	"/loader.cfg",
 };
 
