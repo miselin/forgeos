@@ -5,7 +5,7 @@
 
 OUTPUT_FORMAT(elf32-i386)
 
-ENTRY(_start)
+ENTRY(_kmain)
 SECTIONS {
 	. = 0xC0000000;
 
