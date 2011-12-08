@@ -22,6 +22,7 @@
 #include <timer.h>
 #include <interrupts.h>
 #include <dlmalloc.h>
+#include <timer.h>
 #include <assert.h>
 #include <test.h>
 
@@ -49,6 +50,9 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
 	kprintf("Initialising timers...\n");
 	timers_init();
+	
+	// Should print one '.' every second.
+	install_timer(test, ((1 << TIMERRES_SHIFT) | TIMERRES_SECONDS), TIMERFEAT_PERIODIC);
 
 #ifdef _TESTING
 	perform_tests();
