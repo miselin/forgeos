@@ -113,6 +113,10 @@ void *list_at(void *list, size_t index) {
 	struct llist *l = (struct llist *) list;
 	struct node *ret;
 
+	// Identifies the end of the list.
+	if(index >= l->len)
+		return 0;
+
 	dprintf("list_at %x: idx %d len %d\n", list, index, l->len);
 
 	if(index == 0) {
