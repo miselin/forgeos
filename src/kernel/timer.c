@@ -30,22 +30,15 @@ struct timer_handler_meta {
 	uint32_t feat;
 };
 
-extern void *create_list();
-extern void delete_list(void *p);
-
-extern void list_insert(void *list, void *data, size_t index);
-extern void *list_at(void *list, size_t index);
-extern void list_remove(void *list, size_t index);
+#define GET_HW_TIMER(n) ((struct timer_table_entry *) &__begin_timer_table)[(n)]
+#define HW_TIMER_COUNT	((((uintptr_t) &__end_timer_table) - ((uintptr_t) &__begin_timer_table)) / sizeof(struct timer_table_entry))
 
 void timers_init() {
-	uintptr_t begin = (uintptr_t) &__begin_timer_table;
-	uintptr_t end = (uintptr_t) &__end_timer_table;
-	struct timer_table_entry *ent = (struct timer_table_entry *) begin;
-
-	for(size_t i = 0; i < (end - begin) / sizeof(struct timer_table_entry); i++) {
-		if(ent->tmr && (ent->tmr->timer_init != 0)) {
-			kprintf("init timer %s: ", ent->tmr->name);
-			int rc = ent->tmr->timer_init();
+	for(size_t i = 0; i < HW_TIMER_COUNT; i++) {
+		struct timer_table_entry ent = GET_HW_TIMER(i);
+		if(ent.tmr && (ent.tmr->timer_init != 0)) {
+			kprintf("init timer %s: ", ent.tmr->name);
+			int rc = ent.tmr->timer_init();
 			if(!rc)
 				kprintf("OK\n");
 			else
@@ -56,13 +49,13 @@ void timers_init() {
 
 void timer_ticked(struct timer *tim, uint32_t ticks) {
 	dprintf("timer %s tick: %x\n", tim->name, ticks);
-	
+
 	struct timer_handler_meta *p = 0;
 	size_t index = 0;
-	
+
 	/// \todo This doesn't work if there's ever more than one timer in the system. We should be selecting
 	///		  the best timer when a handler is installed, based on resolution and such.
-	
+
 	while((p = (struct timer_handler_meta *) list_at(timer_list, index++)) {
 		// Expire one-shot timers, if possible.
 		if((tim->timer_feat & TIMERFEAT_ONESHOT) != 0) {
@@ -71,28 +64,28 @@ void timer_ticked(struct timer *tim, uint32_t ticks) {
 				list_remove(timer_list, index--);
 			}
 		}
-	
+
 		// Handle periodic timers.
 		if((tim->timer_feat & TIMERFEAT_PERIODIC) != 0) {
 			if(p->feat & TIMERFEAT_PERIODIC) != 0) {
 				if(ticks >= p->ticks)
 					ticks = p->ticks;
 				p->ticks -= ticks;
-				
+
 				if(!p->ticks) {
 					p->th(p->orig_ticks);
 					p->ticks = p->orig_ticks; // Reload the timer.
 				}
 			}
 		}
-	
+
 		// One-shot emulation.
 		if(((tim->timer_feat & TIMERFEAT_ONESHOT) == 0) && ((tim->timer_feat & TIMERFEAT_PERIODIC) != 0)) {
 			if(p->feat & TIMERFEAT_ONESHOT) != 0) {
 				if(ticks >= p->ticks)
 					ticks = p->ticks;
 				p->ticks -= ticks;
-				
+
 				if(!p->ticks) {
 					p->th(p->orig_ticks);
 					list_remove(timer_list, index--);
@@ -106,14 +99,14 @@ int install_timer(timer_handler th, uint32_t ticks, uint32_t feat) {
 	if(timer_list == 0) {
 		timer_list = create_list();
 	}
-	
+
 	struct timer_handler_meta *p = (struct timer_handler_meta *) malloc(sizeof(struct timer_handler_meta));
 	p->th = th;
 	p->ticks = p->orig_ticks = ticks;
 	p->feat = feat;
-	
+
 	list_insert(timer_list, p, ~0UL);
-	
+
 	return -1;
 }
 
