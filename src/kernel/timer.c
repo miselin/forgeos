@@ -15,13 +15,15 @@
  */
 
 #include <types.h>
+#include <assert.h>
 #include <timer.h>
 #include <util.h>
+#include <malloc.h>
 #include <io.h>
 
 extern int __begin_timer_table, __end_timer_table;
 
-static void *timer_list = 0;
+static void * volatile timer_list = 0;
 
 struct timer_handler_meta {
 	timer_handler th;
@@ -56,7 +58,7 @@ void timer_ticked(struct timer *tim, uint32_t ticks) {
 	/// \todo This doesn't work if there's ever more than one timer in the system. We should be selecting
 	///		  the best timer when a handler is installed, based on resolution and such.
 
-	while((p = (struct timer_handler_meta *) list_at(timer_list, index++)) {
+	while((p = (struct timer_handler_meta *) list_at(timer_list, index++))) {
 		// Expire one-shot timers, if possible.
 		if((tim->timer_feat & TIMERFEAT_ONESHOT) != 0) {
 			if(((p->feat & TIMERFEAT_ONESHOT) != 0) && (p->ticks == ticks)) {
@@ -67,7 +69,7 @@ void timer_ticked(struct timer *tim, uint32_t ticks) {
 
 		// Handle periodic timers.
 		if((tim->timer_feat & TIMERFEAT_PERIODIC) != 0) {
-			if(p->feat & TIMERFEAT_PERIODIC) != 0) {
+			if((p->feat & TIMERFEAT_PERIODIC) != 0) {
 				if(ticks >= p->ticks)
 					ticks = p->ticks;
 				p->ticks -= ticks;
@@ -81,7 +83,7 @@ void timer_ticked(struct timer *tim, uint32_t ticks) {
 
 		// One-shot emulation.
 		if(((tim->timer_feat & TIMERFEAT_ONESHOT) == 0) && ((tim->timer_feat & TIMERFEAT_PERIODIC) != 0)) {
-			if(p->feat & TIMERFEAT_ONESHOT) != 0) {
+			if((p->feat & TIMERFEAT_ONESHOT) != 0) {
 				if(ticks >= p->ticks)
 					ticks = p->ticks;
 				p->ticks -= ticks;
@@ -100,20 +102,25 @@ int install_timer(timer_handler th, uint32_t ticks, uint32_t feat) {
 		timer_list = create_list();
 	}
 
+	assert(timer_list != 0);
+
 	struct timer_handler_meta *p = (struct timer_handler_meta *) malloc(sizeof(struct timer_handler_meta));
 	p->th = th;
 	p->ticks = p->orig_ticks = ticks;
 	p->feat = feat;
 
-	list_insert(timer_list, p, ~0UL);
+	list_insert(timer_list, p, 0);
 
 	return -1;
 }
 
 void remove_timer(timer_handler th) {
+	if(timer_list == 0)
+		return;
+
 	size_t index = 0;
 	struct timer_handler_meta *p = 0;
-	while((p = (struct timer_handler_meta *) list_at(timer_list, index++)) {
+	while((p = (struct timer_handler_meta *) list_at(timer_list, index++))) {
 		if(p->th == th)
 			list_remove(timer_list, index--);
 	}

@@ -50,9 +50,6 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
 	kprintf("Initialising timers...\n");
 	timers_init();
-	
-	// Should print one '.' every second.
-	install_timer(test, ((1 << TIMERRES_SHIFT) | TIMERRES_SECONDS), TIMERFEAT_PERIODIC);
 
 #ifdef _TESTING
 	perform_tests();
@@ -62,6 +59,9 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
 	kprintf("Startup complete!\n");
 #endif
+
+	// Should print one '.' every second.
+	install_timer(test, ((1 << TIMERRES_SHIFT) | TIMERRES_SECONDS), TIMERFEAT_PERIODIC);
 
 	while(1) __asm__ volatile("hlt");
 }
