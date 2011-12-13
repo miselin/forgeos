@@ -78,9 +78,6 @@ void timer_ticked(struct timer *tim, uint32_t in_ticks) {
 	// Convert the ticks.
 	uint64_t ticks = conv_ticks(in_ticks);
 
-	/// \todo This doesn't work if there's ever more than one timer in the system. We should be selecting
-	///		  the best timer when a handler is installed, based on resolution and such.
-
 	while((p = (struct timer_handler_meta *) list_at(timer_list, index++))) {
 		// Ignore if not for this timer.
 		if(p->tim != tim)
