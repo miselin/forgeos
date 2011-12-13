@@ -60,8 +60,5 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 	kprintf("Startup complete!\n");
 #endif
 
-	// Should print one '.' every second.
-	install_timer(test, ((1 << TIMERRES_SHIFT) | TIMERRES_SECONDS), TIMERFEAT_PERIODIC);
-
 	while(1) __asm__ volatile("hlt");
 }

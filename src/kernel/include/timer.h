@@ -21,7 +21,7 @@
 #include <compiler.h>
 
 /// Defines the type for a timer handler.
-typedef void (*timer_handler)(uint32_t ticks);
+typedef void (*timer_handler)(uint64_t ticks);
 
 /// Type for the table of available timers in the system.
 struct timer_table_entry {
@@ -36,12 +36,13 @@ struct timer_table_entry {
 #define TIMERRES_TERRIBLE		0x0 // > second resolution
 #define TIMERRES_SECONDS		0x1
 #define TIMERRES_MILLI			0x2
-#define TIMERRES_NANO			0x4
-#define TIMERRES_MICRO			0x8
+#define TIMERRES_MICRO			0x4
+#define TIMERRES_NANO			0x8
 
 /// Shift the frequency this many bits LEFT, eg, if your timer can do, say,
 /// only 2 millisecond resolution, do ((2 << TIMERRES_SHIFT) | TIMERRES_MILLI)
 #define TIMERRES_SHIFT			12
+#define TIMERRES_MASK			0xFFF
 
 // Supported timer features.
 #define TIMERFEAT_USELESS		0x0 // supports nothing
