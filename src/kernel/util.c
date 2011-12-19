@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 /*
  * Copyright (c) 2011 Matthew Iselin, Rich Edelman
  *

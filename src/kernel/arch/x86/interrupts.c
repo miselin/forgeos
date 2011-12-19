@@ -33,12 +33,12 @@ static struct idt_entry {
 	uint8_t always0;
 	uint8_t flags;
 	uint16_t base_high;
-} PACKED ALIGNED(4) idt[256];
+} __packed __aligned(4) idt[256];
 
 static struct idt_ptr {
 	uint16_t limit;
 	uint32_t base;
-} PACKED ALIGNED(4) idtr;
+} __packed __aligned(4) idtr;
 
 const char* trapnames[] =
 {
@@ -130,7 +130,7 @@ void arch_interrupts_init() {
 	idtr.limit = (sizeof(struct idt_entry) * 256) - 1;
 	idtr.base = (uintptr_t) idt;
 
-	MEMORY_BARRIER;
+	__barrier;
 
 	__asm__ volatile("lidt %0" :: "m" (idtr));
 }

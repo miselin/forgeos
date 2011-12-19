@@ -47,7 +47,7 @@ struct __test {
 		else \
 			return 1; \
 	} \
-	struct __test __test_dat_##name SECTION(".__test." order) UNUSED = {__test_##name, #name};
+	struct __test __test_dat_##name __section(".__test." order) __unused = {__test_##name, #name};
 
 /// Perform all configured tests in the system.
 extern int perform_tests();

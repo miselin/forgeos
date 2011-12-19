@@ -18,6 +18,15 @@
 #define _COMPILER_H
 
 #define __packed          __attribute__((packed))
+#define __aligned(n)      __attribute__((aligned(n)))
+
+#define __barrier         __asm__ volatile("" ::: "memory")
+
+#define __section(s)      __attribute__((section(s)))
+
+#define __unused          __attribute__((unused))
+
+#define atomic_bool_compare_and_swap __sync_bool_compare_and_swap
 
 #define STRINGIFY(val)          #val
 #define XSTRINGIFY(val)         STRINGIFY(val)
