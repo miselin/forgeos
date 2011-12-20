@@ -71,7 +71,7 @@ ASFLAGS += -include 'source/platform/$(PLATFORM)/include/platform/config.h'
 CFLAGS += -Os
 
 # Platform (pc) Flags
-DPADD := source/platform/$(PLATFORM)/link.ld
+DPADD := $(OBJDIR)/source/platform/$(PLATFORM)/link.ld
 
 WARNINGS := -Wall -Wextra -Werror -Wno-variadic-macros -Wno-unused-parameter -Wwrite-strings
 WARNINGS += -Wmissing-declarations -Wredundant-decls -Wno-format -Wno-unused-but-set-variable
@@ -84,22 +84,22 @@ LINT_IGNORE :=
 all: $(OBJDIR)/cdboot $(OBJDIR)/pxeboot $(OBJDIR)/loader
 	@:
 
-cdboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
-cdboot.elf: source/platform/$(PLATFORM)/stage1/cdboot.o
+$(OBJDIR)/cdboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
+$(OBJDIR)/cdboot.elf: $(OBJDIR)/source/platform/$(PLATFORM)/stage1/cdboot.o
 	@echo "  LINKING     cdboot.elf"
 	@$(LD) $(LDFLAGS) -o $@ $<
 
-cdboot: cdboot.elf
-	echo "  OBJCOPY     cdboot"
+$(OBJDIR)/cdboot: $(OBJDIR)/cdboot.elf
+	@echo "  OBJCOPY     cdboot"
 	@$(OBJCOPY) -O binary --strip-all -R '.note.*' -R .comment $< $@
 
-pxeboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
-pxeboot.elf: source/platform/$(PLATFORM)/stage1/pxeboot.o
+$(OBJDIR)/pxeboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
+$(OBJDIR)/pxeboot.elf: $(OBJDIR)/source/platform/$(PLATFORM)/stage1/pxeboot.o
 	@echo "  LINKING     pxeboot.elf"
 	@$(LD) $(LDFLAGS) -o $@ $<
 
 
-pxeboot: pxeboot.elf
+$(OBJDIR)/pxeboot: $(OBJDIR)/pxeboot.elf
 	@echo "  OBJCOPY     pxeboot"
 	@$(OBJCOPY) -O binary --strip-all -R '.note.*' -R .comment $< $@
 
@@ -109,7 +109,7 @@ $(OBJDIR)/loader.elf: $(OBJECTS) $(DPADD)
 	@$(LD) $(LDFLAGS) -o $@  $(OBJECTS) $(LIBS)
 
 
-loader: loader.elf
+$(OBJDIR)/loader: $(OBJDIR)/loader.elf
 	@echo "  OBJCOPY     loader"
 	@$(OBJCOPY) -O binary --strip-all $< $@
 
