@@ -228,7 +228,16 @@ int install_timer(timer_handler th, uint32_t ticks, uint32_t feat) {
 	p->ticks = p->orig_ticks = conv_ticks(ticks);
 	p->feat = feat;
 
-	list_insert(timer_list, p, 0);
+	// Insert in order - lowest ticks first, highest last. This allows us to always
+	// handle the closest timer to completion first.
+	size_t i = 0;
+	struct timer_handler_meta *tmp = 0;
+	while((tmp = (struct timer_handler_meta *) list_at(timer_list, i++))) {
+		if(tmp->ticks >= p->ticks)
+			break;
+	}
+
+	list_insert(timer_list, p, i);
 
 	return 0;
 }
