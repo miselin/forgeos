@@ -188,7 +188,7 @@ int install_timer(timer_handler th, uint32_t ticks, uint32_t feat) {
 			// Ensure that the timer has a higher resolution than we require here.
 			// A lower-resolution timer may be acceptable as a last resort, but we
 			// want the best possible option!
-			if((ent.tmr->timer_res & TIMERRES_MASK) >= (ticks & TIMERRES_MASK)) {
+			if((ent.tmr->timer_res & TIMERRES_MASK) <= (ticks & TIMERRES_MASK)) {
 				dprintf("timer %s is acceptable for this timer handler\n", ent.tmr->name);
 				p->tim = ent.tmr;
 				break;

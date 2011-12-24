@@ -33,11 +33,11 @@ struct timer_table_entry {
 	struct timer_table_entry _tmr_##name __section(".table.timers") __unused = {&ent}
 
 // Supported timer resolutions.
-#define TIMERRES_TERRIBLE		0x0 // > second resolution
-#define TIMERRES_SECONDS		0x1
-#define TIMERRES_MILLI			0x2
-#define TIMERRES_MICRO			0x4
-#define TIMERRES_NANO			0x8
+#define TIMERRES_TERRIBLE		0xFF // > second resolution
+#define TIMERRES_SECONDS		0x8
+#define TIMERRES_MILLI			0x4
+#define TIMERRES_MICRO			0x2
+#define TIMERRES_NANO			0x1
 
 /// Shift the frequency this many bits LEFT, eg, if your timer can do, say,
 /// only 2 millisecond resolution, do ((2 << TIMERRES_SHIFT) | TIMERRES_MILLI)
