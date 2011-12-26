@@ -121,8 +121,9 @@ mmu_context_t *kboot_arch_load(file_handle_t *handle, phys_ptr_t *physp) {
 		ctx = kboot_arch_load64(handle, physp);
 	} else if(elf_check(handle, ELFCLASS32, ELF_EM_386)) {
 		ctx = kboot_arch_load32(handle, physp);
-		/* Recursively map the page directory as the last page */
-		mmu_map(ctx, 0xFFFFF000, ctx->cr3, 0x1000);
+		/* Recursively map the page directory as the last page.
+		 * Can't be done with mmu_* functions, they allocate a page table. */
+		*((uint32_t *) (((ptr_t) ctx->cr3) + 4092)) = ctx->cr3 | 0x3;
 	} else {
 		boot_error("Kernel image is not for this architecture");
 	}
