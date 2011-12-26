@@ -52,6 +52,11 @@
 /// stack to the correct area for the implementation.
 #define vmem_init		arch_vmem_init
 
+/// "Primes" the virtual memory allocator in a case where the physical memory
+/// allocator may be less-than-functional, by providing a page to be used as
+/// a replacement if @pmem_alloc() fails.
+#define vmem_prime      arch_vmem_prime
+
 extern int arch_vmem_map(vaddr_t, paddr_t, size_t);
 extern void arch_vmem_unmap(vaddr_t);
 extern int arch_vmem_modify(vaddr_t, size_t);
@@ -59,5 +64,7 @@ extern int arch_vmem_ismapped(vaddr_t);
 extern vaddr_t arch_vmem_create();
 extern void arch_vmem_switch(vaddr_t);
 extern void arch_vmem_init();
+
+extern void arch_vmem_prime(paddr_t);
 
 #endif

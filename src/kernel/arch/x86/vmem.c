@@ -53,6 +53,8 @@ static struct gdt_ptr gdtr;
 extern int init, init_end;
 extern int tmpstack_base;
 
+static paddr_t g_primedpage = 0;
+
 void invlpg(char *p) {
 	__asm__ volatile("invlpg %0" : : "m" (*p));
 }
@@ -69,10 +71,18 @@ size_t flags_to_x86(size_t f) {
 	return flags;
 }
 
+void arch_vmem_prime(paddr_t p) {
+    g_primedpage = p;
+}
+
 int arch_vmem_map(vaddr_t v, paddr_t p, size_t f) {
 	uint32_t flags = flags_to_x86(f);
 	if(p == (paddr_t) ~0) {
 		p = pmem_alloc();
+		if(p == 0) {
+		    p = g_primedpage;
+		    g_primedpage = 0;
+		}
 		if(p == 0)
 			panic("Out of memory.");
 	} else if((p & 0xFFF) != 0) {
@@ -90,11 +100,20 @@ int arch_vmem_map(vaddr_t v, paddr_t p, size_t f) {
 	if(entry == 0) {
 		// No page table yet - allocate one.
 		paddr_t ptab_phys = pmem_alloc();
-		pdir[PDIR_OFFSET(v)] = ptab_phys | FLAGS_PRESENT | FLAGS_WRITEABLE; // Non-user, Present
-
-		dprintf("vmem: allocated a new page table for %x at %x\n", v, ptab_phys);
+		if(ptab_phys == 0) {
+		    ptab_phys = g_primedpage;
+		    g_primedpage = 0;
+		}
+		if(ptab_phys == 0)
+		    return -1;
+		pdir[PDIR_OFFSET(v)] = ((vaddr_t) ptab_phys) | FLAGS_PRESENT | FLAGS_WRITEABLE; // Non-user, Present
 		
-		memset(ptab, 0, PAGE_SIZE);
+		dprintf("vmem: allocated a new page table for %x at %x\n", v, ptab_phys);
+
+	    // Invalidate the TLB cache for this page table
+	    invlpg((char *) ptab);
+		
+		memset(ptab, 0, PAGE_SIZE - 1);
 	}
 
 	// Complete the mapping.
@@ -203,9 +222,23 @@ void arch_vmem_init() {
 	for(c = stack_phys; c < (stack_phys + STACK_SIZE); c += 0x1000, stack_virt += 0x1000) {
 		vmem_map(stack_virt, c, VMEM_READWRITE);
 	}
+	
+	// We need to copy the existing KBoot stack, and then we need to switch stacks.
+	// Because I'm masochistic, I'm doing this in C.
+	
+	uint32_t esp = 0;
+	__asm__ volatile("mov %%esp, %0" : "=r" (esp));
+	
+	dprintf("current stack is %x, moving to base %x\n", esp, stack_base);
+	
+	// Assume it's page-aligned, so we can figure out how much to copy.
+	size_t stacksz = 0x1000 - (esp & 0xFFF);
+	
+	// Copy.
+	memcpy((void *) (STACK_TOP - stacksz), (void *) esp, stacksz);
 
-	// This is tricky. Have to move the stack pointer.
-	__asm__ volatile("mov %%esp, %%eax; sub %0, %%eax; add %1, %%eax; mov %%eax, %%esp" :: "r" ((uintptr_t) &tmpstack_base), "r" (stack_base) : "eax");
+	// This is tricky. Update the stack pointer, live.
+	__asm__ volatile("mov %0, %%esp" :: "r" (STACK_TOP - stacksz));
 
 	// Set up the GDT now.
 	/// \todo Provide an API for adding new segments.
