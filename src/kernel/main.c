@@ -30,23 +30,25 @@ KBOOT_IMAGE(0);
 
 void _kmain(uint32_t magic, phys_ptr_t tags) {
 	clrscr();
+	
+	assert(magic == KBOOT_MAGIC);
 
 	// This will make sure there's about 4K of space for malloc to use until physical
 	// memory management is available for proper virtual memory.
 	kprintf("Initialising malloc()...\n");
-//	dlmalloc_sbrk(0);
+	dlmalloc_sbrk(0);
 
 	kprintf("Initialising physical memory manager...\n");
-//	pmem_init(mboot);
+	pmem_init(tags);
 
 	kprintf("Completing virtual memory initialisation...\n");
-//	vmem_init();
+	vmem_init();
 
 	kprintf("Configuring software and hardware interrupts...\n");
-//	interrupts_init();
+	interrupts_init();
 
 	kprintf("Initialising machine devices...\n");
-//	init_devices();
+	init_devices();
 
 	kprintf("Initialising timers...\n");
 	timers_init();
@@ -55,7 +57,7 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 	perform_tests();
 #else
 	kprintf("Enabling interrupts...\n");
-//	interrupts_enable();
+	interrupts_enable();
 
 	kprintf("Startup complete!\n");
 #endif
