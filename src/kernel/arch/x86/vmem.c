@@ -86,17 +86,18 @@ int arch_vmem_map(vaddr_t v, paddr_t p, size_t f) {
 
 	// Is there an entry for the page table?
 	vaddr_t entry = pdir[PDIR_OFFSET(v)] & (vaddr_t) ~0xFFF;
+	uint32_t *ptab = (uint32_t *) PTAB_FROM_VADDR(v);
 	if(entry == 0) {
 		// No page table yet - allocate one.
 		paddr_t ptab_phys = pmem_alloc();
-		memset((void *) ptab_phys, 0, PAGE_SIZE);
 		pdir[PDIR_OFFSET(v)] = ptab_phys | FLAGS_PRESENT | FLAGS_WRITEABLE; // Non-user, Present
 
 		dprintf("vmem: allocated a new page table for %x at %x\n", v, ptab_phys);
+		
+		memset(ptab, 0, PAGE_SIZE);
 	}
 
 	// Complete the mapping.
-	uint32_t *ptab = (uint32_t *) PTAB_FROM_VADDR(v);
 	ptab[PTAB_OFFSET(v)] = p | flags;
 
 	// Invalidate the TLB cache for this newly mapped page
