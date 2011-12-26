@@ -133,7 +133,7 @@ INSTDIR := $(BUILD_DIR)/inst
 
 # Export everything we have so far for the sub-make.
 export ARCH_TARGET ARCH_SUBTARGET PLATFORM_TARGET
-export AR AS CC CPP CXX LD NM OBJCOPY OBJDUMP STRIP
+export AR AS CC CPP CXX LD NM OBJCOPY OBJDUMP STRIP MKISOFS
 export HOSTAR HOSTAS HOSTCC HOSTCPP HOSTCXX HOSTLD HOSTNM HOSTSTRIP
 export OUTPUT_DIR BUILD_ENV BUILD_DIR OBJDIR INSTDIR
 
@@ -170,7 +170,9 @@ ifeq "$(process-makefile)" ""
 
 CDIMAGE := $(BUILD_DIR)/mattise.iso
 
+ifeq "$(MKISOFS)" ""
 MKISOFS := mkisofs
+endif
 
 # Using clang for static analysis, for the win.
 LINT := clang --analyze
@@ -202,7 +204,7 @@ $(CDIMAGE): kernel kboot
 	@cat $(OBJDIR)/kboot/cdboot $(OBJDIR)/kboot/loader > $(INSTDIR)/System/Boot/cdboot.img
 	@cp $(BUILD_SRC)/build-etc/loader.cfg $(INSTDIR)/System/Boot/loader.cfg
 	@cp $(OBJDIR)/kernel/kernel $(INSTDIR)/System/Boot/kernel
-	@mkisofs	-D -joliet -graft-points -quiet -input-charset ascii -R \
+	@$(MKISOFS)	-D -joliet -graft-points -quiet -input-charset ascii -R \
 				-b System/Boot/cdboot.img -no-emul-boot -boot-load-size 4 \
 				-boot-info-table -o $(CDIMAGE) -V 'MATTISE' $(INSTDIR)/
 	@echo "ISO image has been saved to: $(CDIMAGE)\n"
