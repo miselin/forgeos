@@ -63,8 +63,13 @@ void list_insert(void *list, void *data, size_t index) {
 	struct node *n = (struct node *) malloc(sizeof(struct node)), *tmp;
 	n->p = data;
 
+	// No existing nodes, yet.
+	if(l->len == 0) {
+		l->head = l->tail = n;
+	}
+
 	// Special cases.
-	if(index == 0) {
+	else if(index == 0) {
 		n->next = l->head;
 		n->prev = 0;
 		l->head = n;
