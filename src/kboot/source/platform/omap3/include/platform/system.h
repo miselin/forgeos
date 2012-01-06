@@ -28,6 +28,7 @@
 #ifndef __ASM__
 
 #define platform_early_init()	
+#define platform_reboot()
 
 #endif /* __ASM__ */
 #endif /* __PLATFORM_SYSTEM_H */
