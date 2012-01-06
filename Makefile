@@ -60,13 +60,16 @@ endif
 # Sanity check the build configuration.
 
 # List of valid architectures
-VALID_ARCHES := "x86"
+VALID_ARCHES := "x86 arm"
 
 # List of valid sub-architectures.
 VALID_x86_SUBARCHES := "x86"
 
+# List of valid sub-arches for arm.
+VALID_arm_SUBARCHES := "armv7"
+
 # List of valid platforms
-VALID_PLATFORMS := "pc"
+VALID_PLATFORMS := "pc omap3"
 
 # List of valid build environments
 VALID_BUILD_ENVS := debug release
@@ -98,6 +101,7 @@ HOSTCXX := $(CXX)
 HOSTLD := $(LD)
 HOSTNM := $(NM)
 HOSTSTRIP := $(STRIP)
+MKISOFS := mkisofs
 
 # If we're using a cross compiler, set compiler tools as needed
 ifneq "$(XCOMPILER_PREFIX)" ""

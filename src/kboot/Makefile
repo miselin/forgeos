@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2011 Rich Edelman <redelman at gmail dot com>
+# Copyright (c) 2011-2012 Rich Edelman <redelman at gmail dot com>
 #
 # Permission to use, copy, modify, and distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -13,8 +13,6 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 #
-
-# NOTE: This whole thing currently assumes x86-pc. Will fix that up later.
 
 PLATFORM = $(PLATFORM_TARGET)
 ARCH = $(ARCH_TARGET)
@@ -30,10 +28,13 @@ INCLUDES += -isystem $(stdinc)
 
 ARCH_SOURCES := $(shell cd source && find arch/$(ARCH) -name '*.c' -o -name '*.S')
 
-# This is correct for the PC platform only!
-PLATFORM_SOURCES := loaders/chainload.c loaders/enter.S bios.S console.c
-PLATFORM_SOURCES += disk.c memory.c platform.c pxe.c start.S video.c
-PLATFORM_SOURCES := $(addprefix platform/$(PLATFORM)/, $(PLATFORM_SOURCES))
+# If we're building x86-pc then filter out stage1 files from PLATFORM_SOURCES
+ifeq "$(PLATFORM_TARGET)" "pc"
+	PLATFORM_SOURCES := $(shell cd source && find platform/$(PLATFORM_TARGET) -name '*.c' -o -name '*.S' | grep -v stage1)
+else
+	PLATFORM_SOURCES := $(shell cd source && find platform/$(PLATFORM_TARGET) -name '*.c' -o -name '*.S')
+endif
+
 
 # Common source files for the loader itself.
 LOADER_SOURCES := fs/ext2.c fs/iso9660.c
@@ -58,10 +59,19 @@ CCFLAGS   := -gdwarf-2 -pipe -nostdlib -nostdinc -ffreestanding -fno-stack-prote
 ASFLAGS  := -D __ASM__ -nostdinc
 
 # Arch (x86) Flags
+ifeq "$(ARCH_TARGET)" "x86"
 CFLAGS  += -m32 -mno-sse -mno-mmx -mno-sse2 -mno-3dnow
 ASFLAGS += -m32
+endif
+
+ifeq "$(ARCH_TARGET)" "arm"
+CCFLAGS += -mno-thumb-interwork
+endif
 
 # Platform flags
+ifeq "$(PLATFORM_TARGET)" "omap3"
+CCFLAGS += -mcpu=cortex-a8 -mfpu=vfp
+endif
 
 # Include the platform configuration file (HACK)
 CCFLAGS += -include 'source/platform/$(PLATFORM)/include/platform/config.h'
@@ -70,7 +80,7 @@ ASFLAGS += -include 'source/platform/$(PLATFORM)/include/platform/config.h'
 # Final flags (override anything from earlier)
 CFLAGS += -Os
 
-# Platform (pc) Flags
+# DPADD is the platform linker script, as it needs some preprocessing. 
 DPADD := $(OBJDIR)/source/platform/$(PLATFORM)/link.ld
 
 WARNINGS := -Wall -Wextra -Werror -Wno-variadic-macros -Wno-unused-parameter -Wwrite-strings
@@ -81,8 +91,13 @@ CPPFLAGS := $(CCFLAGS) $(INCLUDES) $(WARNINGS)
 LINT_FLAGS := $(CFLAGS) $(CCFLAGS) $(INCLUDES)
 LINT_IGNORE :=
 
-all: $(OBJDIR)/cdboot $(OBJDIR)/pxeboot $(OBJDIR)/loader
+.PHONY: all
+all: $(OBJDIR)/loader
 	@:
+
+# PC platform specific targets
+ifeq "$(PLATFORM_TARGET)" "pc"
+all: $(OBJDIR)/cdboot $(OBJDIR)/pxeboot
 
 $(OBJDIR)/cdboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
 $(OBJDIR)/cdboot.elf: $(OBJDIR)/source/platform/$(PLATFORM)/stage1/cdboot.o
@@ -103,11 +118,12 @@ $(OBJDIR)/pxeboot: $(OBJDIR)/pxeboot.elf
 	@echo "  OBJCOPY     pxeboot"
 	@$(OBJCOPY) -O binary --strip-all -R '.note.*' -R .comment $< $@
 
+endif # PC platform specific targets
+
 $(OBJDIR)/loader.elf: LDFLAGS += -T $(OBJDIR)/source/platform/$(PLATFORM)/link.ld
 $(OBJDIR)/loader.elf: $(OBJECTS) $(DPADD)
 	@echo "  LINKING     loader.elf"
 	@$(LD) $(LDFLAGS) -o $@  $(OBJECTS) $(LIBS)
-
 
 $(OBJDIR)/loader: $(OBJDIR)/loader.elf
 	@echo "  OBJCOPY     loader"
