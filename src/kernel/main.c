@@ -24,13 +24,38 @@
 #include <dlmalloc.h>
 #include <timer.h>
 #include <assert.h>
+#include <sched.h>
 #include <test.h>
 
 KBOOT_IMAGE(0);
 
+context_t *new1, *new2;
+
+void ctx1() {
+	while(1) {
+		uint32_t esp = 0; __asm__ volatile("mov %%esp, %0" : "=r" (esp));
+		dprintf("1 %x\n", esp);
+		switch_context(&new1, new2);
+
+		while(1) __asm__ volatile("hlt");
+	}
+}
+
+void ctx2() {
+	while(1) {
+		uint32_t esp = 0; __asm__ volatile("mov %%esp, %0" : "=r" (esp));
+		dprintf("2 %x\n", esp);
+		switch_context(&new2, new1);
+
+		while(1) __asm__ volatile("hlt");
+	}
+}
+
+char stack1[32], stack2[32];
+
 void _kmain(uint32_t magic, phys_ptr_t tags) {
 	clrscr();
-	
+
 	assert(magic == KBOOT_MAGIC);
 
 	// This will make sure there's about 4K of space for malloc to use until physical
@@ -61,6 +86,20 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
 	kprintf("Startup complete!\n");
 #endif
+
+	new1 = (context_t *) malloc(sizeof(context_t));
+	new2 = (context_t *) malloc(sizeof(context_t));
+
+	memset(new1, 0, sizeof(*new1));
+	memset(new2, 0, sizeof(*new2));
+
+	new1->esp = stack1 + 32;
+	new2->esp = stack2 + 32;
+
+	new1->eip = (uint32_t) ctx1;
+	new2->eip = (uint32_t) ctx2;
+
+	switch_context(0, new1);
 
 	while(1) __asm__ volatile("hlt");
 }
