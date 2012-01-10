@@ -75,13 +75,5 @@ analyse:
 	done
 	@echo "End Kernel Static Analysis\n"
 
+include $(BUILD_SRC)/scripts/rules.mk
 
-$(OBJDIR)/%.o: %.c Makefile
-	@echo '  [CC] $<...'
-	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
-	$(CC) $(CFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
-
-$(OBJDIR)/%.o: %.s Makefile
-	@echo '  [AS] $<...'
-	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
-	$(AS) $(ASFLAGS) $< -o $@
