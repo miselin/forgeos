@@ -17,15 +17,53 @@
 #ifndef _SCHED_H
 #define _SCHED_H
 
+#include <types.h>
+
 // Should be in the arch-specific includes directory.
 #include_next <sched.h>
 
 #ifndef _CONTEXT_T_DEFINED
 #define _CONTEXT_T_DEFINED
+#warning This architecture does not define a context_t!
 typedef void context_t;
 #endif
 
+#define PROCESS_NAME_MAX    64
+
+#define DEFAULT_PROCESS_NAME    "<untitled process>"
+
+typedef void (*thread_entry_t)();
+
+struct thread {
+    context_t *ctx;
+};
+
+/** A process. */
+struct process {
+    char name[PROCESS_NAME_MAX];
+    
+    struct process *next;
+    
+    void *child_list;
+    void *thread_list;
+};
+
+/** Creates a process and returns a pointer to it. */
+extern struct process *create_process(const char *name, struct process *parent);
+
+/**
+ * Creates a new thread under a given process.
+ * A zero stack or stacksz parameter will allocate a new stack for this thread.
+ */
+extern struct thread *create_thread(struct process *parent, thread_entry_t start, uintptr_t stack, size_t stacksz);
+
 /** Performs a context switch to a new context. */
-void switch_context(context_t **oldctx, context_t *newctx);
+extern void switch_context(context_t **oldctx, context_t *newctx);
+
+/** Performs a context switch between two threads. */
+extern void switch_threads(struct thread *old, struct thread *new);
+
+/** Creates a new context (archictecture-specific). */
+extern void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_t stacksz);
 
 #endif

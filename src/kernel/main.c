@@ -29,24 +29,16 @@
 
 KBOOT_IMAGE(0);
 
-context_t *new1, *new2;
-
-void ctx1() {
-	while(1) {
-		kprintf("1");
-		switch_context(&new1, new2);
-
-		while(1) __asm__ volatile("hlt");
-	}
+void idle() {
+    kprintf("Idle thread created.\n");
+    while(1)
+        asm volatile("hlt");
 }
 
-void ctx2() {
-	while(1) {
-		kprintf("2");
-		switch_context(&new2, new1);
-
-		while(1) __asm__ volatile("hlt");
-	}
+void init2() {
+    kprintf("Second-phase init thread entered.\n");
+    while(1)
+        asm volatile("hlt");
 }
 
 char stack1[4096], stack2[4096];
@@ -76,28 +68,26 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 	kprintf("Initialising timers...\n");
 	timers_init();
 
+    kprintf("Initialising scheduler...\n");
+    
+    /// \todo Implement a scheduler.
+    
+    struct process *initproc = create_process("init", 0);
+    struct thread *init_thread = create_thread(initproc, init2, 0, 0);
+    create_thread(initproc, idle, 0, 0);
+
 #ifdef _TESTING
 	perform_tests();
 #else
 	kprintf("Enabling interrupts...\n");
 	interrupts_enable();
-
-	kprintf("Startup complete!\n");
 #endif
-
-	new1 = (context_t *) malloc(sizeof(context_t));
-	new2 = (context_t *) malloc(sizeof(context_t));
-
-	memset(new1, 0, sizeof(*new1));
-	memset(new2, 0, sizeof(*new2));
-
-	new1->esp = stack1 + 4096;
-	new2->esp = stack2 + 4096;
-
-	new1->eip = (uint32_t) ctx1;
-	new2->eip = (uint32_t) ctx2;
-
-	switch_context(0, new1);
-
-	while(1) __asm__ volatile("hlt");
+    
+    kprintf("Startup complete.\n");
+    
+    switch_threads(0, init_thread);
+    
+    while(1)
+        asm volatile("hlt");
 }
+
