@@ -17,6 +17,11 @@
 #ifndef _STRING_H
 #define _STRING_H
 
-extern int strlen(const char *s);
+#include <types.h>
+
+extern size_t strlen(const char *s);
+
+extern char *strcpy(char *s1, const char *s2);
+extern char *strncpy(char *s1, const char *s2, size_t max);
 
 #endif

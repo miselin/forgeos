@@ -164,7 +164,7 @@ int vsprintf(char *buf, const char *fmt, va_list args)
 
 		case 's':
 			s = va_arg(args, char *);
-			len = strlen(s);
+			len = (int) strlen(s);
 			if (precision < 0)
 				precision = len;
 			else if (len > precision)

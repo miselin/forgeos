@@ -18,6 +18,6 @@
 #include <string.h>
 
 void puts(const char *s) {
-	int len = strlen(s);
+	size_t len = strlen(s);
 	while(len--) putc(*s++);
 }
