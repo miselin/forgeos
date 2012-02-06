@@ -21,6 +21,10 @@ extern int vsprintf(char *buf, const char *fmt, va_list args);
 
 /// \todo Code duplication.
 
+/// \todo Figure out a decent way to tag dprintf output with kernel, driver,
+///       user, libc, whatever so we can figure out where each debug line comes
+///       from in big logs.
+
 #ifdef DEBUG
 int dprintf(const char *fmt, ...) {
 	int len = 0;
@@ -29,6 +33,7 @@ int dprintf(const char *fmt, ...) {
 	va_start(args, fmt);
 	len = vsprintf(buf, fmt, args);
     va_end(args);
+    serial_puts("[kernel] ");
 	serial_puts(buf);
 	return len;
 }
