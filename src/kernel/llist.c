@@ -140,6 +140,14 @@ void *list_at(void *list, size_t index) {
 	return ret->p;
 }
 
+size_t list_len(void *list) {
+    if(!list)
+        return;
+    
+    struct llist *l = (struct llist *) list;
+    return l->len;
+}
+
 void list_remove(void *list, size_t index) {
 	if(!list)
 		return;

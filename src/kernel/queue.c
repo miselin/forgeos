@@ -87,3 +87,15 @@ void *queue_pop(void *queue) {
 
 	return ret;
 }
+
+int queue_empty(void *queue) {
+	if(!queue)
+		return 0;
+
+	struct queue *q = (struct queue *) queue;
+    if(q->tail)
+        return 1;
+    else
+        return 0;
+}
+
