@@ -31,17 +31,22 @@ KBOOT_IMAGE(0);
 
 void idle() {
     kprintf("Idle thread created.\n");
-    while(1)
-        asm volatile("hlt");
+    while(1) {
+        kprintf("A");
+        asm volatile("sti; hlt");
+    }
 }
 
 void init2() {
-    kprintf("Second-phase init thread entered.\n");
-    while(1)
-        asm volatile("hlt");
+    dprintf("Starting the scheduler...\n");
+    start_scheduler();
+    
+    dprintf("Mattise initialisation complete.\n");
+    while(1) {
+        kprintf("B");
+        asm volatile("sti; hlt");
+    }
 }
-
-char stack1[4096], stack2[4096];
 
 void _kmain(uint32_t magic, phys_ptr_t tags) {
 	clrscr();
@@ -69,12 +74,7 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 	timers_init();
 
     kprintf("Initialising scheduler...\n");
-    
-    /// \todo Implement a scheduler.
-    
-    struct process *initproc = create_process("init", 0);
-    struct thread *init_thread = create_thread(initproc, init2, 0, 0);
-    create_thread(initproc, idle, 0, 0);
+    init_scheduler();
 
 #ifdef _TESTING
 	perform_tests();
@@ -85,6 +85,11 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
     
     kprintf("Startup complete.\n");
     
+    struct process *initproc = create_process("init", PROCESS_PRIORITY_HIGH, 0);
+    struct thread *init_thread = create_thread(initproc, init2, 0, 0);
+    struct thread *idle_thread = create_thread(initproc, idle, 0, 0);
+    
+    thread_wake(idle_thread);
     switch_threads(0, init_thread);
     
     while(1)

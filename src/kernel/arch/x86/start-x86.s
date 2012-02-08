@@ -13,7 +13,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 .globl _start, tmpstack_base, interrupt_handlers
-.extern _kmain, cpu_trap
+.extern _kmain, cpu_trap, reschedule
 
 .equ MBOOT_HEADER_MAGIC,	0x1BADB002
 .equ MBOOT_PAGE_ALIGN,		1 << 0
@@ -138,10 +138,10 @@ int_entry:
 	call cpu_trap
 	add $4, %esp
 
-	#cmpl $0, %eax
-	#je .noswitch
-	# TODO: task switch required.
-	#.noswitch:
+	cmpl $0, %eax
+	je .noswitch
+	call reschedule
+.noswitch:
 
 	pop %gs
 	pop %fs

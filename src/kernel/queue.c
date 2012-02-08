@@ -73,7 +73,7 @@ void *queue_pop(void *queue) {
 
 	struct queue *q = (struct queue *) queue;
 	struct node *n;
-
+	
 	if(!q->tail)
 		return 0;
 
@@ -81,6 +81,8 @@ void *queue_pop(void *queue) {
 	q->tail = n->prev;
 	if(q->tail)
 		q->tail->next = 0;
+	if(n == q->head) // Popped the front of the queue.
+		q->head = q->tail = 0;
 
 	void *ret = n->p;
 	free(n);
@@ -94,8 +96,8 @@ int queue_empty(void *queue) {
 
 	struct queue *q = (struct queue *) queue;
     if(q->tail)
-        return 1;
-    else
         return 0;
+    else
+        return 1;
 }
 

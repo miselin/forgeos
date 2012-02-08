@@ -18,7 +18,7 @@ switch_context:
 	# Old context - don't save current if it's null.
 	mov 4(%esp), %eax
 	cmpl %eax, 0
-	jne .onlyload
+	je .onlyload
 
 	# EDI, ESI, EBX
 	mov %edi, (%eax)
@@ -44,6 +44,7 @@ switch_context:
 
 	mov 12(%eax), %ebp
 	mov 16(%eax), %esp
+	addl $4, %esp
 
 	mov 20(%eax), %ecx
 	jmp *%ecx
