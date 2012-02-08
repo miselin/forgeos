@@ -21,6 +21,8 @@
 #include <malloc.h>
 #include <io.h>
 
+// #define SPAM_THE_LOGS
+
 extern int __begin_timer_table, __end_timer_table;
 
 static void * volatile timer_list = 0;
@@ -114,11 +116,14 @@ inline uint64_t conv_ticks(uint32_t ticks) {
 	return ret;
 }
 
-void timer_ticked(struct timer *tim, uint32_t in_ticks) {
+int timer_ticked(struct timer *tim, uint32_t in_ticks) {
+#ifdef SPAM_THE_LOGS
 	dprintf("timer %s tick: %x\n", tim->name, in_ticks);
+#endif
 
 	struct timer_handler_meta *p = 0;
 	size_t index = 0;
+	int ret = 0;
 
 	// Convert the ticks.
 	uint64_t ticks = conv_ticks(in_ticks);
@@ -131,7 +136,7 @@ void timer_ticked(struct timer *tim, uint32_t in_ticks) {
 		// Expire one-shot timers, if possible.
 		if((tim->timer_feat & TIMERFEAT_ONESHOT) != 0) {
 			if(((p->feat & TIMERFEAT_ONESHOT) != 0) && (p->ticks == ticks)) {
-				p->th(ticks);
+				ret += p->th(ticks);
 				list_remove(timer_list, index--);
 			}
 		}
@@ -144,7 +149,7 @@ void timer_ticked(struct timer *tim, uint32_t in_ticks) {
 				p->ticks -= ticks;
 
 				if(!p->ticks) {
-					p->th(p->orig_ticks);
+					ret += p->th(p->orig_ticks);
 					p->ticks = p->orig_ticks; // Reload the timer.
 				}
 			}
@@ -158,12 +163,14 @@ void timer_ticked(struct timer *tim, uint32_t in_ticks) {
 				p->ticks -= ticks;
 
 				if(!p->ticks) {
-					p->th(p->orig_ticks);
+					ret += p->th(p->orig_ticks);
 					list_remove(timer_list, index--);
 				}
 			}
 		}
 	}
+	
+	return ret ? 1 : 0;
 }
 
 int install_timer(timer_handler th, uint32_t ticks, uint32_t feat) {

@@ -33,8 +33,7 @@ volatile size_t ticks = 0;
 
 /// Timer IRQ handler
 static int pit_irq(struct intr_stack *p) {
-	timer_ticked(&t, ((10 << TIMERRES_SHIFT) | TIMERRES_MILLI));
-	return 0;
+	return timer_ticked(&t, ((10 << TIMERRES_SHIFT) | TIMERRES_MILLI));
 }
 
 int init_pit() {

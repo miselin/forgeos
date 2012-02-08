@@ -21,7 +21,7 @@
 #include <compiler.h>
 
 /// Defines the type for a timer handler.
-typedef void (*timer_handler)(uint64_t ticks);
+typedef int (*timer_handler)(uint64_t ticks);
 
 /// Type for the table of available timers in the system.
 struct timer_table_entry {
@@ -89,7 +89,7 @@ struct timer {
  *
  * That format is ((UNIT_COUNT << TIMERRES_SHIFT) | TIMER_RES).
  */
-extern void timer_ticked(struct timer *tim, uint32_t ticks);
+extern int timer_ticked(struct timer *tim, uint32_t ticks);
 
 /// Initialises the timer framework and initialises timer hardware.
 extern void timers_init();

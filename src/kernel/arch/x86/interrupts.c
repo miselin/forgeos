@@ -77,9 +77,11 @@ const char* trapnames[] =
 };
 
 int cpu_trap(struct intr_stack *stack) {
-	uint32_t n = stack->intnum; /// \todo read from stack
+	int ret = 0;
+	
+	uint32_t n = stack->intnum;
 	if(interrupts[n] != 0) {
-		return interrupts[n](stack);
+		ret = interrupts[n](stack);
 	} else {
 		kprintf("CPU trap #%d", n);
 		if(n < 32) {
@@ -102,8 +104,10 @@ int cpu_trap(struct intr_stack *stack) {
 		} else
 			kprintf(" (unhandled)\n");
 	}
+	
+	dprintf("trap %d returns %d\n", n, ret);
 
-	return 0;
+	return ret;
 }
 
 static void set_idt(size_t n, uintptr_t base, uint16_t sel, uint8_t flags) {
