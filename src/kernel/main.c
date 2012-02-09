@@ -25,6 +25,7 @@
 #include <timer.h>
 #include <assert.h>
 #include <sched.h>
+#include <pool.h>
 #include <test.h>
 
 KBOOT_IMAGE(0);
@@ -72,6 +73,9 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
 	kprintf("Initialising timers...\n");
 	timers_init();
+    
+    dprintf("Configuring memory pools...\n");
+    init_pool();
 
     kprintf("Initialising scheduler...\n");
     init_scheduler();

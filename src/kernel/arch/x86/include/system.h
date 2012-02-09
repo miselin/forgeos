@@ -21,6 +21,7 @@
 
 #define KERNEL_BASE		0xC0000000
 #define HEAP_BASE		0xD0000000
+#define POOL_BASE       0xE0000000
 #define STACK_TOP		0xFFC00000
 #define STACK_SIZE		0x4000 // 16 KB
 
