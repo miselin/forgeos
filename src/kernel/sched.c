@@ -28,6 +28,9 @@ size_t runqueue_n = 0;
 
 static struct thread *current_thread = 0;
 
+/** Initialises the architecture-specific context layer (for create_context). */
+extern void init_context();
+
 static int sched_timer(uint64_t ticks) {
     dprintf("sched_timer: ticks=%x\n", (uint32_t) ticks);
     if(ticks > current_thread->timeslice)
@@ -165,6 +168,8 @@ void reschedule() {
 void init_scheduler() {
     runqueue = create_queue();
     alreadyqueue = create_queue();
+    
+    init_context();
 }
 
 

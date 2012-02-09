@@ -17,9 +17,24 @@
 #include <types.h>
 #include <util.h>
 #include <malloc.h>
+#include <pool.h>
 #include <io.h>
+#include <system.h>
+#include <assert.h>
+
+#define POOL_STACK_SZ       0x1000
+#define POOL_STACK_COUNT    0x1000
+
+static void *stackpool = 0;
+
+void init_context() {
+    // Create a pool for stacks - 4096, 4KB stacks = 16 MB maximum pool size.
+    stackpool = create_pool_at(POOL_STACK_SZ, POOL_STACK_COUNT, (STACK_TOP - STACK_SIZE) - (POOL_STACK_SZ * POOL_STACK_COUNT));
+}
 
 void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_t stacksz) {
+    assert(stackpool != 0);
+    
     memset(ctx, 0, sizeof(context_t));
     
     /// \todo Don't use malloc!
@@ -27,7 +42,9 @@ void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_
     if(stack)
         stack_ptr = (void *) stack;
     else
-        stack_ptr = (void *) malloc(stacksz);
+        stack_ptr = (void *) pool_alloc(stackpool);
+    
+    assert(stack_ptr != 0);
     
     ctx->eip = (uint32_t) start;
     ctx->esp = ctx->ebp = (uint32_t) ((char *) stack_ptr) + (stacksz - 4);
