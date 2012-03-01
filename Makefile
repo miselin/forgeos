@@ -172,10 +172,18 @@ endif # BUILD_SRC
 
 ifeq "$(process-makefile)" ""
 
+ifeq "$(ARCH_TARGET)" "x86"
 CDIMAGE := $(BUILD_DIR)/mattise.iso
+OUTIMAGE := $(CDIMAGE)
+endif
 
 ifeq "$(MKISOFS)" ""
 MKISOFS := mkisofs
+endif
+
+ifeq "$(ARCH_TARGET)" "arm"
+UIMAGE := $(BUILD_DIR)/uImage
+OUTIMAGE := $(UIMAGE)
 endif
 
 # Using clang for static analysis, for the win.
@@ -183,11 +191,15 @@ LINT := clang --analyze
 export LINT
 
 # Directories under src/ to visit
-DIRS := kboot kernel
+DIRS := 
+ifeq "$(ARCH_TARGET)" "x86"
+DIRS += kboot
+endif
+DIRS += kernel
 
 .PHONY: analyse analyze clean cleanlog closelog $(DIRS)
 
-all: $(DIRS) closelog $(CDIMAGE)
+all: $(DIRS) closelog $(OUTIMAGE)
 
 analyze: analyse
 
@@ -200,6 +212,7 @@ analyse:
 	@echo "Static Analysis Complete at `date`" | tee -a $(BUILD_DIR)/analysis.log
 	@echo "Results have been saved to: $(BUILD_DIR)/analysis.log\n"
 
+ifneq "$(CDIMAGE)" ""
 cdimage: $(CDIMAGE)
 
 $(CDIMAGE): kernel kboot
@@ -212,6 +225,17 @@ $(CDIMAGE): kernel kboot
 				-b System/Boot/cdboot.img -no-emul-boot -boot-load-size 4 \
 				-boot-info-table -o $(CDIMAGE) -V 'MATTISE' $(INSTDIR)/
 	@echo "ISO image has been saved to: $(CDIMAGE)\n"
+endif
+
+ifneq "$(UIMAGE)" ""
+uimage : $(UIMAGE)
+
+$(UIMAGE): kernel
+	@echo "Building uImage for u-boot..."
+	@$(OBJCOPY) -O binary $(OBJDIR)/kernel/kernel $(OBJDIR)/kernel/kernel.flat
+	@mkimage -A arm -O linux -T kernel -C none -a 0x80008000 -e 0x80008000 \
+	-n mattise -d $(OBJDIR)/kernel/kernel.flat $(UIMAGE)
+endif
 
 $(DIRS): cleanlog
 	@$(MAKE) -C $(BUILD_SRC)/src/$@ 2>&1 | tee -a $(BUILD_DIR)/build.log
