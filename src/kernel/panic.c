@@ -15,10 +15,11 @@
  */
 
 #include <io.h>
+#include <sched.h>
 
 void panic(const char *s) {
 	kprintf("PANIC: %s\n", s);
-	while(1) __asm__ volatile("hlt");
+	while(1) __halt;
 }
 
 void dlmalloc_abort() {

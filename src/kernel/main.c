@@ -34,7 +34,8 @@ void idle() {
     kprintf("Idle thread created.\n");
     while(1) {
         kprintf("A");
-        asm volatile("sti; hlt");
+        interrupts_enable();
+        __halt;
     }
 }
 
@@ -45,7 +46,8 @@ void init2() {
     dprintf("Mattise initialisation complete.\n");
     while(1) {
         kprintf("B");
-        asm volatile("sti; hlt");
+        interrupts_enable();
+        __halt;
     }
 }
 
@@ -97,6 +99,6 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
     switch_threads(0, init_thread);
     
     while(1)
-        asm volatile("hlt");
+        __halt;
 }
 
