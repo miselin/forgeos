@@ -8,11 +8,10 @@ OUTPUT_FORMAT(elf32-i386)
 ENTRY(_kmain)
 SECTIONS {
 	. = 0xC0000000;
+	init = .; _init = .; __init = .;
 
 	.init : AT(ADDR(.init) - 0xBFF00000) {
 	    . = ALIGN(4096);
-    	init = .; _init = .; __init = .;
-    	*(.init_multiboot*);
     	*(.init*);
     	init_end = .; _init_end = .; __init_end = .;
     }

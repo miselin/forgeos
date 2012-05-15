@@ -31,14 +31,14 @@ static char prime_page[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
 void *dlmalloc_sbrk(intptr_t incr) {
 	uintptr_t old = base;
 
-	dprintf("sbrk(0x%x)\n", incr);
+	dprintf("sbrk(0x%x) - base at %x\n", incr, base);
 
 	if(base == 0) {
 		// Assume there is no heap yet. Note that physical memory management depends on
 		// malloc, so we need a little bit of static space to kick things off.
 		memset(first_page, 0, PAGE_SIZE);
 		vmem_prime(log2phys((paddr_t) prime_page));
-		vmem_map(HEAP_BASE, log2phys((paddr_t) first_page), VMEM_READWRITE);
+		int n = vmem_map(HEAP_BASE, log2phys((paddr_t) first_page), VMEM_READWRITE);
 		base = old = HEAP_BASE;
 	}
 
@@ -54,12 +54,16 @@ void *dlmalloc_sbrk(intptr_t incr) {
 		base += (uintptr_t) incr;
 		if(PAGE_ALIGNED(old) != PAGE_ALIGNED(base)) {
 			vaddr_t v = old;
-			for(; v < base; v += PAGE_SIZE) {
-				if(vmem_ismapped(v) == 0)
+			for(; v <= base; v += PAGE_SIZE) {
+				if(vmem_ismapped(v) == 0) {
 					vmem_map(v, (paddr_t) ~0, 0);
+				}
 			}
 		}
 	}
+	
+	dprintf("sbrk returning %x\n", old);
 
 	return (void *) old;
 }
+

@@ -1,4 +1,4 @@
-# Copyright (c) 2011 Matthew Iselin, Rich Edelman
+# Copyright (c) 2012 Matthew Iselin, Rich Edelman
 #
 # Permission to use, copy, modify, and distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -15,30 +15,14 @@
 .globl _start, tmpstack_base, interrupt_handlers
 .extern _kmain, cpu_trap, reschedule
 
-.equ MBOOT_HEADER_MAGIC,	0x1BADB002
-.equ MBOOT_PAGE_ALIGN,		1 << 0
-.equ MBOOT_MEM_INFO,		1 << 0
-.equ MBOOT_HEADER_FLAGS,	MBOOT_PAGE_ALIGN | MBOOT_MEM_INFO
-.equ MBOOT_CHECKSUM,		-(MBOOT_HEADER_MAGIC + MBOOT_HEADER_FLAGS)
-
-.section .init_multiboot
-.align 4
-.long MBOOT_HEADER_MAGIC
-.long MBOOT_HEADER_FLAGS
-.long MBOOT_CHECKSUM
-
 .section .init
 
-.equ KERNEL_BASE, 0xBFF00000
+# KBoot loads us to 0x400000
+.equ KERNEL_BASE, 0xC0000000 - 0x400000
 
 # Simple here: create some page tables, map in the kernel.
 _start:
-	cli
-
-	# Save the multiboot information structure location
-	mov %ebx, %edi
-
-	# TODO: save the multiboot information structure.
+	push %ebx # EBX is callee save.
 
 	# Enable Page Size Extension
 	mov %cr4, %eax
@@ -48,21 +32,17 @@ _start:
 	# Using a 4 MB page, identity-map the first 4 MB of memory. This contains
 	# useful things such as multiboot structures, the real-mode IVT, and BIOS
 	# data.
-	movl $0x83, (pdir - KERNEL_BASE)
-
-	# Set up the higher-half page table.
-	movl $0x03 + ptab0 - KERNEL_BASE, (0xC00 + pdir - KERNEL_BASE)
+	movl $0x83, (pdir)
 
 	# Map in the kernel using this page table. This just maps in pages until
 	# the end of the kernel area is reached (using the variables defined via
 	# the linker script).
-	mov $ptab0 - KERNEL_BASE, %eax
+	mov $ptab0, %eax
 	mov $init, %ebx
 	mov $end, %ecx
-	mov $KERNEL_BASE, %esi
 	.map:
 		mov %ebx, %edx
-		sub %esi, %edx
+		sub $KERNEL_BASE, %edx
 		or $0x03, %edx
 		mov %edx, (%eax)
 
@@ -72,40 +52,23 @@ _start:
 		cmp %ebx, %ecx
 		jne .map
 
+	# Set up the higher-half page table.
+	movl $0x03 + ptab0 - KERNEL_BASE, (0xC00 + pdir)
+
 	# Set up the page table for the heap. This helps us map it in when we do not
 	# yet have dynamic memory allocation (particularly for starting up the
 	# physical memory manager).
-	movl $0x03 + ptab1 - KERNEL_BASE, (0xD00 + pdir - KERNEL_BASE)
+	movl $0x03 + ptab1 - KERNEL_BASE, (0xD00 + pdir)
 
 	# Map in the page directory.
-	movl $0x03 + pdir - KERNEL_BASE, (0xFFC + pdir - KERNEL_BASE)
+	movl $0x03 + pdir - KERNEL_BASE, (0xFFC + pdir)
 
 	# Set up the page directory, and enable paging.
 	movl $pdir - KERNEL_BASE, %eax
 	mov %eax, %cr3
-
-	mov %cr0, %eax
-	or $0x80000000, %eax
-	mov %eax, %cr0
-
-	# Set the stack.
-	mov $tmpstack_base + 16384, %esp
-
-	# Push the multiboot information header location
-	push %edi
-
-	xchg %bx, %bx
-
-	xor %ebp, %ebp
-	mov $callmain, %eax
-	jmp *%eax
-
-callmain:
-	call _kmain
-
-	# Oops, we left _kmain. Breakpoint.
-	int $0x3
-	jmp .
+	
+	pop %ebx
+	ret
 
 .section .bss
 

@@ -28,6 +28,8 @@
 #include <pool.h>
 #include <test.h>
 
+extern void _start();
+
 KBOOT_IMAGE(0);
 
 void idle() {
@@ -52,7 +54,11 @@ void init2() {
 }
 
 void _kmain(uint32_t magic, phys_ptr_t tags) {
+#ifdef X86 // KBoot is only enabled for X86 at the moment.
+	assert(magic == KBOOT_MAGIC);
+	_start(); // _start() sets up a page directory that isn't KBoot's - known state!
 	clrscr();
+#endif
 
 	assert(magic == KBOOT_MAGIC);
 

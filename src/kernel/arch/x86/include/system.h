@@ -17,7 +17,7 @@
 #ifndef _SYSTEM_H
 #define _SYSTEM_H
 
-#define PHYS_ADDR		0x100000
+#define PHYS_ADDR		0x400000
 
 #define KERNEL_BASE		0xC0000000
 #define HEAP_BASE		0xD0000000

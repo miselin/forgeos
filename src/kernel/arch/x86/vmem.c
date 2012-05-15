@@ -72,6 +72,7 @@ size_t flags_to_x86(size_t f) {
 }
 
 void arch_vmem_prime(paddr_t p) {
+    dprintf("vmem_prime: primed with %x\n", p);
     g_primedpage = p;
 }
 
@@ -175,6 +176,17 @@ int arch_vmem_ismapped(vaddr_t v) {
 
 	dprintf("vmem: %x is not mapped\n", v);
 
+	return 0;
+}
+
+paddr_t arch_vmem_v2p(vaddr_t v) {
+	dprintf("vmem: v2p %x\n", v);
+
+	uint32_t *ptab = (uint32_t *) PTAB_FROM_VADDR(v);
+	if(ptab[PTAB_OFFSET(v)] & FLAGS_PRESENT) {
+		return ptab[PTAB_OFFSET(v)] & (paddr_t) ~0xFFF;
+	}
+	
 	return 0;
 }
 

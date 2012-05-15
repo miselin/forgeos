@@ -35,6 +35,9 @@
 /// Unmaps a single page.
 #define vmem_unmap		arch_vmem_unmap
 
+/// Gets a physical address from a virtual address in the current address space.
+#define vmem_v2p        arch_vmem_v2p
+
 /// Changes the flags on an existing mapping.
 #define vmem_modify		arch_vmem_modify
 
@@ -61,6 +64,7 @@ extern int arch_vmem_map(vaddr_t, paddr_t, size_t);
 extern void arch_vmem_unmap(vaddr_t);
 extern int arch_vmem_modify(vaddr_t, size_t);
 extern int arch_vmem_ismapped(vaddr_t);
+extern paddr_t arch_vmem_v2p(vaddr_t);
 extern vaddr_t arch_vmem_create();
 extern void arch_vmem_switch(vaddr_t);
 extern void arch_vmem_init();
