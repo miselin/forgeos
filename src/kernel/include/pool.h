@@ -36,6 +36,9 @@ extern void *pool_alloc(void *pool);
 /** Returns a given buffer to a pool. */
 extern void pool_dealloc(void *pool, void *p);
 
+/** Returns a given buffer to a pool, and releases the memory for it. */
+extern void pool_dealloc_and_free(void *pool, void *p);
+
 /** Returns the number of buffers allocated for a pool. */
 extern size_t pool_count(void *pool);
 

@@ -95,22 +95,39 @@ void *pool_alloc(void *pool) {
     return (void *) addr;
 }
 
-void pool_dealloc(void *pool, void *p) {
+static int do_pool_dealloc(void *pool, void *p) {
     if(!pool)
-        return;
+        return -1;
     struct pool *s = (struct pool *) pool;
     
     uintptr_t addr = (uintptr_t) p;
     if((addr < s->base) || (addr > (s->base + (s->buffer_size * s->buffer_count))))
-        return;
+        return -1;
     
     size_t buffer_idx = (addr - s->base) / s->buffer_size;
     size_t word = buffer_idx / 32;
     size_t bit = buffer_idx % 32;
     s->bitmap[word] &= ~(1UL << bit);
-    
-    for(size_t i = 0; i < ((s->buffer_size + 0xFFF) / 0x1000); i++)
-        vmem_unmap(addr + (i * 0x1000));
+}
+
+void pool_dealloc(void *pool, void *p) {
+    do_pool_dealloc(pool, p);
+}
+
+void pool_dealloc_and_free(void *pool, void *p) {
+    if(do_pool_dealloc(pool, p) >= 0) {
+        struct pool *s = (struct pool *) pool;
+        uintptr_t addr = (uintptr_t) p;
+        
+        for(size_t i = 0; i < ((s->buffer_size + 0xFFF) / 0x1000); i++) {
+            paddr_t phys = vmem_v2p(addr);
+            vmem_unmap(addr);
+            
+            pmem_dealloc(addr);
+            
+            addr += (i * 0x1000);
+        }
+    }
 }
 
 size_t pool_count(void *pool) {
