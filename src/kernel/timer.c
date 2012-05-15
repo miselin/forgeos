@@ -39,13 +39,13 @@ struct timer_handler_meta {
 #define GET_TIMER_RES(n) (GET_HW_TIMER(n).tmr->timer_res & TIMERRES_MASK)
 #define HW_TIMER_COUNT	((((uintptr_t) &__end_timer_table) - ((uintptr_t) &__begin_timer_table)) / sizeof(struct timer_table_entry))
 
-inline void _tmr_swap(size_t a, size_t b) {
+static void _tmr_swap(size_t a, size_t b) {
 	struct timer_table_entry tmp = GET_HW_TIMER(a);
 	GET_HW_TIMER(a) = GET_HW_TIMER(b);
 	GET_HW_TIMER(b) = tmp;
 }
 
-inline void _tmr_siftdown(size_t start, size_t end) {
+static void _tmr_siftdown(size_t start, size_t end) {
 	size_t root = start, child, swap;
 	while(((root << 1) + 1) <= end) {
 		child = (root << 1) + 1;
@@ -63,7 +63,7 @@ inline void _tmr_siftdown(size_t start, size_t end) {
 	}
 }
 
-inline void _tmr_heapify() {
+static void _tmr_heapify() {
 	size_t start = (HW_TIMER_COUNT >> 1) - 1;
 	while(start < HW_TIMER_COUNT)
 		_tmr_siftdown(start--, HW_TIMER_COUNT - 1);
@@ -98,7 +98,7 @@ void timers_init() {
 }
 
 /// Convert ticks to the highest possible resolution (nanoseconds)
-inline uint64_t conv_ticks(uint32_t ticks) {
+static uint64_t conv_ticks(uint32_t ticks) {
 	uint64_t ret = ticks;
 
 	if((ret & TIMERRES_SECONDS) != 0) {
