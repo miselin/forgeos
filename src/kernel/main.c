@@ -28,6 +28,8 @@
 #include <pool.h>
 #include <test.h>
 
+
+extern void init_serial();
 extern void _start();
 
 KBOOT_IMAGE(0);
@@ -60,7 +62,17 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 	clrscr();
 #endif
 
-	assert(magic == KBOOT_MAGIC);
+#ifdef MACH_REQUIRES_EARLY_DEVINIT
+    // Initialise the machine to a state where we can do MMU stuff.
+    init_devices_early();
+    
+    // The machines that define this also require virtual memory to be configured
+    // before it's used. On X86 in particular we actually use vmem_map before
+    // vmem_init - that's just not reasonable for non-x86 (as we don't have a
+    // pre-existing page directory from the loader!)
+	kprintf("Initialising virtual memory...\n");
+	vmem_init();
+#endif
 
 	// This will make sure there's about 4K of space for malloc to use until physical
 	// memory management is available for proper virtual memory.
@@ -70,8 +82,14 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 	kprintf("Initialising physical memory manager...\n");
 	pmem_init(tags);
 
+#ifndef MACH_REQUIRES_EARLY_DEVINIT
 	kprintf("Completing virtual memory initialisation...\n");
 	vmem_init();
+#endif
+	
+	#ifdef ARM
+	while(1);
+	#endif
 
 	kprintf("Configuring software and hardware interrupts...\n");
 	interrupts_init();

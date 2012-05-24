@@ -30,13 +30,8 @@ typedef unsigned short          __mattise_uint16_t;
 typedef signed int              __mattise_int32_t;
 typedef unsigned int            __mattise_uint32_t;
 
-#ifdef __x86_64__
-typedef signed long             __mattise_int64_t;
-typedef unsigned long           __mattise_uint64_t;
-#else
 typedef signed long long        __mattise_int64_t;
 typedef unsigned long long      __mattise_uint64_t;
-#endif
 
 typedef signed long             __mattise_ptrdiff_t;
 typedef signed long             __mattise_intptr_t;

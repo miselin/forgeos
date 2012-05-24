@@ -38,7 +38,9 @@ SECTIONS
 
     .bss : {
         . = ALIGN(4096);
+        __start_bss = .;
         *(.bss*);
+        __end_bss = .;
     }
 
     . = ALIGN(4096);

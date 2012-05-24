@@ -14,27 +14,21 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _COMPILER_H
-#define _COMPILER_H
+#include <types.h>
+#include <serial.h>
+#include <util.h>
 
-#define __packed          __attribute__((packed))
-#define __aligned(n)      __attribute__((aligned(n)))
+extern int __start_bss, __end_bss;
 
-#define __barrier         __asm__ volatile("" ::: "memory")
+void mach_init_devices() {
+}
 
-#define __section(s)      __attribute__((section(s)))
+void mach_init_devices_early() {
+    // Zero BSS. Because we objdump into a flat binary file, the RAM is not
+    // cleared by the loader. That's our job here!
+    unative_t sb = (unative_t) &__start_bss, eb = (unative_t) &__end_bss;
+    memset((void *) sb, 0, eb - sb);
 
-#define __unused          __attribute__((unused))
-
-#ifndef ARM
-#define atomic_bool_compare_and_swap __sync_bool_compare_and_swap
-#else
-#define atomic_bool_compare_and_swap __arm_bool_compare_and_swap
-extern int __arm_bool_compare_and_swap(void **d, void *o, void *n);
-#endif
-
-#define STRINGIFY(val)          #val
-#define XSTRINGIFY(val)         STRINGIFY(val)
-
-#endif /* _COMPILER_H */
+    init_serial();
+}
 

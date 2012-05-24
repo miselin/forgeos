@@ -33,3 +33,12 @@ void arch_interrupts_disable() {
 	set(0);
 }
 
+/// \note Not actually atomic!
+int __arm_bool_compare_and_swap(void **d, void *o, void *n) {
+    if(*d == o) {
+        *d = n;
+        return 1;
+    }
+    return 0;
+}
+

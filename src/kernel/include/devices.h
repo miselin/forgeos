@@ -23,4 +23,13 @@
 
 extern void mach_init_devices();
 
+#ifdef MACH_REQUIRES_EARLY_DEVINIT
+/// Initialises the machine to a state where we can assume serial_write will
+/// work and as such we can continue to initialise the MMU and such before
+/// configuring additional devices.
+#define init_devices_early mach_init_devices_early
+
+extern void mach_init_devices_early();
+#endif
+
 #endif

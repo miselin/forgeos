@@ -31,7 +31,7 @@ endif
 ifeq "$(PLATFORM_TARGET)" "omap3"
   PLATFORM_CFLAGS := -mcpu=cortex-a8 -mfpu=vfp
   PLATFORM_ASFLAGS := -mcpu=cortex-a8 -mfpu=vfp
-  PLATFORM_DEFINES := -DOMAP3
+  PLATFORM_DEFINES := -DOMAP3 -DMACH_REQUIRES_EARLY_DEVINIT
 endif
 
 # Examples on how to set build flags depending on the build environment

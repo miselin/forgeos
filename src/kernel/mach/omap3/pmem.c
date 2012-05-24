@@ -14,27 +14,33 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _COMPILER_H
-#define _COMPILER_H
+#include <types.h>
+#include <kboot.h>
+#include <system.h>
+#include <panic.h>
+#include <pmem.h>
+#include <io.h>
 
-#define __packed          __attribute__((packed))
-#define __aligned(n)      __attribute__((aligned(n)))
+extern int init, end;
 
-#define __barrier         __asm__ volatile("" ::: "memory")
+int mach_phys_init(phys_ptr_t tags) {
+	unative_t kernel_start = (unative_t) &init;
+	unative_t kernel_end = (unative_t) &end;
+	
+	size_t n = 0; unative_t base = 0;
+	for(base = RAM_START; base < RAM_FINISH; base += 0x1000) {
+	    if((base < kernel_end) && (base > kernel_start))
+	        continue;
+        pmem_dealloc(base);
+        n++;
+    }
 
-#define __section(s)      __attribute__((section(s)))
+    kprintf("pmem: %d pages ready for use - ~ %d MB\n", n, (n * 4096) / 0x100000);
 
-#define __unused          __attribute__((unused))
+	return 0;
+}
 
-#ifndef ARM
-#define atomic_bool_compare_and_swap __sync_bool_compare_and_swap
-#else
-#define atomic_bool_compare_and_swap __arm_bool_compare_and_swap
-extern int __arm_bool_compare_and_swap(void **d, void *o, void *n);
-#endif
-
-#define STRINGIFY(val)          #val
-#define XSTRINGIFY(val)         STRINGIFY(val)
-
-#endif /* _COMPILER_H */
+int mach_phys_deinit() {
+	return 0;
+}
 

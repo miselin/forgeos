@@ -20,14 +20,29 @@
 #define PHYS_ADDR		0x80200000
 
 #define KERNEL_BASE		0xC0000000
-#define HEAP_BASE		0x40000000
+#define HEAP_BASE		0x60000000
 #define POOL_BASE       0xB0000000
+#define MMIO_BASE       0xD0000000
 #define STACK_TOP		0xFFC00000
 #define STACK_SIZE		0x4000 // 16 KB
 
+#define PAGEDIR_VIRT    0xFFFB0000
+#define PAGETABS_VIRT   0xFF000000
+
+#define USER_PAGEDIR_VIRT   0x3FFFF000
+#define USER_PAGETABS_VIRT  0x3FE00000
+
+#define PAGEDIR_PHYS    0x8FAFC000
+#define PAGETABS_PHYS   0x8FB00000
+
+#define TRAP_VECTORS    0xFFFF0000
+
+#define RAM_START       0x80000000
+#define RAM_FINISH      (0x9FFFFFFF + 1)
+
 #define PAGE_SIZE		0x1000
 
-#define log2phys(x)		(((x) - KERNEL_BASE) + PHYS_ADDR)
-#define phys2log(x)		(((x) - PHYS_ADDR) + KERNEL_BASE)
+#define log2phys(x)		(x)
+#define phys2log(x)		(x)
 
 #endif

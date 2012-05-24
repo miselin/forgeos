@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Matthew Iselin, Rich Edelman
+ * Copyright (c) 2012 Matthew Iselin, Rich Edelman
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,27 +14,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _COMPILER_H
-#define _COMPILER_H
+#ifndef _SERIAL_H
+#define _SERIAL_H
 
-#define __packed          __attribute__((packed))
-#define __aligned(n)      __attribute__((aligned(n)))
+extern void		init_serial();
+extern void		serial_write(uint8_t c);
+extern uint8_t	serial_read();
 
-#define __barrier         __asm__ volatile("" ::: "memory")
-
-#define __section(s)      __attribute__((section(s)))
-
-#define __unused          __attribute__((unused))
-
-#ifndef ARM
-#define atomic_bool_compare_and_swap __sync_bool_compare_and_swap
-#else
-#define atomic_bool_compare_and_swap __arm_bool_compare_and_swap
-extern int __arm_bool_compare_and_swap(void **d, void *o, void *n);
 #endif
-
-#define STRINGIFY(val)          #val
-#define XSTRINGIFY(val)         STRINGIFY(val)
-
-#endif /* _COMPILER_H */
-
