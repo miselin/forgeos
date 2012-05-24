@@ -19,6 +19,8 @@
 
 #include <types.h>
 
+typedef int (*tree_comparer)(void *, void *);
+
 extern void memset(void *p, char c, size_t len);
 extern void *memcpy(void *dest, void *src, size_t len);
 
@@ -42,5 +44,18 @@ extern void delete_queue(void *queue);
 extern void queue_push(void *queue, void *data);
 extern int queue_empty(void *queue);
 extern void *queue_pop(void *queue);
+
+extern void *create_tree();
+extern void *create_tree_cmp(tree_comparer cmp);
+extern void delete_tree(void *t);
+
+extern void tree_insert(void *t, void *key, void *val);
+extern void tree_delete(void *t, void *key);
+extern void *tree_search(void *t, void *search_key);
+
+extern void *tree_iterator(void *t);
+extern void *tree_next(void *t, void *i);
+extern void *tree_prev(void *t, void *i);
+extern void tree_deliterator(void *t, void *i);
 
 #endif
