@@ -73,7 +73,7 @@ void *create_cache(size_t cachesz) {
         cachesz = (cachesz & (size_t) ~0xFFF) + 0x1000;
     
     meta->pool = create_pool(0x1000, cachesz / 0x1000);
-    meta->blockdata = create_list(); /// \todo Tree, not list. Much faster on offset lookup.
+    meta->blockdata = create_tree();
     
     return ret;
 }
@@ -85,16 +85,15 @@ void evict_cache(void *cache, size_t numpages) {
     struct cache *meta = (struct cache *) cache;
     struct block *blockdata;
     
-    size_t n = 0, numevicted = 0;
-    while((numevicted < numpages) && ((blockdata = (struct block *) list_at(meta->blockdata, n)) != 0)) {
+    size_t numevicted = 0;
+    void *it = tree_iterator(meta->blockdata);
+    while((blockdata = tree_next(meta->blockdata, it))) {
         if(blockdata->refcount == 0) {
             pool_dealloc_and_free(meta->pool, (void *) blockdata->addr);
             numevicted++;
             
-            list_remove(meta->blockdata, n);
+            tree_delete(meta->blockdata, (void *) blockdata->offset);
             free(blockdata);
-        } else {
-            n++;
         }
     }
     
@@ -124,7 +123,7 @@ void *cache_startblock(void *cache, uint64_t offset) {
         
         memset(blockdata->addr, 0, 0x1000);
         
-        list_insert(meta->blockdata, blockdata, 0);
+        tree_insert(meta->blockdata, (void *) offset, blockdata);
     }
     
     dprintf("cache: block for offset %x is now started\n", offset);
@@ -191,14 +190,7 @@ int cache_iscached(void *cache, uint64_t offset) {
         return 0;
     
     struct cache *meta = (struct cache *) cache;
-    struct block *blockdata;
-    
-    size_t n = 0;
-    while((blockdata = (struct block *) list_at(meta->blockdata, n++)) != 0) {
-        if(blockdata->offset == offset)
-            break;
-    }
-    
+    struct block *blockdata = (struct block *) tree_search(meta->blockdata, (void *) offset);
     if(blockdata)
         return 1;
     else
