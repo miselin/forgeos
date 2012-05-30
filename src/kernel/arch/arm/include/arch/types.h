@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Rich Edelman <redelman at gmail dot com>
+ * Copyright (c) 2012 Rich Edelman <redelman at gmail dot com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -23,22 +23,22 @@
  */
 
 /* Basic integral types */
-typedef signed char             __mattise_int8_t;
-typedef unsigned char           __mattise_uint8_t;
-typedef signed short            __mattise_int16_t;
-typedef unsigned short          __mattise_uint16_t;
-typedef signed int              __mattise_int32_t;
-typedef unsigned int            __mattise_uint32_t;
+typedef signed char             __forge_int8_t;
+typedef unsigned char           __forge_uint8_t;
+typedef signed short            __forge_int16_t;
+typedef unsigned short          __forge_uint16_t;
+typedef signed int              __forge_int32_t;
+typedef unsigned int            __forge_uint32_t;
 
-typedef signed long long        __mattise_int64_t;
-typedef unsigned long long      __mattise_uint64_t;
+typedef signed long long        __forge_int64_t;
+typedef unsigned long long      __forge_uint64_t;
 
-typedef signed long             __mattise_ptrdiff_t;
-typedef signed long             __mattise_intptr_t;
-typedef unsigned long           __mattise_uintptr_t;
+typedef signed long             __forge_ptrdiff_t;
+typedef signed long             __forge_intptr_t;
+typedef unsigned long           __forge_uintptr_t;
 
-typedef __mattise_int64_t       __mattise_intmax_t;
-typedef __mattise_uint64_t      __mattise_uintmax_t;
+typedef __forge_int64_t       __forge_intmax_t;
+typedef __forge_uint64_t      __forge_uintmax_t;
 
 
 /* Format character definitions for printf() */

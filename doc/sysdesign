@@ -13,6 +13,11 @@ GOALS
 	not use this?).
 	If the system can run normally in under 16 MB of RAM, I think we've done
 	well, all things considered.
+- Can run a *forge!
+	I'd love to be able to say we run BSDForge or QuokForge or something like that
+	off a project developed on BSDForge/QuokForge. That'd be really cool. So, one
+	of my goals is to be able to run nginx and Rails or Python in order to make that
+	a reality. POSIX support will be a pretty important factor here.
 
 NOTES
 

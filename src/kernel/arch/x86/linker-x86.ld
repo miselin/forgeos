@@ -1,5 +1,5 @@
 /*
- * Mattise Kernel Linker Script.
+ * FORGE Operating System Kernel Linker Script.
  * Kernel starts at 0xC0000000.
  */
 

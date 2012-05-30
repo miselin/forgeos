@@ -173,7 +173,7 @@ endif # BUILD_SRC
 ifeq "$(process-makefile)" ""
 
 ifeq "$(ARCH_TARGET)" "x86"
-CDIMAGE := $(BUILD_DIR)/mattise.iso
+CDIMAGE := $(BUILD_DIR)/forge.iso
 OUTIMAGE := $(CDIMAGE)
 endif
 
@@ -191,7 +191,7 @@ LINT := clang --analyze
 export LINT
 
 # Directories under src/ to visit
-DIRS := 
+DIRS :=
 ifeq "$(ARCH_TARGET)" "x86"
 DIRS += kboot
 endif
@@ -223,7 +223,7 @@ $(CDIMAGE): kernel kboot
 	@cp $(OBJDIR)/kernel/kernel $(INSTDIR)/System/Boot/kernel
 	@$(MKISOFS)	-D -joliet -graft-points -quiet -input-charset iso8859-1 -R \
 				-b System/Boot/cdboot.img -no-emul-boot -boot-load-size 4 \
-				-boot-info-table -o $(CDIMAGE) -V 'MATTISE' $(INSTDIR)/
+				-boot-info-table -o $(CDIMAGE) -V 'FORGEOS' $(INSTDIR)/
 	@echo "ISO image has been saved to: $(CDIMAGE)\n"
 endif
 
@@ -234,7 +234,7 @@ $(UIMAGE): kernel
 	@echo "Building uImage for u-boot..."
 	@$(OBJCOPY) -O binary $(OBJDIR)/kernel/kernel $(OBJDIR)/kernel/kernel.flat
 	@mkimage -A arm -O linux -T kernel -C none -a 0x80008000 -e 0x80008000 \
-	-n mattise -d $(OBJDIR)/kernel/kernel.flat $(UIMAGE)
+	-n forge -d $(OBJDIR)/kernel/kernel.flat $(UIMAGE)
 endif
 
 $(DIRS): cleanlog

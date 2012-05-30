@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Rich Edelman <redelman at gmail dot com>
+ * Copyright (c) 2012 Rich Edelman <redelman at gmail dot com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -56,37 +56,37 @@
 typedef unsigned long           size_t;
 typedef signed long             ssize_t;
 
-typedef __mattise_int8_t        int8_t;
-typedef __mattise_uint8_t       uint8_t;
+typedef __forge_int8_t        int8_t;
+typedef __forge_uint8_t       uint8_t;
 
-typedef __mattise_int16_t       int16_t;
-typedef __mattise_uint16_t      uint16_t;
+typedef __forge_int16_t       int16_t;
+typedef __forge_uint16_t      uint16_t;
 
-typedef __mattise_int32_t       int32_t;
-typedef __mattise_uint32_t      uint32_t;
+typedef __forge_int32_t       int32_t;
+typedef __forge_uint32_t      uint32_t;
 
-typedef __mattise_int64_t       int64_t;
-typedef __mattise_uint64_t      uint64_t;
+typedef __forge_int64_t       int64_t;
+typedef __forge_uint64_t      uint64_t;
 
-typedef __mattise_ptrdiff_t     ptrdiff_t;
-typedef __mattise_intptr_t      intptr_t;
-typedef __mattise_uintptr_t     uintptr_t;
+typedef __forge_ptrdiff_t     ptrdiff_t;
+typedef __forge_intptr_t      intptr_t;
+typedef __forge_uintptr_t     uintptr_t;
 
-typedef __mattise_intmax_t      intmax_t;
-typedef __mattise_uintmax_t     uintmax_t;
+typedef __forge_intmax_t      intmax_t;
+typedef __forge_uintmax_t     uintmax_t;
 
-typedef __mattise_uint64_t      offset_t;
+typedef __forge_uint64_t      offset_t;
 
 /* Misc -- Actually are kernel specific */
-typedef __mattise_uintptr_t     register_t;
+typedef __forge_uintptr_t     register_t;
 
-typedef __mattise_intptr_t      native_t;
-typedef __mattise_uintptr_t     unative_t;
+typedef __forge_intptr_t      native_t;
+typedef __forge_uintptr_t     unative_t;
 
-typedef __mattise_uint64_t      phys_ptr_t;
-typedef __mattise_uintptr_t     ptr_t;
+typedef __forge_uint64_t      phys_ptr_t;
+typedef __forge_uintptr_t     ptr_t;
 
-typedef __mattise_uint64_t      paddr_t;
-typedef __mattise_uintptr_t     vaddr_t;
+typedef __forge_uint64_t      paddr_t;
+typedef __forge_uintptr_t     vaddr_t;
 
 #endif /* __TYPES_H__ */

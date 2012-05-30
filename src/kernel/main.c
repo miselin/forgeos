@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Matthew Iselin, Rich Edelman
+ * Copyright (c) 2012 Matthew Iselin, Rich Edelman
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -28,7 +28,6 @@
 #include <pool.h>
 #include <test.h>
 
-
 extern void init_serial();
 extern void _start();
 
@@ -46,8 +45,8 @@ void idle() {
 void init2() {
     dprintf("Starting the scheduler...\n");
     start_scheduler();
-    
-    dprintf("Mattise initialisation complete.\n");
+
+    dprintf("FORGE initialisation complete.\n");
     while(1) {
         kprintf("B");
         interrupts_enable();
@@ -65,7 +64,7 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 #ifdef MACH_REQUIRES_EARLY_DEVINIT
     // Initialise the machine to a state where we can do MMU stuff.
     init_devices_early();
-    
+
     // The machines that define this also require virtual memory to be configured
     // before it's used. On X86 in particular we actually use vmem_map before
     // vmem_init - that's just not reasonable for non-x86 (as we don't have a
@@ -86,7 +85,7 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 	kprintf("Completing virtual memory initialisation...\n");
 	vmem_init();
 #endif
-	
+
 	#ifdef ARM
 	while(1);
 	#endif
@@ -99,7 +98,7 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
 	kprintf("Initialising timers...\n");
 	timers_init();
-    
+
     dprintf("Configuring memory pools...\n");
     init_pool();
 
@@ -112,16 +111,16 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 	kprintf("Enabling interrupts...\n");
 	interrupts_enable();
 #endif
-    
+
     kprintf("Startup complete.\n");
-    
+
     struct process *initproc = create_process("init", PROCESS_PRIORITY_HIGH, 0);
     struct thread *init_thread = create_thread(initproc, init2, 0, 0);
     struct thread *idle_thread = create_thread(initproc, idle, 0, 0);
-    
+
     thread_wake(idle_thread);
     switch_threads(0, init_thread);
-    
+
     while(1)
         __halt;
 }

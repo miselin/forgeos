@@ -1,10 +1,10 @@
-Mattise: a new operating system
+FORGE: a new operating system
 ===============================
 
 Compiling
 =========
 
-You'll need to have an i586-elf cross-compiler available to build Mattise.
+You'll need to have an i586-elf cross-compiler available to build FORGE.
 
 You'll also need 'clang', 'cppcheck', and 'mkisofs' installed.
 
@@ -26,7 +26,7 @@ And the compilation will begin.
 Running
 =======
 
-Just boot the 'mattise.iso' disc image in the 'build' directory.
+Just boot the 'forge.iso' disc image in the 'build' directory.
 
 For your convenience, a script to run QEMU is provided in the 'scripts'
 directory.
