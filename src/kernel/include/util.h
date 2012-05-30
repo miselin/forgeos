@@ -53,6 +53,15 @@ extern void tree_insert(void *t, void *key, void *val);
 extern void tree_delete(void *t, void *key);
 extern void *tree_search(void *t, void *search_key);
 
+extern void *tree_min(void *t);
+extern void *tree_max(void *t);
+
+extern int tree_iterator_bof(void *t, void *it);
+extern int tree_iterator_eof(void *t, void *it);
+
+extern void *tree_key(void *n);
+extern void *tree_val(void *n);
+
 extern void *tree_iterator(void *t);
 extern void *tree_next(void *t, void *i);
 extern void *tree_prev(void *t, void *i);

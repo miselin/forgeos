@@ -48,7 +48,7 @@ struct node {
 
 struct iterator {
     struct node *n;
-    size_t idx;
+    struct node *prev;
 };
 
 struct tree {
@@ -122,7 +122,6 @@ static void remove_node(struct tree *meta, struct node *n) {
 
 static int free_node_if_needed(struct tree *meta, struct node *n) {
 	assert(n != 0);
-	if(n->refcount) n->refcount--;
 
 	if((!n->refcount) && (n->delete)) {
     	remove_node(meta, n);
@@ -168,7 +167,70 @@ void *tree_iterator(void *t) {
         it->n = it->n->left;
     }
 
+    it->n->refcount++;
     return (void *) it;
+}
+
+void *tree_key(void *n) {
+	if(!n)
+		return 0;
+
+	struct node *p = (struct node *) n;
+	return p->key;
+}
+
+void *tree_val(void *n) {
+	if(!n)
+		return 0;
+
+	struct node *p = (struct node *) n;
+	return p->val;
+}
+
+int tree_iterator_bof(void *t, void *it) {
+	if(!t || !it)
+		return 0;
+
+    struct tree *meta = (struct tree *) t;
+    struct iterator *i = (struct iterator *) it;
+
+    return i->n == tree_min(t) ? 1 : 0;
+}
+
+int tree_iterator_eof(void *t, void *it) {
+	if(!t || !it)
+		return 0;
+
+    struct tree *meta = (struct tree *) t;
+    struct iterator *i = (struct iterator *) it;
+
+    return i->n ? 0 : 1;
+}
+
+void *tree_min(void *t) {
+    if(!t)
+        return 0;
+
+    struct tree *meta = (struct tree *) t;
+    struct node *p = meta->root;
+    while(p->left) {
+    	p = p->left;
+    }
+
+    return (void *) p;
+}
+
+void *tree_max(void *t) {
+    if(!t)
+        return 0;
+
+    struct tree *meta = (struct tree *) t;
+    struct node *p = meta->root;
+    while(p->right) {
+    	p = p->right;
+    }
+
+    return (void *) p;
 }
 
 void *tree_next(void *t, void *i) {
@@ -179,16 +241,9 @@ void *tree_next(void *t, void *i) {
     struct iterator *it = (struct iterator *) i;
     struct node *p = it->n;
 
-    assert(it->n != 0);
-
-    size_t n = it->idx++;
-    if(it->idx > meta->len)
-        it->idx = meta->len;
-
-    if(n == 0) {
-        return it->n->key;
-    } else if(n == meta->len) {
-        return 0;
+	// If at the end of the tree, we can't iterate further.
+    if(!it->n) {
+    	return it->prev;
     }
 
     if(it->n->right) {
@@ -205,11 +260,14 @@ void *tree_next(void *t, void *i) {
 
 	// Free the node we were at before if it was to be deleted.
 	p->refcount--;
-	if(free_node_if_needed(meta, p) && it->idx)
-		it->idx--;
+	if(!free_node_if_needed(meta, p)) {
+	    // Previous node is now the current node.
+    	it->prev = p;
+    }
 
-	it->n->refcount++;
-    return it->n->key;
+	if(it->n)
+		it->n->refcount++;
+    return it->n;
 }
 
 void *tree_prev(void *t, void *i) {
@@ -218,30 +276,34 @@ void *tree_prev(void *t, void *i) {
 
     struct tree *meta = (struct tree *) t;
     struct iterator *it = (struct iterator *) i;
+    struct node *p = it->n;
 
-    assert(it->n != 0);
-
-    size_t n = it->idx;
-
-    if(it->idx)
-        it->idx--;
-
-    if(n == 0) {
-        return 0;
-    } else if(n == meta->len) {
-        return it->n->key;
+    if(it->n == 0) {
+    	it->n = it->prev;
+    	it->n->refcount++;
+    	return it->n;
     }
 
-    assert(0);
-
-    // Traverse to the left (assume we came from the right)
     if(it->n->left) {
-        it->n = it->n->left;
-    } else if(it->n->parent) {
-        it->n = it->n->parent;
+    	it->n = it->n->left;
+    	while(it->n->right)
+    		it->n = it->n->right;
+    } else {
+    	while(it->n->parent && (it->n == it->n->parent->left))
+    		it->n = it->n->parent;
+	    it->n = it->n->parent;
     }
 
-    return it->n->key;
+	/// \todo Atomicity.
+	// Free the node we were at before if it was to be deleted.
+	p->refcount--;
+	free_node_if_needed(meta, p);
+
+	if(it->n) {
+		it->prev = p;
+		it->n->refcount++;
+	}
+    return it->n;
 }
 
 void tree_deliterator(void *t, void *i) {
