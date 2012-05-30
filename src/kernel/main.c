@@ -34,9 +34,7 @@ extern void _start();
 KBOOT_IMAGE(0);
 
 void idle() {
-    kprintf("Idle thread created.\n");
     while(1) {
-        kprintf("A");
         interrupts_enable();
         __halt;
     }
@@ -48,7 +46,6 @@ void init2() {
 
     dprintf("FORGE initialisation complete.\n");
     while(1) {
-        kprintf("B");
         interrupts_enable();
         __halt;
     }
