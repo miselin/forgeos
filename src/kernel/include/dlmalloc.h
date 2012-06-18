@@ -23,7 +23,7 @@
 #define ABORT					dlmalloc_abort
 #define MORECORE				dlmalloc_sbrk
 #define HAVE_MORECORE			1
-#define MORECORE_CANNOT_TRIM	1
+// #define MORECORE_CANNOT_TRIM	1
 #define MORECORE_CONTIGUOUS		1
 #define HAVE_MMAP				0
 #define MALLOC_FAILURE_ACTION

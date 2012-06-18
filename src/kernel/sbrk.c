@@ -18,6 +18,7 @@
 #include <system.h>
 #include <panic.h>
 #include <vmem.h>
+#include <pmem.h>
 #include <util.h>
 #include <io.h>
 
@@ -38,19 +39,32 @@ void *dlmalloc_sbrk(intptr_t incr) {
 		// malloc, so we need a little bit of static space to kick things off.
 		memset(first_page, 0, PAGE_SIZE);
 		vmem_prime(log2phys((paddr_t) prime_page));
-		int n = vmem_map(HEAP_BASE, log2phys((paddr_t) first_page), VMEM_READWRITE);
+		vmem_map(HEAP_BASE, log2phys((paddr_t) first_page), VMEM_READWRITE);
 		base = old = HEAP_BASE;
 	}
 
 	if(incr == 0)
 		return (void *) base;
 
-	/*if(incr < 0) {
+	if(incr < 0) {
 		incr = -incr;
-
-		/// \todo Unmap
 		base -= (uintptr_t) incr;
-	} else */ {
+
+		// Unmap.
+		vaddr_t v = old;
+		if(PAGE_ALIGNED(old) != PAGE_ALIGNED(base)) {
+			for(; v > base; v -= PAGE_SIZE) {
+				if(vmem_ismapped(v)) {
+					paddr_t p = vmem_v2p(v);
+					vmem_unmap(v);
+					pmem_dealloc(p);
+				}
+			}
+		}
+
+		// Return the new top of the heap.
+		old = base;
+	} else {
 		base += (uintptr_t) incr;
 		if(PAGE_ALIGNED(old) != PAGE_ALIGNED(base)) {
 			vaddr_t v = old;
@@ -61,7 +75,7 @@ void *dlmalloc_sbrk(intptr_t incr) {
 			}
 		}
 	}
-	
+
 	dprintf("sbrk returning %x\n", old);
 
 	return (void *) old;
