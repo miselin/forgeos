@@ -34,7 +34,7 @@ extern void evict_cache(void *cache, size_t numpages);
  *
  * The hash of the block will be updated upon calling this function.
  */
-extern void *cache_startblock(void *cache, uint64_t offset);
+extern void *cache_startblock(void *cache, unative_t offset);
 
 /**
  * Completes work with a cache block. The block address should be assumed to be
@@ -52,7 +52,7 @@ extern void *cache_blockaddr(void *block);
 /**
  * Determines if a given block is available in cache.
  */
-extern int cache_iscached(void *cache, uint64_t offset);
+extern int cache_iscached(void *cache, unative_t offset);
 
 
 /**

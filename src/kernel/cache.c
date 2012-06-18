@@ -31,7 +31,7 @@ struct block {
      * A meaningful offset that this block represents. For example, a sector
      * number might be here for a disk cache.
      */
-    uint64_t offset;
+    unative_t offset;
 
     /**
      * When retrieving a cache block for use, the refcount is incremented. When
@@ -61,6 +61,14 @@ struct cache {
     void *blockdata;
 };
 
+static uint32_t dohash(uint32_t *p) {
+    /// \todo Ridiculously naive hash here, fixme!
+    uint32_t hash = 0;
+    for(size_t i = 0; i < 1024; i++) {
+        hash += p[i];
+    }
+    return hash;
+}
 
 void *create_cache(size_t cachesz) {
     void *ret = (void *) malloc(sizeof(struct cache));
@@ -102,7 +110,7 @@ void evict_cache(void *cache, size_t numpages) {
     dprintf("cache: evicted %d pages from the cache (out of %d in evict call)\n", numevicted, numpages);
 }
 
-void *cache_startblock(void *cache, uint64_t offset) {
+void *cache_startblock(void *cache, unative_t offset) {
     if(!cache)
         return 0;
 
@@ -127,14 +135,7 @@ void *cache_startblock(void *cache, uint64_t offset) {
     blockdata->refcount++;
 
     // Update the hash.
-    /// \todo Ridiculously naive hash here, fixme!
-    uint32_t hash = 0;
-    uint32_t *p = (uint32_t *) blockdata->addr;
-    for(size_t i = 0; i < 1024; i++) {
-        hash += p[i];
-    }
-
-    blockdata->hash = hash;
+    blockdata->hash = dohash(blockdata->addr);
 
     return (void *) blockdata;
 }
@@ -166,12 +167,7 @@ int cache_blockchanged(void *block) {
     struct block *blockdata = (struct block *) block;
 
     // Calculate the new hash.
-    /// \todo Ridiculously naive hash here, fixme!
-    uint32_t hash = 0;
-    uint32_t *p = (uint32_t *) blockdata->addr;
-    for(size_t i = 0; i < 1024; i++) {
-        hash += p[i];
-    }
+    uint32_t hash = dohash(blockdata->addr);
 
     if(hash != blockdata->hash) {
         blockdata->hash = hash;
@@ -181,7 +177,7 @@ int cache_blockchanged(void *block) {
     }
 }
 
-int cache_iscached(void *cache, uint64_t offset) {
+int cache_iscached(void *cache, unative_t offset) {
     if(!cache)
         return 0;
 
