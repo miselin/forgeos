@@ -24,7 +24,7 @@ endif
 
 # And do the same for PLATFORM_CFLAGS and PLATFORM_TARGET
 ifeq "$(PLATFORM_TARGET)" "pc"
-  PLATFORM_CFLAGS := 
+  PLATFORM_CFLAGS :=
   PLATFORM_ASFLAGS :=
   PLATFORM_DEFINES :=
 endif
@@ -72,7 +72,8 @@ WARNINGS := -Wall -Wextra -pedantic -Wshadow -Wpointer-arith -Wcast-align \
 			-Wwrite-strings -Wredundant-decls -Wnested-externs -Winline \
 			-Wno-long-long -Wuninitialized -Wconversion
 
-CFLAGS += -std=gnu99 -fno-builtin -nostdinc -nostdlib -ffreestanding
+# -fno-builtin
+CFLAGS += -std=gnu99 -nostdinc -nostdlib -ffreestanding
 
 CFLAGS += $(ARCH_CFLAGS) $(ARCH_DEFINE)
 CFLAGS += $(ARCH_SUBTARGET_CFLAGS) $(ARCH_SUBTARGET_DEFINE)
