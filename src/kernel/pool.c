@@ -20,6 +20,7 @@
 #include <malloc.h>
 #include <util.h>
 #include <vmem.h>
+#include <pmem.h>
 #include <io.h>
 
 struct pool {
@@ -40,7 +41,7 @@ void *create_pool(size_t buffsz, size_t buffcnt) {
     /// \todo Atomicity.
     void *ret = create_pool_at(buffsz, buffcnt, pool_base);
     pool_base += (buffsz * buffcnt);
-    
+
     return ret;
 }
 
@@ -50,14 +51,14 @@ void *create_pool_at(size_t buffsz, size_t buffcnt, uintptr_t addr) {
     ret->alloc_count = 0;
     ret->buffer_count = buffcnt;
     ret->buffer_size = buffsz;
-    
+
     size_t wordcount = buffcnt / 32;
     if(!wordcount) wordcount = 1;
     ret->bitmap = (uint32_t*) malloc(wordcount * sizeof(uint32_t));
     memset(ret->bitmap, 0, wordcount * sizeof(uint32_t));
-    
+
     dprintf("creating pool at %x: %d buffers, each %d bytes (%d dwords in bitmap)\n", addr, buffcnt, buffsz, wordcount);
-    
+
     return (void *) ret;
 }
 
@@ -65,12 +66,12 @@ void *pool_alloc(void *pool) {
     if(!pool)
         return 0;
     struct pool *p = (struct pool *) pool;
-    
+
     if(p->alloc_count == p->buffer_count) {
         dprintf("pool %x is exhausted\n", p);
         return 0;
     }
-    
+
     // Find a free bit.
     size_t buffer_idx = 0;
     size_t word = p->alloc_count / 32;
@@ -80,17 +81,17 @@ void *pool_alloc(void *pool) {
             break;
         }
     }
-    
+
     buffer_idx += word * 32;
     uintptr_t addr = p->base + (buffer_idx * p->buffer_size);
-    
+
     if(!vmem_ismapped(addr)) {
         for(size_t i = 0; i < ((p->buffer_size + 0xFFF) / 0x1000); i++)
             vmem_map(addr + (i * 0x1000), (paddr_t) ~0, VMEM_READWRITE | VMEM_SUPERVISOR);
     }
-    
+
     p->alloc_count++;
-    
+
     dprintf("pool_alloc returning buffer %d (0x%x)\n", buffer_idx, addr);
     return (void *) addr;
 }
@@ -99,15 +100,17 @@ static int do_pool_dealloc(void *pool, void *p) {
     if(!pool)
         return -1;
     struct pool *s = (struct pool *) pool;
-    
+
     uintptr_t addr = (uintptr_t) p;
     if((addr < s->base) || (addr > (s->base + (s->buffer_size * s->buffer_count))))
         return -1;
-    
+
     size_t buffer_idx = (addr - s->base) / s->buffer_size;
     size_t word = buffer_idx / 32;
     size_t bit = buffer_idx % 32;
     s->bitmap[word] &= ~(1UL << bit);
+
+    return 0;
 }
 
 void pool_dealloc(void *pool, void *p) {
@@ -118,13 +121,13 @@ void pool_dealloc_and_free(void *pool, void *p) {
     if(do_pool_dealloc(pool, p) >= 0) {
         struct pool *s = (struct pool *) pool;
         uintptr_t addr = (uintptr_t) p;
-        
+
         for(size_t i = 0; i < ((s->buffer_size + 0xFFF) / 0x1000); i++) {
             paddr_t phys = vmem_v2p(addr);
             vmem_unmap(addr);
-            
-            pmem_dealloc(addr);
-            
+
+            pmem_dealloc(phys);
+
             addr += (i * 0x1000);
         }
     }
