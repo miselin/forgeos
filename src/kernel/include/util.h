@@ -21,13 +21,8 @@
 
 typedef int (*tree_comparer)(void *, void *);
 
-extern void memset(void *p, char c, size_t len);
-
-#ifdef __builtin_memcpy
+#define memset __builtin_memset
 #define memcpy __builtin_memcpy
-#else
-extern void *memcpy(void *dest, void *src, size_t len);
-#endif
 
 extern void *create_stack();
 extern void delete_stack(void *s);

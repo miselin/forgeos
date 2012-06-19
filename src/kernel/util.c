@@ -17,6 +17,15 @@
 #include <types.h>
 #include <test.h>
 
+#ifdef memset
+#undef memset
+#endif
+
+#ifdef memcpy
+#undef memcpy
+#endif
+
+/// Define a basic, naive, memset that can be used if __builtin_memset is not usable.
 void memset(void *p, char c, size_t len)
 {
 	char *s = (char *) p;
@@ -25,10 +34,7 @@ void memset(void *p, char c, size_t len)
 		s[i] = c;
 }
 
-#ifdef memcpy
-#undef memcpy
-#endif
-
+/// Define a basic, naive, memcpy that can be used if __builtin_memcpy is not usable.
 void *memcpy(void *dest, void *src, size_t len) {
 	char *s1 = (char *) src, *s2 = (char *) dest;
 	while(len--) *s2++ = *s1++;
