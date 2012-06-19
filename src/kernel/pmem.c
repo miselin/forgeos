@@ -15,6 +15,7 @@
  */
 
 #include <types.h>
+#include <system.h>
 #include <malloc.h>
 #include <assert.h>
 #include <util.h>
@@ -25,6 +26,12 @@ struct phys_page {
 };
 
 static void *page_stack = 0;
+
+static paddr_t freeKiB = 0;
+
+paddr_t pmem_freek() {
+	return freeKiB;
+}
 
 paddr_t pmem_alloc() {
 	struct phys_page *page = 0;
@@ -39,6 +46,8 @@ paddr_t pmem_alloc() {
 	ret = page->addr;
 	free(page);
 
+	freeKiB -= PAGE_SIZE / 1024;
+
 	return ret;
 }
 
@@ -52,6 +61,8 @@ void pmem_dealloc(paddr_t p) {
 	page->addr = p;
 
 	stack_push(page_stack, page);
+
+	freeKiB += PAGE_SIZE / 1024;
 }
 
 void pmem_pin(paddr_t p) {

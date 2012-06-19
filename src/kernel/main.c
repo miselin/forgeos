@@ -34,7 +34,14 @@ extern void _start();
 KBOOT_IMAGE(0);
 
 void idle() {
+    char idlebuf[81];
     while(1) {
+        interrupts_disable();
+        sprintf(idlebuf, "%-79s", "");
+        puts_at(idlebuf, 0, 24);
+
+        sprintf(idlebuf, "FORGE Operating System: mem %d/%d KiB used", (uintptr_t) (pmem_size() - pmem_freek()), (uintptr_t) pmem_size());
+        puts_at(idlebuf, 0, 24);
         interrupts_enable();
         __halt;
     }

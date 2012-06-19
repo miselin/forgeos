@@ -23,36 +23,43 @@
 
 extern int end;
 
+static paddr_t totalKiB = 0;
+
+paddr_t pmem_size() {
+	return totalKiB;
+}
+
 int mach_phys_init(phys_ptr_t tags) {
 	paddr_t kernel_end = log2phys((uintptr_t) &end);
 	size_t n = 0; phys_ptr_t base = 0;
-	
+
     kboot_tag_t *taglist = (kboot_tag_t *) tags;
     int found = 0;
     do {
         if(taglist->type == KBOOT_TAG_MEMORY) {
             kboot_tag_memory_t *memtag = (kboot_tag_memory_t *) taglist;
-            
+
             if((memtag->type == KBOOT_MEMORY_FREE) && (((paddr_t) memtag->end) > kernel_end)) {
                 base = memtag->start;
                 if(base < kernel_end)
                     base = kernel_end;
-                
+
                 for(; base < memtag->end; base += PAGE_SIZE) {
                     pmem_dealloc(base);
                     n++;
                 }
             }
-            
+
             found = 1;
         }
         taglist = (kboot_tag_t *) taglist->next;
     } while(taglist);
-    
+
     if(!found)
         panic("No memory map has been provided, cannot continue.");
 
-    kprintf("pmem: %d pages ready for use - ~ %d MB\n", n, (n * 4096) / 0x100000);
+	totalKiB = (n * PAGE_SIZE) / 1024;
+    kprintf("pmem: %d pages ready for use - ~ %d MB\n", n, totalKiB / 1024);
 
 	return 0;
 }

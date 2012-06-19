@@ -39,4 +39,10 @@ extern void		pmem_pin(paddr_t p);
 extern int      mach_phys_init(phys_ptr_t tags);
 extern int		mach_phys_deinit();
 
+// Full physical memory size (or rather, available pages - not mmio etc) in KiB
+extern paddr_t	pmem_size();
+
+// Free physical memory, available to be allocated in KiB.
+extern paddr_t	pmem_freek();
+
 #endif
