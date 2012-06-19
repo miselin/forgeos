@@ -18,13 +18,22 @@
 #include <serial.h>
 #include <util.h>
 
+/// Maximum width of the text console (regardless of extents)
+#define PC_MAX_W 80
+
+/// Maximum height of the text console
+#define PC_MAX_H 25
+
 static uint8_t screenX = 0;
 static uint8_t screenY = 0;
+
+static uint8_t screenW = 80;
+static uint8_t screenH = 25;
 
 static uint8_t *vmem = (uint8_t *) 0xB8000;
 
 void machine_clear_screen() {
-	memset(vmem, 0, 80 * 25 * sizeof(uint16_t));
+	memset(vmem, 0, screenW * screenH * sizeof(uint16_t));
 }
 
 void machine_putc(char c) {
@@ -34,23 +43,60 @@ void machine_putc(char c) {
 		screenX = 0;
 		screenY++;
 	} else {
-		int offset = ((screenY * 80) + screenX) * 2;
+		int offset = ((screenY * screenW) + screenX) * 2;
 		vmem[offset] = (unsigned char) c;
 		vmem[offset + 1] = 0x07;
 
 		screenX++;
 	}
 
-	if(screenX >= 80) {
+	if(screenX >= screenW) {
 		screenX = 0;
 		screenY++;
 	}
 
-	if(screenY >= 25) {
+	if(screenY >= screenH) {
 		screenY--;
 
 		// Scroll.
-		memcpy(vmem, &vmem[80 * 2], 24 * 80 * 2);
-		memset(&vmem[(80 * 2) * 24], 0, 80 * 2);
+		memcpy(vmem, &vmem[screenW * 2], (screenH - 1) * screenW * 2);
+		memset(&vmem[(screenW * 2) * (screenH - 1)], 0, screenW * 2);
 	}
+}
+
+void machine_putc_at(char c, int x, int y) {
+	if(x < 0)
+		x = 0;
+	if(y < 0)
+		y = 0;
+
+	if(x > PC_MAX_W)
+		x = PC_MAX_W;
+	if(y > PC_MAX_H)
+		y = PC_MAX_H;
+
+	uint8_t sx = screenX, sy = screenY;
+	uint8_t sw = screenW, sh = screenH; // Saved because we don't want to scroll the screen.
+
+	screenX = (uint8_t) x & 0xFF; screenY = (uint8_t) y & 0xFF;
+	screenW = PC_MAX_W; screenH = PC_MAX_H + 1;
+	machine_putc(c);
+
+	screenX = sx;
+	screenY = sy;
+}
+
+void machine_define_screen_extents(int x, int y) {
+	if(x < 0)
+		x = 0;
+	if(y < 0)
+		y = 0;
+
+	if(x > PC_MAX_W)
+		x = PC_MAX_W;
+	if(y > PC_MAX_H)
+		y = PC_MAX_H;
+
+	screenW = (uint8_t) x & 0xFF;
+	screenH = (uint8_t) y & 0xFF;
 }

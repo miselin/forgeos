@@ -25,10 +25,25 @@
 /// Clear the screen (abstracted by the machine).
 #define clrscr	machine_clear_screen
 
+/**
+ * Define the extents of the console screen, where one is available.
+ * Use I/O functions with the _at suffix to write to areas outside these extents.
+ */
+#define scrextents	machine_define_screen_extents
+
+/**
+ * Print a single character to the screen abstraction provided by the machine, at the
+ * given x/y co-ordinate.
+ */
+#define putc_at(c, x, y) machine_putc_at(c, x, y)
+
 extern void machine_putc(char c);
+extern void machine_putc_at(char c, int x, int y);
 extern void machine_clear_screen();
+extern void machine_define_screen_extents(int x, int y);
 
 extern void puts(const char *s);
+extern void puts_at(const char *s, int x, int y);
 
 extern void serial_puts(const char *s);
 

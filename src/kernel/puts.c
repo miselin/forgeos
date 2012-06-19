@@ -21,3 +21,8 @@ void puts(const char *s) {
 	size_t len = strlen(s);
 	while(len--) putc(*s++);
 }
+
+void puts_at(const char *s, int x, int y) {
+	size_t len = strlen(s);
+	while(len--) putc_at(*s++, x++, y);
+}

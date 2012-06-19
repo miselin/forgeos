@@ -109,6 +109,9 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 	interrupts_enable();
 #endif
 
+    // Leave the bottom line of the screen for a memory and information display.
+    scrextents(80, 24);
+
     kprintf("Startup complete.\n");
 
     struct process *initproc = create_process("init", PROCESS_PRIORITY_HIGH, 0);
