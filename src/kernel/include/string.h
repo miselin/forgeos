@@ -24,4 +24,7 @@ extern size_t strlen(const char *s);
 extern char *strcpy(char *s1, const char *s2);
 extern char *strncpy(char *s1, const char *s2, size_t max);
 
+#define strcmp __builtin_strcmp
+#define strncmp __builtin_strncmp
+
 #endif
