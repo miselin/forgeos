@@ -67,4 +67,11 @@ extern void *tree_next(void *t, void *i);
 extern void *tree_prev(void *t, void *i);
 extern void tree_deliterator(void *t, void *i);
 
+extern void *create_trie();
+extern void delete_trie(void *t);
+
+extern void trie_insert(void *t, const char *s, void *val);
+extern void trie_delete(void *t, const char *s);
+extern void *trie_search(void *t, const char *s);
+
 #endif
