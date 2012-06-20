@@ -19,6 +19,7 @@
 #include <string.h>
 #include <assert.h>
 #include <malloc.h>
+#include <test.h>
 
 /// An empty string - used to define the root of the trie.
 #define EMPTY_STRING		""
@@ -241,3 +242,21 @@ void *trie_search(void *t, const char *s) {
 	else
 		return 0;
 }
+
+DEFINE_TEST(trie_empty, ORDER_SECONDARY, 0, void *t = create_trie(), trie_search(t, "nothing"))
+DEFINE_TEST(trie_single, ORDER_SECONDARY, (void *) 0xbeef, void *t = create_trie(), trie_insert(t, "hello", (void*) 0xbeef), trie_search(t, "hello"))
+DEFINE_TEST(trie_deep, ORDER_SECONDARY, (void *) 0xbeef, void *t = create_trie(),
+			trie_insert(t, "h", (void*) 0),
+			trie_insert(t, "he", (void*) 0),
+			trie_insert(t, "hel", (void*) 0),
+			trie_insert(t, "hell", (void*) 0),
+			trie_insert(t, "hello", (void*) 0),
+			trie_insert(t, "helloworld", (void*) 0xbeef),
+			trie_search(t, "helloworld"))
+DEFINE_TEST(trie_variety, ORDER_SECONDARY, (void *) 0xbeef, void *t = create_trie(),
+			trie_insert(t, "h", (void*) 0),
+			trie_insert(t, "i", (void*) 0),
+			trie_insert(t, "j", (void*) 0),
+			trie_insert(t, "k", (void*) 0),
+			trie_insert(t, "information", (void*) 0xbeef),
+			trie_search(t, "information"))
