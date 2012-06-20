@@ -43,6 +43,10 @@ ifeq "$(BUILD_ENV)" "release"
   CFLAGS += -O3
 endif
 
+ifeq "$(BUILD_ENV)" "testing"
+  CFLAGS += -g -O3 -D_TESTING
+endif
+
 OBJDIR := $(OBJDIR)/kernel
 
 DIRS := . arch/$(ARCH_TARGET) arch/$(ARCH_TARGET)/$(ARCH_SUBTARGET) mach/$(PLATFORM_TARGET) include

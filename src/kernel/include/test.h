@@ -49,6 +49,8 @@ struct __test {
 	} \
 	struct __test __test_dat_##name __section(".__test." order) __unused = {__test_##name, #name};
 
+#define NOP while(0)
+
 /// Perform all configured tests in the system.
 extern int perform_tests();
 

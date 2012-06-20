@@ -111,6 +111,8 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
 #ifdef _TESTING
 	perform_tests();
+	kprintf("Tests complete.\n");
+	while(1) __halt;
 #else
 	kprintf("Enabling interrupts...\n");
 	interrupts_enable();

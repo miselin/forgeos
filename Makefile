@@ -72,7 +72,7 @@ VALID_arm_SUBARCHES := "armv7"
 VALID_PLATFORMS := "pc omap3"
 
 # List of valid build environments
-VALID_BUILD_ENVS := debug release
+VALID_BUILD_ENVS := debug release testing
 
 # Ensure that ARCH_TARGET, ARCH_SUBTARGET, and PLATFORM_TARGET are all valid.
 ifeq "$(findstring $(ARCH_TARGET), $(VALID_ARCHES))" ""
