@@ -20,6 +20,7 @@
 #include <types.h>
 
 extern void *malloc(size_t sz);
+extern void *realloc(void *p, size_t newsz);
 extern void free(void *m);
 
 #endif
