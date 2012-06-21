@@ -187,7 +187,12 @@ void trie_insert(void *t, const char *s, void *val) {
 
 		// And now we can link in the children of this node.
 		add_child(parent, n);
-		add_child(parent, child);
+		if(commonlen == child->prefixlen) {
+			parent->isvalue = 1;
+			parent->value = val;
+			free(child);
+		} else
+			add_child(parent, child);
 	} else {
 		add_child(n, child);
 	}
@@ -253,6 +258,10 @@ DEFINE_TEST(trie_deep, ORDER_SECONDARY, (void *) 0xbeef, void *t = create_trie()
 			trie_insert(t, "hello", (void*) 0),
 			trie_insert(t, "helloworld", (void*) 0xbeef),
 			trie_search(t, "helloworld"))
+DEFINE_TEST(trie_split, ORDER_SECONDARY, (void *) 0xbeef, void *t = create_trie(),
+			trie_insert(t, "hello", (void *) 0xdead),
+			trie_insert(t, "hell", (void *) 0xbeef),
+			trie_search(t, "hell"))
 DEFINE_TEST(trie_variety, ORDER_SECONDARY, (void *) 0xbeef, void *t = create_trie(),
 			trie_insert(t, "h", (void*) 0),
 			trie_insert(t, "i", (void*) 0),
