@@ -168,14 +168,22 @@ void trie_insert(void *t, const char *s, void *val) {
 	// prefix in order to make this work?
 	size_t commonlen = 0;
 	if((commonlen = commonprefix(n->prefix, child->prefix)) < n->prefixlen) {
-		// Okay, so we need to create a new node with the smaller prefix, with
-		// 'n' and 'child' as its children.
-		struct node *parent = (struct node *) malloc(sizeof(struct node));
-		memset(parent, 0, sizeof(struct node));
+		// If the common prefix length is the same length as the child, we need
+		// to insert 'n' as a child of the created node (therefore 'child' is the
+		// parent - the naming is confusing). Otherwise, 'child' is actually a
+		// child of a new parent, and 'n' becomes a sibling.
+		struct node *parent = 0;
+		if(commonlen == child->prefixlen) {
+			// Child is now the parent.
+			parent = child;
+		} else {
+			parent = (struct node *) malloc(sizeof(struct node));
+			memset(parent, 0, sizeof(struct node));
 
-		parent->prefixlen = commonlen;
-		parent->prefix = (char *) malloc(commonlen + 1);
-		strncpy(parent->prefix, n->prefix, parent->prefixlen);
+			parent->prefixlen = commonlen;
+			parent->prefix = (char *) malloc(commonlen + 1);
+			strncpy(parent->prefix, n->prefix, parent->prefixlen);
+		}
 
 		// Now, the child in the parent needs to be replaced.
 		for(i = 0; i < n->parent->numchildren; i++) {
@@ -187,12 +195,9 @@ void trie_insert(void *t, const char *s, void *val) {
 
 		// And now we can link in the children of this node.
 		add_child(parent, n);
-		if(commonlen == child->prefixlen) {
-			parent->isvalue = 1;
-			parent->value = val;
-			free(child);
-		} else
+		if(parent != child) {
 			add_child(parent, child);
+		}
 	} else {
 		add_child(n, child);
 	}
@@ -228,8 +233,9 @@ void *trie_search(void *t, const char *s) {
 				// Direct match!
 				found = 1;
 				break;
-			} else if(strncmp(s, child->prefix, child->prefixlen) == 0)
+			} else if(strncmp(s, child->prefix, child->prefixlen) == 0) {
 				break;
+			}
 		}
 
 		// Prefix not found?
@@ -262,6 +268,10 @@ DEFINE_TEST(trie_split, ORDER_SECONDARY, (void *) 0xbeef, void *t = create_trie(
 			trie_insert(t, "hello", (void *) 0xdead),
 			trie_insert(t, "hell", (void *) 0xbeef),
 			trie_search(t, "hell"))
+DEFINE_TEST(trie_split2, ORDER_SECONDARY, (void *) 0xdead, void *t = create_trie(),
+			trie_insert(t, "hello", (void *) 0xdead),
+			trie_insert(t, "hell", (void *) 0xbeef),
+			trie_search(t, "hello"))
 DEFINE_TEST(trie_variety, ORDER_SECONDARY, (void *) 0xbeef, void *t = create_trie(),
 			trie_insert(t, "h", (void*) 0),
 			trie_insert(t, "i", (void*) 0),
