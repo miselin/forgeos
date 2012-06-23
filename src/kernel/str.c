@@ -86,6 +86,23 @@ int strncmp(const char *s1, const char *s2, size_t n) {
 	return 0;
 }
 
+const char *strsearch(const char *s, const char c) {
+    int found = 0;
+    while(*s != 0) {
+        if(*s == c) {
+            found = 1;
+            break;
+        }
+
+        s++;
+    }
+
+    if(found)
+        return s;
+    else
+        return NULL;
+}
+
 DEFINE_TEST(strlen_zero, ORDER_SECONDARY, 0, NOP, strlen(""))
 DEFINE_TEST(strlen_hello, ORDER_SECONDARY, 5, NOP, strlen("Hello"))
 DEFINE_TEST(strlen_midnull, ORDER_SECONDARY, 3, NOP, strlen("Hel\0lo"))
@@ -101,3 +118,6 @@ DEFINE_TEST(strncmp_empty, ORDER_SECONDARY, 0, NOP, strncmp("", "", 10))
 DEFINE_TEST(strncmp_submatch, ORDER_SECONDARY, 0, NOP, strncmp("hello", "hellish", 3))
 DEFINE_TEST(strncmp_subnotmatch, ORDER_SECONDARY, 1, NOP, strncmp("hello", "hellish", 6))
 DEFINE_TEST(strncmp_posret, ORDER_SECONDARY, 1, NOP, strncmp("abc", "a", 2))
+
+DEFINE_TEST(search_found, ORDER_SECONDARY, "abc" + 2, NOP, strsearch("abc", 'c'))
+DEFINE_TEST(search_notfound, ORDER_SECONDARY, 0, NOP, strsearch("abc", 'd'))

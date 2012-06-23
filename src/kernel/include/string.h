@@ -27,4 +27,7 @@ extern char *strncpy(char *s1, const char *s2, size_t max);
 #define strcmp __builtin_strcmp
 #define strncmp __builtin_strncmp
 
+/// Find 'c' in s, return a pointer to the first location found or NULL if not found.
+extern const char *strsearch(const char *s, const char c);
+
 #endif
