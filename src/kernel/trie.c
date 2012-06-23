@@ -204,7 +204,69 @@ void trie_insert(void *t, const char *s, void *val) {
 }
 
 void trie_delete(void *t, const char *s) {
-	/// \todo implement me! :)
+	if(!t)
+		return;
+
+	struct trie *meta = (struct trie *) t;
+	struct node *n = meta->root, *child = 0;
+
+	// Try not to delete the root node, probably not a good move.
+	if(!strcmp(s, ""))
+		return;
+
+	int found = 0;
+	size_t i = 0;
+	while(!found) {
+		child = 0;
+
+		// No children - fail!
+		if(!n->numchildren)
+			break;
+
+		// Check each child for the right prefix.
+		for(i = 0; i < n->numchildren; i++) {
+			child = n->children[i];
+			if(strcmp(s, child->prefix) == 0) {
+				// Direct match!
+				found = 1;
+				break;
+			} else if(strncmp(s, child->prefix, child->prefixlen) == 0) {
+				break;
+			}
+		}
+
+		// Prefix not found?
+		if(i >= n->numchildren) {
+			child = 0;
+			break;
+		}
+
+		// Iterate to the next child.
+		n = child;
+	}
+
+	// Node found - delete.
+	if(child) {
+		// Add all children of this node to the parent.
+		for(i = 0; i < child->numchildren; i++) {
+			add_child(child->parent, child->children[i]);
+		}
+
+		// Need to remove this node from the parent now, OR
+		// convert it to a key node instead of a value node.
+		if(child->parent->numchildren > 1) {
+			child->isvalue = 0;
+			child->value = 0;
+		} else {
+			free(child->parent->children);
+			child->parent->children = 0;
+			child->parent->numchildren = 0;
+		}
+
+		// Free!
+		free(child->prefix);
+		free(child);
+	}
 }
 
 void *trie_search(void *t, const char *s) {
@@ -229,6 +291,7 @@ void *trie_search(void *t, const char *s) {
 		// Check each child for the right prefix.
 		for(i = 0; i < n->numchildren; i++) {
 			child = n->children[i];
+			assert(child != 0);
 			if(strcmp(s, child->prefix) == 0) {
 				// Direct match!
 				found = 1;
@@ -279,3 +342,13 @@ DEFINE_TEST(trie_variety, ORDER_SECONDARY, (void *) 0xbeef, void *t = create_tri
 			trie_insert(t, "k", (void*) 0),
 			trie_insert(t, "information", (void*) 0xbeef),
 			trie_search(t, "information"))
+DEFINE_TEST(trie_delete, ORDER_SECONDARY, 0, void *t = create_trie(),
+			trie_insert(t, "hello", (void *) 0xdead),
+			trie_insert(t, "hell", (void *) 0xbeef),
+			trie_delete(t, "hello"),
+			trie_search(t, "hello"))
+DEFINE_TEST(trie_delete2, ORDER_SECONDARY, (void *) 0xbeef, void *t = create_trie(),
+			trie_insert(t, "hello", (void *) 0xdead),
+			trie_insert(t, "hell", (void *) 0xbeef),
+			trie_delete(t, "hello"),
+			trie_search(t, "hell"))
