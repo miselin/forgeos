@@ -36,10 +36,12 @@ size_t strlen(const char *s) {
 }
 
 char *strcpy(char *s1, const char *s2) {
+    assert(s1 != NULL && s2 != NULL);
     return strncpy(s1, s2, strlen(s2));
 }
 
 char *strncpy(char *s1, const char *s2, size_t max) {
+    assert(s1 != NULL && s2 != NULL);
     char *ret = s1;
 
     while(*s2 && max) {
@@ -57,6 +59,7 @@ char *strncpy(char *s1, const char *s2, size_t max) {
 #undef strncmp
 
 int strcmp(const char *s1, const char *s2) {
+    assert(s1 != NULL && s2 != NULL);
 	// do/while means one string being empty returns the correct result
 	do {
 		if(*s1 < *s2)
@@ -70,6 +73,7 @@ int strcmp(const char *s1, const char *s2) {
 }
 
 int strncmp(const char *s1, const char *s2, size_t n) {
+    assert(s1 != NULL && s2 != NULL);
 	// do/while means one string being empty returns the correct result
 	do {
 		if(*s1 < *s2)
