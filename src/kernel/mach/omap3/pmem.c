@@ -23,10 +23,16 @@
 
 extern int init, end;
 
+static paddr_t totalKiB = 0;
+
+paddr_t pmem_size() {
+    return totalKiB;
+}
+
 int mach_phys_init(phys_ptr_t tags) {
 	unative_t kernel_start = (unative_t) &init;
 	unative_t kernel_end = (unative_t) &end;
-	
+
 	size_t n = 0; unative_t base = 0;
 	for(base = RAM_START; base < RAM_FINISH; base += 0x1000) {
 	    if((base < kernel_end) && (base > kernel_start))
@@ -35,7 +41,9 @@ int mach_phys_init(phys_ptr_t tags) {
         n++;
     }
 
-    kprintf("pmem: %d pages ready for use - ~ %d MB\n", n, (n * 4096) / 0x100000);
+    totalKiB = (n * PAGE_SIZE) / 1024;
+
+    kprintf("pmem: %d pages ready for use - ~ %d MB\n", n, totalKiB / 1024);
 
 	return 0;
 }

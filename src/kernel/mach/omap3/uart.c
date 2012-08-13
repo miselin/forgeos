@@ -71,7 +71,7 @@ volatile uint8_t *uart3 = (volatile uint8_t*) UART3_PHYS;
 
 void machine_clear_screen() {
     int i;
-    
+
     // Naive clear screen. Can we assume a terminal emulator is present??
     machine_putc('\r');
     for(i = 0; i < 100; i++)
@@ -176,7 +176,7 @@ static int uart_protoconfig(int n)
     volatile uint8_t *uart = uart_get(n);
     if(!uart)
         return 0;
-    
+
     /** Configure protocol, baud and interrupts **/
 
     // 1. Disable UART to access DLL_REG and DLH_REG
@@ -304,6 +304,11 @@ void machine_putc(char c) {
     serial_write(c);
 }
 
+void machine_putc_at(char c, int x, int y) {
+    // Use VT-100 codes to make this work.
+    /// \todo implement
+}
+
 /// Initialises the UARTs. I know they're technically not serial ports, but this
 /// is an easy abstraction.
 void init_serial() {
@@ -331,11 +336,11 @@ void arm_mach_uart_remap() {
     vmem_map(UART1_VIRT, UART1_PHYS, VMEM_READWRITE);
     vmem_map(UART2_VIRT, UART2_PHYS, VMEM_READWRITE);
     vmem_map(UART3_VIRT, UART3_PHYS, VMEM_READWRITE);
-    
+
     uart1 = (volatile uint8_t*) UART1_VIRT;
     uart2 = (volatile uint8_t*) UART2_VIRT;
     uart3 = (volatile uint8_t*) UART3_VIRT;
-    
+
     dprintf("omap3: mapped UART in virtual memory %x %x %x\n", uart1, uart2, uart3);
 }
 
