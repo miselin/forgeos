@@ -1,0 +1,1 @@
+uenvcmd=echo "Downloading uImage via Kermit..."; loadb 0x80200000; bootm 0x80200000

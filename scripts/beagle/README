@@ -1,0 +1,17 @@
+Use the uEnv.txt in this directory instead of the existing uEnv.txt to force
+u-boot to boot via Kermit.
+
+To test for the beagleboard, ensure an SD card configured for the BeagleBoard is
+inserted in the board, with the uEnv.txt from this directory in it.
+
+Restart the BeagleBoard - it will automatically hang waiting for the kermit
+transmission to start.
+
+Run the 'kermit.sh' script; this will transmit the kernel image via the serial
+line, and then run minicom to allow you to see the output from the kernel.
+
+Alternatively, 'make kermit' will do this too.
+
+Ensure that minicom's default configuration is set up for the serial line before
+running the kermit.sh script. You should also change kermit.cmd if your serial
+port is not /dev/ttyUSB0.
