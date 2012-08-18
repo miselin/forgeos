@@ -36,50 +36,50 @@ static int sched_timer(uint64_t ticks) {
     if(ticks > current_thread->timeslice)
         ticks = current_thread->timeslice;
     current_thread->timeslice -= ticks;
-    
+
     return current_thread->timeslice ? 0 : 1;
 }
 
 struct process *create_process(const char *name, uint32_t prio, struct process *parent) {
     struct process *ret = (struct process *) malloc(sizeof(struct process));
     memset(ret, 0, sizeof(struct process));
-    
+
     if(name == 0)
         strcpy(ret->name, DEFAULT_PROCESS_NAME);
     else
         strncpy(ret->name, name, PROCESS_NAME_MAX);
-    
+
     ret->child_list = create_list();
     ret->thread_list = create_list();
-    
+
     if(parent != 0) {
         if(parent->child_list == 0)
             parent->child_list = create_list();
-        
+
         list_insert(parent->child_list, ret, 0);
     }
-    
+
     ret->base_priority = ret->priority = prio;
-    
+
     return ret;
 }
 
 struct thread *create_thread(struct process *parent, thread_entry_t start, uintptr_t stack, size_t stacksz) {
     if(stacksz == 0)
         stacksz = 0x1000;
-    
+
     struct thread *t = (struct thread *) malloc(sizeof(struct thread));
     memset(t, 0, sizeof(struct thread));
-    
+
     t->state = THREAD_STATE_SLEEPING;
     t->timeslice = THREAD_DEFAULT_TIMESLICE;
     t->parent = parent;
-    
+
     t->ctx = (context_t *) malloc(sizeof(context_t));
     create_context(t->ctx, start, stack, stacksz);
-    
+
     list_insert(parent->thread_list, t, 0);
-    
+
     return t;
 }
 
@@ -97,7 +97,7 @@ void switch_threads(struct thread *old, struct thread *new) {
 
 void thread_sleep() {
     assert(current_thread != 0);
-    
+
     /// TODO: extra parameter for reschedule to make this atomic? Maybe.
     current_thread->state = THREAD_STATE_SLEEPING;
     reschedule();
@@ -105,14 +105,14 @@ void thread_sleep() {
 
 void thread_wake(struct thread *thr) {
     assert(thr != 0);
-    
+
     thr->state = THREAD_STATE_READY;
     queue_push(runqueue, thr);
 }
 
 uint32_t process_priority(struct process *prio) {
     assert(prio != 0);
-    
+
     return prio->priority;
 }
 
@@ -123,7 +123,7 @@ void reschedule() {
         /// \todo Multilevel feedback scheduler will use this to identify
         ///       that we need to drop priority on the thread/process.
     }
-    
+
     // RUNNING -> READY transition for the current thread. State could be
     // SLEEPING, in which case this reschedule is to pick a new thread to run,
     // leaving the current thread off the queue.
@@ -131,17 +131,17 @@ void reschedule() {
         current_thread->state = THREAD_STATE_READY;
         queue_push(alreadyqueue, current_thread);
     }
-    
+
     assert(!queue_empty(runqueue) || !queue_empty(alreadyqueue));
-    
+
     // Pop a thread off the run queue.
     struct thread *thr = (struct thread *) queue_pop(runqueue);
     assert(thr != 0);
-    
+
     // Reset the timeslice and prepare for context switch.
     thr->timeslice = THREAD_DEFAULT_TIMESLICE;
     thr->state = THREAD_STATE_RUNNING;
-    
+
     // Empty run queue?
     if(queue_empty(runqueue)) {
         dprintf("Empty runqueue, swapping queues\n");
@@ -149,16 +149,16 @@ void reschedule() {
         runqueue = alreadyqueue;
         alreadyqueue = tmp;
     }
-    
+
     dprintf("reschedule: queues now run: %sempty / already: %sempty\n", queue_empty(runqueue) ? "" : "not ", queue_empty(alreadyqueue) ? "" : "not ");
-    
+
     // Perform the context switch if this isn't the already-running thread.
     if(thr != current_thread) {
         if(current_thread->parent != thr->parent) {
             /// \todo Process switch - address space and such.
             dprintf("TODO: process switch - address space etc\n");
         }
-        
+
         struct thread *tmp = current_thread;
         current_thread = thr;
         switch_threads(tmp, thr);
@@ -168,7 +168,7 @@ void reschedule() {
 void init_scheduler() {
     runqueue = create_queue();
     alreadyqueue = create_queue();
-    
+
     init_context();
 }
 
@@ -176,8 +176,10 @@ void init_scheduler() {
 void start_scheduler() {
     // Can't start the scheduler without a thread running!
     assert(current_thread != 0);
-    
+
     // Install a timer handler - tick for timeslice completion.
-    install_timer(sched_timer, ((THREAD_DEFAULT_TIMESLICE_MS << TIMERRES_SHIFT) | TIMERRES_MILLI), TIMERFEAT_PERIODIC);
+    if(install_timer(sched_timer, ((THREAD_DEFAULT_TIMESLICE_MS << TIMERRES_SHIFT) | TIMERRES_MILLI), TIMERFEAT_PERIODIC) < 0) {
+        dprintf("scheduler install failed - no useful timer available\n");
+    }
 }
 
