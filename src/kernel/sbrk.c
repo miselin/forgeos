@@ -22,6 +22,8 @@
 #include <util.h>
 #include <io.h>
 
+// #define VERBOSE_SBRK
+
 static uintptr_t base = 0;
 
 static char first_page[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
@@ -32,7 +34,9 @@ static char prime_page[PAGE_SIZE] __attribute__((aligned(PAGE_SIZE)));
 void *dlmalloc_sbrk(intptr_t incr) {
 	uintptr_t old = base;
 
+#ifdef VERBOSE_SBRK
 	dprintf("sbrk(0x%x) - base at %x\n", incr, base);
+#endif
 
 	if(base == 0) {
 		// Assume there is no heap yet. Note that physical memory management depends on
@@ -76,7 +80,9 @@ void *dlmalloc_sbrk(intptr_t incr) {
 		}
 	}
 
+#ifdef VERBOSE_SBRK
 	dprintf("sbrk returning %x\n", old);
+#endif
 
 	return (void *) old;
 }
