@@ -21,13 +21,21 @@
 #include <util.h>
 #include <io.h>
 
-/// \todo All stubs!
-
 extern void arm_mach_uart_remap();
 
 static paddr_t g_primedpage = 0;
 
 extern int __end;
+
+#define FIRSTLEVEL_FAULT    0
+#define FIRSTLEVEL_PAGETAB  1
+#define FIRSTLEVEL_SECTION  2
+#define FIRSTLEVEL_RSVD     3
+
+#define SECLEVEL_FAULT      0
+#define SECLEVEL_LARGE      1
+#define SECLEVEL_SMALL      2
+#define SECLEVEL_SMALLNX    3
 
 /** Section B3.3 in the ARM Architecture Reference Manual (ARMv7) */
 
@@ -118,6 +126,23 @@ struct second_level
     } descriptor;
 } __packed;
 
+static void tlb_invalall() {
+    // Completely invalidate the TLBs and the branch target cache.
+    const uint32_t ignore = 0;
+    asm volatile("MCR p15, 0, %0, c8, c7, 0" :: "r" (ignore));
+    asm volatile("MCR p15, 0, %0, c7, c5, 6" :: "r" (ignore));
+
+    __barrier;
+}
+
+static void tlb_invalpage(vaddr_t addr) {
+    const uint32_t ignore = 0;
+    asm volatile("MCR p15, 0, %0, c8, c7, 1" :: "r" (addr));
+    asm volatile("MCR p15, 0, %0, c7, c5, 6" :: "r" (ignore));
+
+    __barrier;
+}
+
 void arch_vmem_prime(paddr_t p) {
     g_primedpage = p;
 }
@@ -152,6 +177,7 @@ int arch_vmem_map(vaddr_t v, paddr_t p, size_t f) {
     if(!pdir[pdir_offset].descriptor.fault.type) {
         // Allocate page table.
         /// \todo implement me!
+        panic("unimplemented - map page table that doesn't exist yet");
     }
 
     struct second_level *ptab = (struct second_level *) (page_tables + (pdir_offset * 0x400));
@@ -164,10 +190,43 @@ int arch_vmem_map(vaddr_t v, paddr_t p, size_t f) {
         ptab[ptab_offset].descriptor.smallpage.nG = 1;
     }
 
+    // Invalidate the TLB entry for this virtual address.
+    tlb_invalpage(vaddr);
+
     return 0;
 }
 
 void arch_vmem_unmap(vaddr_t v) {
+    // Determine which range of page tables to use
+    unative_t page_tables = 0;
+    if(v < 0x40000000)
+        page_tables = USER_PAGETABS_VIRT;
+    else
+        page_tables = PAGETABS_VIRT;
+
+    unative_t vaddr = v;
+
+    uint32_t pdir_offset = vaddr >> 20;
+    uint32_t ptab_offset = (vaddr >> 12) & 0xFF;
+
+    /// \todo Handle sections/supersections.
+    /// \todo Handle large pages.
+
+    struct first_level *pdir = (struct first_level *) PAGEDIR_VIRT;
+    if(!pdir[pdir_offset].descriptor.fault.type) {
+        // No page table - ignore.
+        return;
+    }
+
+    struct second_level *ptab = (struct second_level *) (page_tables + (pdir_offset * 0x400));
+    if(ptab[ptab_offset].descriptor.fault.type) {
+        ptab[ptab_offset].descriptor.fault.type = SECLEVEL_FAULT;
+    }
+
+    // Invalidate the TLB entry for this virtual address now that it is unmapped
+    tlb_invalpage(vaddr);
+
+    return 0;
 }
 
 int arch_vmem_modify(vaddr_t v, size_t nf) {
@@ -175,60 +234,29 @@ int arch_vmem_modify(vaddr_t v, size_t nf) {
 }
 
 int arch_vmem_ismapped(vaddr_t v) {
-    // Determine which range of page tables to use
-    unative_t page_tables = 0;
-    if(v < 0x40000000)
-        page_tables = USER_PAGETABS_VIRT;
-    else
-        page_tables = PAGETABS_VIRT;
+    // Same operation as for v2p, except only care about the status bits.
+    unative_t pa = 0;
+    asm volatile("MCR p15, 0, %0, c7, c8, 3" :: "r" (v));
+    asm volatile("MRC p15, 0, %0, c7, c4, 0" : "=r" (pa));
 
-    v &= ~0xFFF;
-    uint32_t pdir_offset = v >> 20;
-    uint32_t ptab_offset = (v >> 12) & 0xFF;
-
-    struct first_level *pdir = (struct first_level *) PAGEDIR_VIRT;
-    if(pdir[pdir_offset].descriptor.entry) {
-        if(pdir[pdir_offset].descriptor.fault.type == 2)
-            return 1; // Is a section.
-
-        struct second_level *ptab = (struct second_level *) (page_tables + (pdir_offset * 0x400));
-        if(ptab[ptab_offset].descriptor.fault.type) {
-            return 1;
-        }
-    }
-
-    return 0;
+    // Failure?
+    return (pa & 0x1) ? 0 : 1;
 }
 
 paddr_t arch_vmem_v2p(vaddr_t v) {
     // Lookup the virtual address, return physical address.
+    unative_t pa = 0;
+    asm volatile("MCR p15, 0, %0, c7, c8, 3" :: "r" (v));
+    asm volatile("MRC p15, 0, %0, c7, c4, 0" : "=r" (pa));
 
-    // Determine which range of page tables to use
-    unative_t page_tables = 0;
-    if(v < 0x40000000)
-        page_tables = USER_PAGETABS_VIRT;
-    else
-        page_tables = PAGETABS_VIRT;
-
-    v &= ~0xFFF;
-    uint32_t pdir_offset = v >> 20;
-    uint32_t ptab_offset = (v >> 12) & 0xFF;
-
-    struct first_level *pdir = (struct first_level *) PAGEDIR_VIRT;
-    if(pdir[pdir_offset].descriptor.entry) {
-        if(pdir[pdir_offset].descriptor.fault.type == 2) {
-            return pdir[pdir_offset].descriptor.section.base << 20;
-        }
-
-        struct second_level *ptab = (struct second_level *) (page_tables + (pdir_offset * 0x400));
-        if(ptab[ptab_offset].descriptor.fault.type == 1) {
-            return ptab[ptab_offset].descriptor.largepage.base << 16;
-        } else if(ptab[ptab_offset].descriptor.fault.type > 1) {
-            return ptab[ptab_offset].descriptor.largepage.base << 20;
-        }
+    // Failure?
+    if(pa & 0x1) {
+        dprintf("v2p failed for %x\n", v);
+        return (paddr_t) ~0;
     }
 
-    return (paddr_t) ~0;
+    // Return the physical address.
+    return (paddr_t) (pa & ~0xFFF);
 }
 
 vaddr_t arch_vmem_create() {
@@ -241,6 +269,16 @@ void arch_vmem_switch(vaddr_t pd) {
 void arch_vmem_init() {
     int i;
     dprintf("armv7: vmem init\n");
+
+    // Disable the MMU before we start creating mappings and modifying physical
+    // memory. We can't trust that the bootloader has setup sensible mappings.
+    uint32_t sctlr = 0;
+    asm volatile("MRC p15,0,%0,c1,c0,0" : "=r" (sctlr));
+    sctlr &= ~1;
+    asm volatile("MCR p15,0,%0,c1,c0,0" :: "r" (sctlr));
+
+    // Clear out the TLB now that we have disabled the MMU.
+    tlb_invalall();
 
     /// \note This function is all about setting up a kernel address space in
     ///       which we can create mappings and such. As such there's a fair bit
@@ -330,7 +368,7 @@ void arch_vmem_init() {
     // Write TTBR0 with null - user part of address space split
     asm volatile("MCR p15,0,%0,c2,c0,0" :: "r" (0));
 
-    // Write TTBR1 with the kernel page direectory
+    // Write TTBR1 with the kernel page directory
     asm volatile("MCR p15,0,%0,c2,c0,1" :: "r" (PAGEDIR_PHYS));
 
     // Write TTBCR to configure a 4K directory, and a 1/3 GB split of the address
@@ -342,7 +380,7 @@ void arch_vmem_init() {
     asm volatile("MCR p15,0,%0,c3,c0,0" :: "r" (0xFFFFFFFF));
 
     // Enable the MMU.
-    uint32_t sctlr = 0;
+    sctlr = 0;
     asm volatile("MRC p15,0,%0,c1,c0,0" : "=r" (sctlr));
     sctlr |= 1;
     asm volatile("MCR p15,0,%0,c1,c0,0" :: "r" (sctlr));
