@@ -43,7 +43,7 @@ void *dlmalloc_sbrk(intptr_t incr) {
 		// malloc, so we need a little bit of static space to kick things off.
 		memset(first_page, 0, PAGE_SIZE);
 		vmem_prime(log2phys((paddr_t) prime_page));
-		vmem_map(HEAP_BASE, log2phys((paddr_t) first_page), VMEM_READWRITE);
+		vmem_map(HEAP_BASE, log2phys((paddr_t) first_page), VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_GLOBAL);
 		base = old = HEAP_BASE;
 	}
 
@@ -74,7 +74,7 @@ void *dlmalloc_sbrk(intptr_t incr) {
 			vaddr_t v = old;
 			for(; v <= base; v += PAGE_SIZE) {
 				if(vmem_ismapped(v) == 0) {
-					vmem_map(v, (paddr_t) ~0, 0);
+					vmem_map(v, (paddr_t) ~0, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_GLOBAL);
 				}
 			}
 		}
