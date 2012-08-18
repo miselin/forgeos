@@ -90,15 +90,17 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 	vmem_init();
 #endif
 
-	#ifdef ARM
-	while(1);
-	#endif
-
 	kprintf("Configuring software and hardware interrupts...\n");
 	interrupts_init();
 
 	kprintf("Initialising machine devices...\n");
 	init_devices();
+
+    #ifdef ARM
+    kprintf("ARM: hanging forever, init so far is done\n");
+    while(1)
+        __halt;
+    #endif
 
 	kprintf("Initialising timers...\n");
 	timers_init();

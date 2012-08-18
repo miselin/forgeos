@@ -34,6 +34,9 @@ SECTIONS
         __begin_timer_table = .;
         *(.table.timers*);
         __end_timer_table = .;
+
+        . = ALIGN(4096);
+        *(.ivt*);
     }
 
     .bss : {
