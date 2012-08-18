@@ -319,6 +319,12 @@ void init_serial() {
         uart_protoconfig(i + 1);
         uart_disableflowctl(i + 1);
     }
+
+#ifdef DEBUG
+    // Wait for one character to be transmitted before continuing.
+    // This makes debugging a little easier.
+    serial_read();
+#endif
 }
 
 void serial_write(uint8_t c) {
