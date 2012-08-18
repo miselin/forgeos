@@ -34,20 +34,22 @@ void init_context() {
 
 void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_t stacksz) {
     assert(stackpool != 0);
-    
+
     memset(ctx, 0, sizeof(context_t));
-    
+
     /// \todo Don't use malloc!
     void *stack_ptr = 0;
     if(stack)
         stack_ptr = (void *) stack;
     else
         stack_ptr = (void *) pool_alloc(stackpool);
-    
+
     assert(stack_ptr != 0);
-    
-    /// \todo Set fields of the context here.
-    
+
+    ctx->lr = start;
+    ctx->usersp = (unative_t) stack_ptr;
+    ctx->usersp += stacksz - 4;
+
     dprintf("new arm context %x\n", ctx);
 }
 

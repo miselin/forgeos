@@ -14,7 +14,21 @@
 
 .globl switch_context
 
-# TODO: stub.
 switch_context:
+    # Restore context if the 'save to' context is null.
+    cmp r0, #0
+    beq .restoreonly
+
+    # Save current state.
+    mov r12, lr
+    stmia r0, {r4 - r11, r12, sp}^
+
+.restoreonly:
+
+    # Load new state.
+    ldmia r1, {r4 - r11, r12, sp}^
+    mov lr, r12
+
+    mov r0, #0
     bx lr
 

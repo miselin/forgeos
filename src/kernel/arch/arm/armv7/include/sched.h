@@ -9,7 +9,10 @@
  * always switch within the kernel.
  */
 typedef struct _arm_ctx {
-} __packed context_t;
+    unative_t r4, r5, r6, r7;
+    unative_t r8, r9, r10, r11;
+    unative_t lr, usersp, userlr;
+} __packed __aligned(8) context_t;
 
 #define __halt asm volatile("wfi")
 
