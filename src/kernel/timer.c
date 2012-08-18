@@ -74,13 +74,17 @@ void timers_init() {
 	// Sort the timer list so the higher resolution timers are always first.
 	// Heapsort because it can be done in-place.
 	kprintf("sorting available timer list... ");
-	_tmr_heapify();
-	size_t end = HW_TIMER_COUNT - 1;
-	while(end) {
-		_tmr_swap(end--, 0);
-		_tmr_siftdown(0, end);
+	if(HW_TIMER_COUNT) {
+		_tmr_heapify();
+		size_t end = HW_TIMER_COUNT - 1;
+		while(end) {
+			_tmr_swap(end--, 0);
+			_tmr_siftdown(0, end);
+		}
+		kprintf("OK\n");
+	} else {
+		kprintf("none present!\n");
 	}
-	kprintf("OK\n");
 
 	// Initialise all timers now.
 	size_t i;
@@ -169,7 +173,7 @@ int timer_ticked(struct timer *tim, uint32_t in_ticks) {
 			}
 		}
 	}
-	
+
 	return ret ? 1 : 0;
 }
 
