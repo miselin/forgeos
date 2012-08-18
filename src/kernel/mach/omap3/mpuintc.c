@@ -188,58 +188,13 @@ static void handle(struct intr_stack *p) {
     }
 }
 
-void __attribute__((interrupt("SWI"))) arm_swint_handler()
-{
-    dprintf("ARMv7 received swi trap\n");
-}
-
- void arm_instundef_handler()
-{
-    panic("undefined instruction");
-}
-
- void arm_fiq_handler()
+void arm_fiq_handler()
 {
     dprintf("ARMv7 received FIQ\n");
     while(1);
 }
 
- void arm_irq_handler(struct intr_stack *s)
+void arm_irq_handler(struct intr_stack *s)
 {
-    /// \todo move into platform-specific area
-    dprintf("ARMv7 IRQ\n");
+    handle(s);
 }
-
- void arm_reset_handler()
-{
-    dprintf("ARMv7 received reset trap\n");
-}
-
- void arm_prefetch_abort_handler()
-{
-    panic("prefetch abort");
-}
-
- void arm_data_abort_handler()
-{
-    dprintf("ARMv7 data abort\n");
-
-    vaddr_t dfar = 0;
-    asm volatile("MRC p15,0,%0,c6,c0,0" : "=r" (dfar));
-
-    vaddr_t dfsr = 0;
-    asm volatile("MRC p15,0,%0,c5,c0,0" : "=r" (dfsr));
-
-    vaddr_t linkreg = 0;
-    asm volatile("mov %0, lr" : "=r" (linkreg));
-
-    dprintf("at %x status %x lr %x\n", dfar, dfsr, linkreg);
-
-    panic("data abort");
-}
-
- void arm_addrexcept_handler()
-{
-    panic("address exception");
-}
-

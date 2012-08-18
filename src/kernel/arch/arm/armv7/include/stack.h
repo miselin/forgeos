@@ -19,7 +19,11 @@
 
 #include <types.h>
 
+/// \todo Verify this layout.
 struct intr_stack {
+    unative_t spsr;
+    unative_t lr, r12, r3, r2, r1, r0;
+    unative_t returnaddr;
 } __attribute__((packed));
 
 #endif

@@ -1,5 +1,5 @@
 OUTPUT_ARCH(arm)
-ENTRY(start)
+ENTRY(_init)
 SECTIONS
 {
     . = 0x80008000;
