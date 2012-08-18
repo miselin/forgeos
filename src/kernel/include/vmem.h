@@ -28,6 +28,10 @@
 #define VMEM_USERMODE		0x02
 
 #define VMEM_GLOBAL			0x100
+#define VMEM_DEVICE         0x200
+
+/// Executable region of memory.
+#define VMEM_EXEC         0x400
 
 /// Maps in a single page.
 #define vmem_map		arch_vmem_map

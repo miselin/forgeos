@@ -37,6 +37,35 @@ extern int __end;
 #define SECLEVEL_SMALL      2
 #define SECLEVEL_SMALLNX    3
 
+#define CONTROL_MMUENABLE   (1UL << 0)
+#define CONTROL_STRICTALIGN (1UL << 1)
+#define CONTROL_DATACACHE   (1UL << 2)
+#define CONTROL_FLOWPREDICT (1UL << 11)
+#define CONTROL_INSCACHE    (1UL << 12)
+#define CONTROL_TEXREMAP    (1UL << 28)
+#define CONTROL_ACCESSFLAG  (1UL << 29)
+
+#define DOMAIN_KERNEL       1
+#define DOMAIN_USER         0
+
+#define DOMAINACC_MANAGER   3
+#define DOMAINACC_RSVD      2
+#define DOMAINACC_CLIENT    1
+#define DOMAINACC_NONE      0
+
+#define AP1_KERNEL          3 // (0 << 1)
+#define AP1_USER            (1 << 1)
+
+#define AP2_READWRITE       0
+#define AP2_READONLY        1
+
+#define TEX_CACHEABLE       4
+
+#define CACHE_NOCACHE       0
+#define CACHE_WBACKWALLOC   1
+#define CACHE_WTHRU         2
+#define CACHE_WBACK         3
+
 /** Section B3.3 in the ARM Architecture Reference Manual (ARMv7) */
 
 /// First level descriptor - roughly equivalent to a page directory entry on x86
@@ -115,7 +144,7 @@ struct second_level
             uint32_t b : 1;
             uint32_t c : 1;
             uint32_t ap1 : 2;
-            uint32_t sbz : 3;
+            uint32_t tex : 3;
             uint32_t ap2 : 1;
             uint32_t s : 1;
             uint32_t nG : 1;
@@ -141,6 +170,20 @@ static void tlb_invalpage(vaddr_t addr) {
     asm volatile("MCR p15, 0, %0, c7, c5, 6" :: "r" (ignore));
 
     __barrier;
+}
+
+static uint32_t ap1_flags(size_t f) {
+    if(f & VMEM_USERMODE)
+        return AP1_USER;
+    else
+        return AP1_KERNEL;
+}
+
+static uint32_t ap2_flags(size_t f) {
+    if(f & VMEM_READWRITE)
+        return AP2_READWRITE;
+    else
+        return AP2_READONLY;
 }
 
 void arch_vmem_prime(paddr_t p) {
@@ -185,9 +228,29 @@ int arch_vmem_map(vaddr_t v, paddr_t p, size_t f) {
         return -1; // Already mapped!
     } else {
         ptab[ptab_offset].descriptor.entry = paddr;
-        ptab[ptab_offset].descriptor.smallpage.type = 2;
-        ptab[ptab_offset].descriptor.smallpage.ap1 = 3; /// \todo use flags parameter instead
-        ptab[ptab_offset].descriptor.smallpage.nG = 1;
+        if(f & VMEM_EXEC)
+            ptab[ptab_offset].descriptor.smallpage.type = SECLEVEL_SMALL;
+        else
+            ptab[ptab_offset].descriptor.smallpage.type = SECLEVEL_SMALLNX;
+        ptab[ptab_offset].descriptor.smallpage.ap1 = ap1_flags(f);
+        ptab[ptab_offset].descriptor.smallpage.ap2 = ap2_flags(f);
+        if((f & VMEM_GLOBAL) == 0)
+            ptab[ptab_offset].descriptor.smallpage.nG = 1;
+
+        if(f & VMEM_DEVICE) {
+            if(f & VMEM_GLOBAL) {
+                ptab[ptab_offset].descriptor.smallpage.s = 1;
+                ptab[ptab_offset].descriptor.smallpage.b = 1; // Shareable, Device
+            } else {
+                ptab[ptab_offset].descriptor.smallpage.tex = 2; // Non-shareable, Device
+            }
+        }
+
+        // Cacheable memory - write through, no write allocate on outer.
+        /// \todo VMEM_NOCACHE flag.
+        ptab[ptab_offset].descriptor.smallpage.tex = TEX_CACHEABLE | CACHE_WTHRU;
+        ptab[ptab_offset].descriptor.smallpage.c = CACHE_WBACKWALLOC >> 1;
+        ptab[ptab_offset].descriptor.smallpage.b = CACHE_WBACKWALLOC & 0x1;
     }
 
     // Invalidate the TLB entry for this virtual address.
@@ -272,7 +335,7 @@ void arch_vmem_init() {
 
     // Disable the MMU before we start creating mappings and modifying physical
     // memory. We can't trust that the bootloader has setup sensible mappings.
-    uint32_t sctlr = 0;
+    unative_t sctlr = 0;
     asm volatile("MRC p15,0,%0,c1,c0,0" : "=r" (sctlr));
     sctlr &= ~1;
     asm volatile("MCR p15,0,%0,c1,c0,0" :: "r" (sctlr));
@@ -304,16 +367,22 @@ void arch_vmem_init() {
     pdir_offset = vaddr >> 20;
 
     pdir[pdir_offset].descriptor.entry = page_table_addr;
-    pdir[pdir_offset].descriptor.pageTable.type = 1;
-    pdir[pdir_offset].descriptor.pageTable.domain = 1; // Domain 1 for paging structures.
+    pdir[pdir_offset].descriptor.pageTable.type = FIRSTLEVEL_PAGETAB;
+    pdir[pdir_offset].descriptor.pageTable.domain = DOMAIN_KERNEL;
 
     // Page directories are four pages long!
     for(i = 0; i < 4; i++) {
         ptab_offset = ((vaddr + (i * 0x1000)) >> 12) & 0xFF;
         ptab[ptab_offset].descriptor.entry = PAGEDIR_PHYS + (i * 0x1000);
-        ptab[ptab_offset].descriptor.smallpage.type = 2;
-        ptab[ptab_offset].descriptor.smallpage.ap1 = 3; /// \todo Flags should be configured!
+        ptab[ptab_offset].descriptor.smallpage.type = SECLEVEL_SMALLNX;
+        ptab[ptab_offset].descriptor.smallpage.ap1 = AP1_KERNEL;
+        ptab[ptab_offset].descriptor.smallpage.ap2 = AP2_READWRITE;
         ptab[ptab_offset].descriptor.smallpage.s = 1; // Shareable.
+
+        // Cacheable memory - write through, no write allocate on outer.
+        ptab[ptab_offset].descriptor.smallpage.tex = TEX_CACHEABLE | CACHE_WTHRU;
+        ptab[ptab_offset].descriptor.smallpage.c = CACHE_WBACKWALLOC >> 1;
+        ptab[ptab_offset].descriptor.smallpage.b = CACHE_WBACKWALLOC & 0x1;
     }
 
     // Identity-map the kernel.
@@ -327,10 +396,16 @@ void arch_vmem_init() {
         pdir_offset = vaddr >> 20;
 
         pdir[pdir_offset].descriptor.entry = vaddr;
-        pdir[pdir_offset].descriptor.section.type = 2;
-        pdir[pdir_offset].descriptor.section.domain = 2; // Domain 2 is the kernel.
-        pdir[pdir_offset].descriptor.section.ap1 = 3;
+        pdir[pdir_offset].descriptor.section.type = FIRSTLEVEL_SECTION;
+        pdir[pdir_offset].descriptor.section.domain = DOMAIN_KERNEL;
+        pdir[pdir_offset].descriptor.section.ap1 = AP1_KERNEL;
+        pdir[pdir_offset].descriptor.section.ap2 = AP2_READWRITE;
         pdir[pdir_offset].descriptor.section.s = 1;
+
+        // Cacheable memory - write through, no write allocate on outer.
+        pdir[pdir_offset].descriptor.section.tex = TEX_CACHEABLE | CACHE_WTHRU;
+        pdir[pdir_offset].descriptor.section.c = CACHE_WBACKWALLOC >> 1;
+        pdir[pdir_offset].descriptor.section.b = CACHE_WBACKWALLOC & 0x1;
     }
 
     // Pre-allocate remaining page tables.
@@ -342,10 +417,16 @@ void arch_vmem_init() {
         pdir_offset = vaddr >> 20;
 
         pdir[pdir_offset].descriptor.entry = paddr;
-        pdir[pdir_offset].descriptor.section.type = 2;
-        pdir[pdir_offset].descriptor.section.domain = 1;
-        pdir[pdir_offset].descriptor.section.ap1 = 3;
+        pdir[pdir_offset].descriptor.section.type = FIRSTLEVEL_SECTION;
+        pdir[pdir_offset].descriptor.section.domain = DOMAIN_KERNEL;
+        pdir[pdir_offset].descriptor.section.ap1 = AP1_KERNEL;
+        pdir[pdir_offset].descriptor.section.ap2 = AP2_READWRITE;
         pdir[pdir_offset].descriptor.section.s = 1;
+
+        // Cacheable memory - write through, no write allocate on outer.
+        pdir[pdir_offset].descriptor.section.tex = TEX_CACHEABLE | CACHE_WTHRU;
+        pdir[pdir_offset].descriptor.section.c = CACHE_WBACKWALLOC >> 1;
+        pdir[pdir_offset].descriptor.section.b = CACHE_WBACKWALLOC & 0x1;
 
         // 1024 page tables in this region...
         for(i = 0; i < 1024; i++, paddr += 0x400) {
@@ -356,8 +437,8 @@ void arch_vmem_init() {
             if(pdir[pdir_offset].descriptor.entry)
                 continue;
             pdir[pdir_offset].descriptor.entry = paddr;
-            pdir[pdir_offset].descriptor.pageTable.type = 1;
-            pdir[pdir_offset].descriptor.pageTable.domain = 1;
+            pdir[pdir_offset].descriptor.pageTable.type = FIRSTLEVEL_PAGETAB;
+            pdir[pdir_offset].descriptor.pageTable.domain = DOMAIN_KERNEL;
         }
     }
 
@@ -375,14 +456,18 @@ void arch_vmem_init() {
     // space - user/kernel.
     asm volatile("MCR p15,0,%0,c2,c0,2" :: "r" (2));
 
-    // Give manager access to all domains
-    /// \todo temporary.
-    asm volatile("MCR p15,0,%0,c3,c0,0" :: "r" (0xFFFFFFFF));
+    // Client access to all domains - reflect permission bits in TLB.
+    unative_t domain = 0;
+    domain |= DOMAINACC_CLIENT << (DOMAIN_KERNEL * 2);
+    domain |= DOMAINACC_CLIENT << (DOMAIN_USER * 2);
+    asm volatile("MCR p15,0,%0,c3,c0,0" :: "r" (domain));
 
     // Enable the MMU.
     sctlr = 0;
     asm volatile("MRC p15,0,%0,c1,c0,0" : "=r" (sctlr));
-    sctlr |= 1;
+    sctlr |= CONTROL_MMUENABLE | CONTROL_STRICTALIGN;
+    sctlr |= CONTROL_DATACACHE | CONTROL_INSCACHE;
+    sctlr |= CONTROL_FLOWPREDICT | CONTROL_ACCESSFLAG;
     asm volatile("MCR p15,0,%0,c1,c0,0" :: "r" (sctlr));
 
     // The UART code refers to the actual physical addresses of the UARTs...
