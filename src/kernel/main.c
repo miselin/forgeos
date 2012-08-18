@@ -34,6 +34,8 @@ extern void _start();
 KBOOT_IMAGE(0);
 
 void idle() {
+    dprintf("idle thread has started...\n");
+
     char idlebuf[81];
     while(1) {
         interrupts_disable();
@@ -95,12 +97,6 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
 	kprintf("Initialising machine devices...\n");
 	init_devices();
-
-    #ifdef ARM
-    kprintf("ARM: hanging forever, init so far is done\n");
-    while(1)
-        __halt;
-    #endif
 
 	kprintf("Initialising timers...\n");
 	timers_init();

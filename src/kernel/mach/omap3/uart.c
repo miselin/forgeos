@@ -309,6 +309,9 @@ void machine_putc_at(char c, int x, int y) {
     /// \todo implement
 }
 
+void machine_define_screen_extents(int x __unused, int y __unused) {
+}
+
 /// Initialises the UARTs. I know they're technically not serial ports, but this
 /// is an easy abstraction.
 void init_serial() {
@@ -349,4 +352,3 @@ void arm_mach_uart_remap() {
 
     dprintf("omap3: mapped UART in virtual memory %x %x %x\n", uart1, uart2, uart3);
 }
-
