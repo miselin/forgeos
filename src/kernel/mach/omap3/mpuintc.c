@@ -26,6 +26,8 @@
 #define MPU_INTC_PHYS       0x48200000
 #define MPU_INTC_VIRT       (MMIO_BASE + 0x3000) /// \todo permit allocation
 
+#define CONTROL_EXECVECTOR  (1 << 13)
+
 #define MPUINT_REVISION         (0x00) // R
 #define MPUINT_SYSCONFIG        (0x10 / 4) // RW
 #define MPUINT_SYSSTATUS        (0x14 / 4) // R
@@ -103,7 +105,7 @@ void arch_interrupts_init() {
     vmem_unmap(MPU_INTC_VIRT);
 
     // Now, map in the MPU interrupt controller for MMIO
-    vmem_map(MPU_INTC_VIRT, MPU_INTC_PHYS, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_DEVICE);
+    vmem_map(MPU_INTC_VIRT, MPU_INTC_PHYS, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_DEVICE | VMEM_GLOBAL);
     volatile uint32_t *mpuintc = (volatile uint32_t *) MPU_INTC_VIRT;
 
     // Display information.
@@ -113,7 +115,7 @@ void arch_interrupts_init() {
     // Use the high vector for the exception base (0xFFFF0000 instead of 0x0)
     uint32_t sctlr = 0;
     __asm__ volatile("MRC p15, 0, %0, c1, c0, 0" : "=r" (sctlr));
-    sctlr |= 0x2000;
+    sctlr |= CONTROL_EXECVECTOR;
     __asm__ volatile("MCR p15, 0, %0, c1, c0, 0" :: "r" (sctlr));
 
     // Reset the controller

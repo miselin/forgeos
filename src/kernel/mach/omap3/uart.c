@@ -339,9 +339,9 @@ uint8_t serial_read() {
 }
 
 void arm_mach_uart_remap() {
-    vmem_map(UART1_VIRT, UART1_PHYS, VMEM_READWRITE);
-    vmem_map(UART2_VIRT, UART2_PHYS, VMEM_READWRITE);
-    vmem_map(UART3_VIRT, UART3_PHYS, VMEM_READWRITE);
+    vmem_map(UART1_VIRT, UART1_PHYS, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_DEVICE | VMEM_GLOBAL);
+    vmem_map(UART2_VIRT, UART2_PHYS, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_DEVICE | VMEM_GLOBAL);
+    vmem_map(UART3_VIRT, UART3_PHYS, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_DEVICE | VMEM_GLOBAL);
 
     uart1 = (volatile uint8_t*) UART1_VIRT;
     uart2 = (volatile uint8_t*) UART2_VIRT;
