@@ -14,13 +14,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #include <types.h>
+#include <system.h>
 #include <interrupts.h>
 #include <compiler.h>
 #include <io.h>
 #include <timer.h>
 #include <vmem.h>
 
-#define SYNCTIMER_VIRT  (0xD0000000 + 0xF000)
+#define SYNCTIMER_VIRT  (MMIO_BASE + 0xF000)
 #define SYNCTIMER_PHYS  0x48320000
 
 int init_omap3_synctimer() {
@@ -30,7 +31,7 @@ int init_omap3_synctimer() {
 
     // Display information.
     uint8_t rev = synctimer[0] & 0xFF;
-    dprintf("ARMv7 Sync Timer Revision %d.%d\n", (rev >> 4), (rev & 0xF));
+    dprintf("ARMv7 OMAP3 Sync Timer Revision %d.%d\n", (rev >> 4), (rev & 0xF));
 
     return 0;
 }

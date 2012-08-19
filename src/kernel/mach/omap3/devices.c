@@ -17,10 +17,12 @@
 #include <types.h>
 #include <serial.h>
 #include <util.h>
+#include <prcm.h>
 
 extern int __start_bss, __end_bss;
 
 void mach_init_devices() {
+    init_prcm();
 }
 
 void mach_init_devices_early() {
