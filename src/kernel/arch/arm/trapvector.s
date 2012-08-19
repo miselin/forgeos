@@ -54,6 +54,8 @@ __arm_vector_table:
 
 .section .text
 
+.extern reschedule
+
 arm_asm_irq_handler:
 
     # Save r4-r6
@@ -79,6 +81,9 @@ arm_asm_irq_handler:
     # Call into the kernel - give it an interrupt frame
     mov r0, sp
     bl arm_irq_handler
+
+    cmp r0, #0
+    blne reschedule
 
     # Restore SPSR
     ldmfd sp!, {r0}
