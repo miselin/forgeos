@@ -20,11 +20,13 @@
 #include <io.h>
 #include <panic.h>
 #include <interrupts.h>
+#include <mmiopool.h>
 
 #define VECTOR_TABLE_PHYS   0xFFFF0000
 
 #define MPU_INTC_PHYS       0x48200000
-#define MPU_INTC_VIRT       (MMIO_BASE + 0x3000) /// \todo permit allocation
+
+static volatile uint32_t    *mpuintc = 0;
 
 #define CONTROL_EXECVECTOR  (1 << 13)
 
@@ -101,8 +103,7 @@ void arch_interrupts_init() {
     vmem_map(VECTOR_TABLE_PHYS, vecstart, VMEM_READONLY | VMEM_SUPERVISOR | VMEM_GLOBAL | VMEM_EXEC);
 
     // Now, map in the MPU interrupt controller for MMIO
-    vmem_map(MPU_INTC_VIRT, MPU_INTC_PHYS, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_DEVICE | VMEM_GLOBAL);
-    volatile uint32_t *mpuintc = (volatile uint32_t *) MPU_INTC_VIRT;
+    mpuintc = (volatile uint32_t *) mmiopool_alloc(PAGE_SIZE, MPU_INTC_PHYS);
 
     // Display information.
     uint8_t rev = mpuintc[MPUINT_REVISION] & 0xFF;
@@ -145,15 +146,11 @@ void arch_interrupts_init() {
 }
 
 static void unmask(int n) {
-    volatile uint32_t *mpuintc = (volatile uint32_t *) MPU_INTC_VIRT;
-
     size_t isr = (n % 96) / 32;
     mpuintc[MPUINT_MIR_CLEAR + (isr * 8)] = 1 << (n % 32);
 }
 
 static void mask(int n) {
-    volatile uint32_t *mpuintc = (volatile uint32_t *) MPU_INTC_VIRT;
-
     size_t isr = (n % 96) / 32;
     mpuintc[MPUINT_MIR_SET + (isr * 8)] = 1 << (n % 32);
 }
@@ -173,8 +170,6 @@ void mach_interrupts_reg(int n, int leveltrig, inthandler_t handler) {
 }
 
 static void handle(struct intr_stack *p) {
-    volatile uint32_t *mpuintc = (volatile uint32_t *) MPU_INTC_VIRT;
-
     size_t num = mpuintc[MPUINT_SIR_IRQ] & 0x7F;
 
     if(interrupts[num].handler) {

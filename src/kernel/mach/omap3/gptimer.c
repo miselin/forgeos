@@ -22,8 +22,11 @@
 #include <vmem.h>
 #include <assert.h>
 #include <prcm.h>
+#include <mmiopool.h>
 
-#define GPTIMER_VIRT_BASE  (MMIO_BASE + 0x10000)
+#define GPTIMER_COUNT       11
+
+static volatile uint32_t *gptimer[GPTIMER_COUNT] = {0};
 
 static paddr_t gptimer_phys[] = {
     0x48318000,
@@ -67,12 +70,10 @@ static struct timer *timers[] = {
 
 /// GP Timer IRQ
 int irq_omap3_gptimer(int n, struct intr_stack *s) {
-    volatile uint32_t *gptimer = (volatile uint32_t *) (GPTIMER_VIRT_BASE + (0x1000 * n));
-
     int ret = timer_ticked(timers[n], ((1 << TIMERRES_SHIFT) | TIMERRES_MILLI));
 
     // ACK the interrupt.
-    gptimer[TISR] = gptimer[TISR];
+    gptimer[n][TISR] = gptimer[n][TISR];
 
     return ret;
 }
@@ -92,40 +93,55 @@ int init_omap3_gptimer(int n, inthandler_t irqhandler) {
     }
 
     // Map in the timer memory.
-    vmem_map(GPTIMER_VIRT_BASE + (0x1000 * n), gptimer_phys[n], VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_DEVICE | VMEM_GLOBAL);
-    volatile uint32_t *gptimer = (volatile uint32_t *) (GPTIMER_VIRT_BASE + (0x1000 * n));
+    gptimer[n] = (volatile uint32_t *) mmiopool_alloc(PAGE_SIZE, gptimer_phys[n]);
 
     // Display revision.
-    uint8_t rev = gptimer[TIDR] & 0xFF;
+    uint8_t rev = gptimer[n][TIDR] & 0xFF;
     dprintf("ARMv7 OMAP3 GP Timer %d Revision %d.%d\n", n, (rev >> 4), (rev & 0xF));
 
     // Reset the timer.
-    gptimer[TIOCP_CFG] = 0x2;
-    gptimer[TSICR] = 0x2;
-    while((gptimer[TISTAT] & 1) == 0);
+    gptimer[n][TIOCP_CFG] = 0x2;
+    gptimer[n][TSICR] = 0x2;
+    dprintf("ptr: %x\n", gptimer[n]);
+    dprintf("status: %x\n", gptimer[n][TISTAT]);
+    while((gptimer[n][TISTAT] & 1) == 0);
+
+    dprintf("reset complete\n");
 
     // Use the 32 kHZ functional clock now that reset is complete.
     if(n > 0) {
         per_clocksel(n, CLOCK_32K);
     }
 
+    dprintf("1\n");
+
     // Set up for 1 ms ticks. 16.2.4.2.1, OMAP35xx manual.
-    gptimer[TPIR] = 232000;
-    gptimer[TNIR] = (uint32_t) -768000;
-    gptimer[TLDR] = 0xFFFFFFE0;
-    gptimer[TTGR] = 1;
+    gptimer[n][TPIR] = 232000;
+    gptimer[n][TNIR] = (uint32_t) -768000;
+    gptimer[n][TLDR] = 0xFFFFFFE0;
+    gptimer[n][TTGR] = 1;
+
+    dprintf("2\n");
 
     // Clear any existing interrupts pending.
-    gptimer[TISR] = 0x7;
+    gptimer[n][TISR] = 0x7;
+
+    dprintf("3\n");
 
     // Install our IRQ handler.
     interrupts_irq_reg(37 + n, 1, irqhandler);
 
+    dprintf("4\n");
+
     // Enable overflow interrupt - will fire an IRQ when the tick counter overflows.
-    gptimer[TIER] = 0x2;
+    gptimer[n][TIER] = 0x2;
+
+    dprintf("5\n");
 
     // Start the timer!
-    gptimer[TCLR] = 0x3;
+    gptimer[n][TCLR] = 0x3;
+
+    dprintf("timer init done\n");
 
     return 0;
 }

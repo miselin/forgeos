@@ -20,14 +20,15 @@
 #include <io.h>
 #include <timer.h>
 #include <vmem.h>
+#include <mmiopool.h>
 
-#define SYNCTIMER_VIRT  (MMIO_BASE + 0xF000)
 #define SYNCTIMER_PHYS  0x48320000
+
+volatile uint32_t *synctimer = 0;
 
 int init_omap3_synctimer() {
     // Map in the MMIO region, display version.
-    vmem_map(SYNCTIMER_VIRT, SYNCTIMER_PHYS, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_DEVICE | VMEM_GLOBAL);
-    volatile uint32_t *synctimer = (volatile uint32_t *) SYNCTIMER_VIRT;
+    synctimer = (volatile uint32_t *) mmiopool_alloc(PAGE_SIZE, SYNCTIMER_PHYS);
 
     // Display information.
     uint8_t rev = synctimer[0] & 0xFF;
@@ -37,7 +38,6 @@ int init_omap3_synctimer() {
 }
 
 uint64_t omap3_synctimer_ticks() {
-    volatile uint32_t *synctimer = (volatile uint32_t *) SYNCTIMER_VIRT;
     return (uint64_t) synctimer[4];
 }
 

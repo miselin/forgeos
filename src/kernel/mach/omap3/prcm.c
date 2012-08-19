@@ -19,12 +19,13 @@
 #include <prcm.h>
 #include <vmem.h>
 #include <io.h>
+#include <mmiopool.h>
 
 #define PRCM_BASE 0x48004000
 
-#define PRCM_VIRT (MMIO_BASE + 0xD000)
+static vaddr_t prcm_virt = 0;
 
-// Offsets from PRCM_VIRT for different sections of the PRCM module.
+// Offsets from prcm_virt for different sections of the PRCM module.
 #define CM_IVA2         0x0000
 #define SYSREG          0x0800
 #define CM_MPU          0x0900
@@ -79,7 +80,7 @@ void per_clocksel(size_t clock, int which) {
         --clock;
         uint32_t bit = 1 << clock;
 
-        volatile uint32_t *clksel = (volatile uint32_t *) (PRCM_VIRT + CM_PER + PER_CLKSEL);
+        volatile uint32_t *clksel = (volatile uint32_t *) (prcm_virt + CM_PER + PER_CLKSEL);
 
         uint32_t val = *clksel;
         if(which == CLOCK_32K) {
@@ -96,7 +97,7 @@ void per_funcclock(size_t clock, int enable) {
         clock += 2;
         uint32_t bit = 1 << clock;
 
-        volatile uint32_t *clksel = (volatile uint32_t *) (PRCM_VIRT + CM_PER + PER_FCLKEN);
+        volatile uint32_t *clksel = (volatile uint32_t *) (prcm_virt + CM_PER + PER_FCLKEN);
 
         uint32_t val = *clksel;
         if(enable)
@@ -112,7 +113,7 @@ void per_ifaceclock(size_t clock, int enable) {
         clock += 2;
         uint32_t bit = 1 << clock;
 
-        volatile uint32_t *clksel = (volatile uint32_t *) (PRCM_VIRT + CM_PER + PER_ICLKEN);
+        volatile uint32_t *clksel = (volatile uint32_t *) (prcm_virt + CM_PER + PER_ICLKEN);
 
         uint32_t val = *clksel;
         if(enable)
@@ -132,7 +133,7 @@ void core_funcclock(size_t n, size_t clock, int enable) {
     else if(n == 3)
         base = CORE_FCLKEN3;
 
-    volatile uint32_t *clksel = (volatile uint32_t *) (PRCM_VIRT + CM_CORE + base);
+    volatile uint32_t *clksel = (volatile uint32_t *) (prcm_virt + CM_CORE + base);
 
     uint32_t val = *clksel;
     if(enable)
@@ -151,7 +152,7 @@ void core_ifaceclock(size_t n, size_t clock, int enable) {
     else if(n == 3)
         base = CORE_ICLKEN3;
 
-    volatile uint32_t *clksel = (volatile uint32_t *) (PRCM_VIRT + CM_CORE + base);
+    volatile uint32_t *clksel = (volatile uint32_t *) (prcm_virt + CM_CORE + base);
 
     uint32_t val = *clksel;
     if(enable)
@@ -170,7 +171,7 @@ void core_waitidle(size_t n, size_t clock, int waitforon) {
     else if(n == 3)
         base = CORE_IDLEST3;
 
-    volatile uint32_t *clksel = (volatile uint32_t *) (PRCM_VIRT + CM_CORE + base);
+    volatile uint32_t *clksel = (volatile uint32_t *) (prcm_virt + CM_CORE + base);
 
     if(waitforon)
         while(!(*clksel & bit));
@@ -187,7 +188,7 @@ void pll_waitidle(size_t n, size_t clock, int waitforon) {
     else if(n == 2)
         base = PLL_IDLEST2;
 
-    volatile uint32_t *clksel = (volatile uint32_t *) (PRCM_VIRT + CLOCKCTL + base);
+    volatile uint32_t *clksel = (volatile uint32_t *) (prcm_virt + CLOCKCTL + base);
 
     if(waitforon)
         while(!(*clksel & bit));
@@ -199,7 +200,7 @@ void core_clocksel(size_t clock, int which) {
     uint32_t bit = 1 << clock;
     uint32_t set = which << clock;
 
-    volatile uint32_t *clksel = (volatile uint32_t *) (PRCM_VIRT + CM_CORE + CORE_CLKSEL);
+    volatile uint32_t *clksel = (volatile uint32_t *) (prcm_virt + CM_CORE + CORE_CLKSEL);
 
     uint32_t mask = 0;
     if(clock == CLOCK_L3)
@@ -222,7 +223,7 @@ void pll_setclock(size_t n, size_t value) {
     else if(n == 2)
         base = PLL_CLKEN2;
 
-    volatile uint32_t *clksel = (volatile uint32_t *) (PRCM_VIRT + CLOCKCTL + base);
+    volatile uint32_t *clksel = (volatile uint32_t *) (prcm_virt + CLOCKCTL + base);
     *clksel = value;
 }
 
@@ -239,13 +240,12 @@ void pll_selclock(size_t n, size_t value) {
     else if(n == 5)
         base = PLL_CLKSEL5;
 
-    volatile uint32_t *clksel = (volatile uint32_t *) (PRCM_VIRT + CLOCKCTL + base);
+    volatile uint32_t *clksel = (volatile uint32_t *) (prcm_virt + CLOCKCTL + base);
     *clksel = value;
 }
 
 void init_prcm() {
-    vmem_map(PRCM_VIRT, PRCM_BASE, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_DEVICE | VMEM_GLOBAL);
-    vmem_map(PRCM_VIRT + 0x1000, PRCM_BASE + 0x1000, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_DEVICE | VMEM_GLOBAL);
+    prcm_virt = (vaddr_t) mmiopool_alloc(PAGE_SIZE * 2, PRCM_BASE);
 
     dprintf("ARMv7 omap3 PRCM module - mapping complete.\n");
 }
