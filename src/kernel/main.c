@@ -111,9 +111,6 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 	perform_tests();
 	kprintf("Tests complete.\n");
 	while(1) __halt;
-#else
-	kprintf("Enabling interrupts...\n");
-	interrupts_enable();
 #endif
 
     // Leave the bottom line of the screen for a memory and information display.
