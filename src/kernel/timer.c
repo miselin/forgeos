@@ -93,10 +93,14 @@ void timers_init() {
 		if(ent.tmr && (ent.tmr->timer_init != 0)) {
 			kprintf("init timer %s: ", ent.tmr->name);
 			int rc = ent.tmr->timer_init();
-			if(!rc)
+			if(!rc) {
 				kprintf("OK\n");
-			else
+			} else {
 				kprintf("FAIL\n");
+
+				// Failed - timer can't offer anything.
+				ent.tmr->timer_feat = 0;
+			}
 		}
 	}
 }
