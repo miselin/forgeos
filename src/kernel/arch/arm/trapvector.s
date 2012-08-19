@@ -51,7 +51,6 @@ __arm_vector_table:
 # 0x1C - FIQ (fast interrupt)
     __armvec_fiq:
         ldr pc,=arm_fiq_handler
-__end_arm_vector_table:
 
 .section .text
 

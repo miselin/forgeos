@@ -23,6 +23,7 @@ static int set(int n) {
         cpsr &= ~0x80;
     else
         cpsr |= 0x80;
+    asm volatile("MSR cpsr_c, %0" :: "r" (cpsr));
 }
 
 void arch_interrupts_enable() {

@@ -92,17 +92,13 @@ struct intinfo {
 static struct intinfo interrupts[96];
 
 extern int __arm_vector_table;
-extern int __end_arm_vector_table;
 
 void arch_interrupts_init() {
     unative_t vecstart = (unative_t) &__arm_vector_table;
-    unative_t vecend = (unative_t) &__end_arm_vector_table;
     size_t i = 0;
 
     // Map in the location for the vector table.
-    vmem_map(MPU_INTC_VIRT, 0xFFFF0000, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_GLOBAL);
-    memcpy((void *) MPU_INTC_VIRT, (void *) &__arm_vector_table, vecend - vecstart);
-    vmem_unmap(MPU_INTC_VIRT);
+    vmem_map(VECTOR_TABLE_PHYS, vecstart, VMEM_READONLY | VMEM_SUPERVISOR | VMEM_GLOBAL | VMEM_EXEC);
 
     // Now, map in the MPU interrupt controller for MMIO
     vmem_map(MPU_INTC_VIRT, MPU_INTC_PHYS, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_DEVICE | VMEM_GLOBAL);
@@ -163,13 +159,17 @@ static void mask(int n) {
 }
 
 void arch_interrupts_reg(int n, inthandler_t handler) {
-    interrupts[n].handler = handler;
-    interrupts[n].leveltrig = 1;
+    mach_interrupts_reg(n, 1, handler);
 }
 
 void mach_interrupts_reg(int n, int leveltrig, inthandler_t handler) {
     interrupts[n].handler = handler;
     interrupts[n].leveltrig = leveltrig;
+
+    if(handler == 0)
+        mask(n);
+    else
+        unmask(n);
 }
 
 static void handle(struct intr_stack *p) {
@@ -190,7 +190,7 @@ static void handle(struct intr_stack *p) {
     }
 }
 
-void arm_fiq_handler()
+void __attribute__((interrupt("FIQ"))) arm_fiq_handler()
 {
     dprintf("ARMv7 received FIQ\n");
     while(1);

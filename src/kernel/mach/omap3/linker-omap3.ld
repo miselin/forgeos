@@ -37,6 +37,7 @@ SECTIONS
 
         . = ALIGN(4096);
         *(.ivt*);
+        __end_arm_vector_table = .;
     }
 
     .bss : {
