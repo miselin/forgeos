@@ -29,7 +29,12 @@ extern void mach_init_devices();
 /// configuring additional devices.
 #define init_devices_early mach_init_devices_early
 
+/// Performs any extra initialisation that may be required early, but that
+/// requires the MMU and/or physical memory to be functional.
+#define init_devices_early2 mach_init_devices_early2
+
 extern void mach_init_devices_early();
+extern void mach_init_devices_early2();
 #endif
 
 #endif

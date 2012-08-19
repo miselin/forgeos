@@ -15,6 +15,7 @@
  */
 
 #include <types.h>
+#include <mmiopool.h>
 #include <serial.h>
 #include <system.h>
 #include <vmem.h>
@@ -24,12 +25,6 @@
 #define UART1_PHYS      0x4806A000
 #define UART2_PHYS      0x4806C000
 #define UART3_PHYS      0x49020000
-
-/// \todo Implement some way of allocating out these addresses (but without
-///       mapping like the pool code would).
-#define UART1_VIRT      (MMIO_BASE + 0)
-#define UART2_VIRT      (MMIO_BASE + 0x1000)
-#define UART3_VIRT      (MMIO_BASE + 0x2000)
 
 /// OMAP3 UART addresses.
 volatile uint8_t *uart1 = (volatile uint8_t*) UART1_PHYS;
@@ -341,14 +336,18 @@ uint8_t serial_read() {
     return uart_read(3);
 }
 
-void arm_mach_uart_remap() {
-    vmem_map(UART1_VIRT, UART1_PHYS, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_DEVICE | VMEM_GLOBAL);
-    vmem_map(UART2_VIRT, UART2_PHYS, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_DEVICE | VMEM_GLOBAL);
-    vmem_map(UART3_VIRT, UART3_PHYS, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_DEVICE | VMEM_GLOBAL);
+void arm_mach_uart_disable() {
+    // Disable uart_* functions until after allocation is done.
+    // All functions will gracefully fail (and dprintf et al will simply return
+    // without actually writing any data).
+    uart1 = uart2 = uart3 = (volatile uint8_t*) 0;
+}
 
-    uart1 = (volatile uint8_t*) UART1_VIRT;
-    uart2 = (volatile uint8_t*) UART2_VIRT;
-    uart3 = (volatile uint8_t*) UART3_VIRT;
+void arm_mach_uart_remap() {
+    // Allocate from the MMIO pool for all UARTs.
+    uart1 = (volatile uint8_t*) mmiopool_alloc(PAGE_SIZE, UART1_PHYS);
+    uart2 = (volatile uint8_t*) mmiopool_alloc(PAGE_SIZE, UART2_PHYS);
+    uart3 = (volatile uint8_t*) mmiopool_alloc(PAGE_SIZE, UART3_PHYS);
 
     dprintf("omap3: mapped UART in virtual memory %x %x %x\n", uart1, uart2, uart3);
 }

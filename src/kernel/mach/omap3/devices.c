@@ -21,6 +21,8 @@
 
 extern int __start_bss, __end_bss;
 
+extern void arm_mach_uart_remap();
+
 void mach_init_devices() {
     init_prcm();
 }
@@ -34,3 +36,6 @@ void mach_init_devices_early() {
     init_serial();
 }
 
+void mach_init_devices_early2() {
+    arm_mach_uart_remap();
+}

@@ -21,7 +21,7 @@
 #include <util.h>
 #include <io.h>
 
-extern void arm_mach_uart_remap();
+extern void arm_mach_uart_disable();
 
 static paddr_t g_primedpage = 0;
 
@@ -471,9 +471,8 @@ void arch_vmem_init() {
     asm volatile("MCR p15,0,%0,c1,c0,0" :: "r" (sctlr));
 
     // The UART code refers to the actual physical addresses of the UARTs...
-    // The machine implementation exposes this function so we can notify it that
-    // vmem_map is callable.
-    arm_mach_uart_remap();
+    // The UART output code mustn't run until after the UARTs can be remapped.
+    arm_mach_uart_disable();
 
     dprintf("armv7: mmu enabled\n");
 }

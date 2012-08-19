@@ -21,7 +21,9 @@
 #include <devices.h>
 #include <timer.h>
 #include <interrupts.h>
+#include <mmiopool.h>
 #include <dlmalloc.h>
+#include <system.h>
 #include <timer.h>
 #include <assert.h>
 #include <sched.h>
@@ -79,17 +81,29 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 	vmem_init();
 #endif
 
-	// This will make sure there's about 4K of space for malloc to use until physical
-	// memory management is available for proper virtual memory.
-	kprintf("Initialising malloc()...\n");
-	dlmalloc_sbrk(0);
+    // This will make sure there's about 4K of space for malloc to use until physical
+    // memory management is available for proper virtual memory.
+    kprintf("Initialising malloc()...\n");
+    dlmalloc_sbrk(0);
 
 	kprintf("Initialising physical memory manager...\n");
 	pmem_init(tags);
 
-#ifndef MACH_REQUIRES_EARLY_DEVINIT
+#ifdef MACH_REQUIRES_EARLY_DEVINIT
+    // Start up the MMIO pool implementation.
+    kprintf("Configuring MMIO pools...\n");
+    init_mmiopool(MMIO_BASE, MMIO_LENGTH);
+
+    // Virtual memory and physical memory management are now working fine.
+    // Do secondary early init.
+    init_devices_early2();
+#else
 	kprintf("Completing virtual memory initialisation...\n");
 	vmem_init();
+
+    // Start up the MMIO pool implementation.
+    kprintf("Configuring MMIO pools...\n");
+    init_mmiopool(MMIO_BASE, MMIO_LENGTH);
 #endif
 
 	kprintf("Configuring software and hardware interrupts...\n");
