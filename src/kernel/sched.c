@@ -32,7 +32,6 @@ static struct thread *current_thread = 0;
 extern void init_context();
 
 static int sched_timer(uint64_t ticks) {
-    dprintf("sched_timer: ticks=%x\n", (uint32_t) ticks);
     if(ticks > current_thread->timeslice)
         ticks = current_thread->timeslice;
     current_thread->timeslice -= ticks;

@@ -122,8 +122,6 @@ void *list_at(void *list, size_t index) {
 	if(index >= l->len)
 		return 0;
 
-	dprintf("list_at %x: idx %d len %d\n", list, index, l->len);
-
 	if(index == 0) {
 		ret = l->head;
 	} else if(index >= (l->len - 1)) {
@@ -143,7 +141,7 @@ void *list_at(void *list, size_t index) {
 size_t list_len(void *list) {
     if(!list)
         return;
-    
+
     struct llist *l = (struct llist *) list;
     return l->len;
 }
