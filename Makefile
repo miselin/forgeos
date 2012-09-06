@@ -38,7 +38,10 @@ BUILD_ENV := debug
 MKISOFS := mkisofs
 
 # Override the serial tty for the 'kermit' target in ARM testing.
-SERIAL_TTY := /dev/ttyUSB0hurr
+SERIAL_TTY := /dev/ttyUSB0
+
+# Override the default shell to be 'bash' (and not 'dash' or similar)
+SHELL := /bin/bash
 
 # END CONFIGURATION SECTION
 
@@ -141,7 +144,7 @@ OBJDIR := $(BUILD_DIR)/obj
 INSTDIR := $(BUILD_DIR)/inst
 
 # Export everything we have so far for the sub-make.
-export ARCH_TARGET ARCH_SUBTARGET PLATFORM_TARGET
+export ARCH_TARGET ARCH_SUBTARGET PLATFORM_TARGET SHELL
 export AR AS CC CPP CXX LD NM OBJCOPY OBJDUMP STRIP MKISOFS
 export HOSTAR HOSTAS HOSTCC HOSTCPP HOSTCXX HOSTLD HOSTNM HOSTSTRIP
 export OUTPUT_DIR BUILD_ENV BUILD_DIR OBJDIR INSTDIR SERIAL_TTY
@@ -239,16 +242,16 @@ $(UIMAGE): kernel
 	@echo "Building uImage for u-boot..."
 	@$(OBJCOPY) -O binary $(OBJDIR)/kernel/kernel $(OBJDIR)/kernel/kernel.flat
 	@mkimage -A arm -O linux -T kernel -C none -a 0x80008000 -e 0x80008000 \
-	-n forge -d $(OBJDIR)/kernel/kernel.flat $(UIMAGE) 2>&1 | tee -a $(BUILD_DIR)/build.log
+	-n forge -d $(OBJDIR)/kernel/kernel.flat $(UIMAGE) 2>&1 | tee -a $(BUILD_DIR)/build.log; exit $${PIPESTATUS[0]}
 
 kermit: $(UIMAGE)
 	@echo "Loading kernel via Kermit on a device..."
-	@$(BUILD_SRC)/scripts/kermit.sh $(UIMAGE) $(SERIAL_TTY) 2>&1 | tee -a $(BUILD_DIR)/build.log
+	@$(BUILD_SRC)/scripts/kermit.sh $(UIMAGE) $(SERIAL_TTY) 2>&1 | tee -a $(BUILD_DIR)/build.log; exit $${PIPESTATUS[0]}
 
 endif
 
 $(DIRS): cleanlog
-	@$(MAKE) -C $(BUILD_SRC)/src/$@ 2>&1 | tee -a $(BUILD_DIR)/build.log
+	@$(MAKE) -C $(BUILD_SRC)/src/$@ 2>&1 | tee -a $(BUILD_DIR)/build.log; exit $${PIPESTATUS[0]}
 
 cleanlog:
 	@echo "System build started at `date`\n" | tee $(BUILD_DIR)/build.log
