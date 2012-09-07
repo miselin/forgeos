@@ -61,7 +61,12 @@ ASMFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.s")
 SRCFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.c")
 HDRFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.h")
 
-OBJFILES := $(abspath $(patsubst %.s,$(OBJDIR)/%.gcc.o,$(ASMFILES)) $(patsubst %.c,$(OBJDIR)/%.gcc.o,$(SRCFILES)))
+OBJFILES := $(abspath $(patsubst %.s,$(OBJDIR)/%.gcc.o,$(ASMFILES)))
+ifeq "$(USE_CLANG)" "yes"
+  OBJFILES += $(patsubst %.c,$(OBJDIR)/%.clang.o,$(SRCFILES))
+else
+  OBJFILES += $(patsubst %.c,$(OBJDIR)/%.gcc.o,$(SRCFILES))
+endif
 DEPFILES := $(abspath $(patsubst %.c,$(OBJDIR)/%.d,$(SRCFILES)))
 
 KERNEL := $(OBJDIR)/kernel
@@ -76,7 +81,6 @@ WARNINGS := -Wall -Wextra -pedantic -Wshadow -Wpointer-arith -Wcast-align \
 			-Wwrite-strings -Wredundant-decls -Wnested-externs -Winline \
 			-Wno-long-long -Wuninitialized -Wconversion
 
-# -fno-builtin
 CFLAGS += -std=gnu99 -nostdinc -nostdlib -ffreestanding
 
 CFLAGS += $(ARCH_CFLAGS) $(ARCH_DEFINE)

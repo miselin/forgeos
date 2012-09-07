@@ -43,6 +43,12 @@ SERIAL_TTY := /dev/ttyUSB0
 # Override the default shell to be 'bash' (and not 'dash' or similar)
 SHELL := /bin/bash
 
+# Should the build system use `clang' and LLVM for targets which support it?
+USE_CLANG := no
+
+# Path to LLVM binaries, including `llc' and `clang'.
+LLVM_PATH :=
+
 # END CONFIGURATION SECTION
 
 
@@ -156,7 +162,7 @@ export ARCH_TARGET ARCH_SUBTARGET PLATFORM_TARGET SHELL
 export AR AS CC CPP CXX LD NM OBJCOPY OBJDUMP STRIP MKISOFS
 export HOSTAR HOSTAS HOSTCC HOSTCPP HOSTCXX HOSTLD HOSTNM HOSTSTRIP
 export OUTPUT_DIR BUILD_ENV BUILD_DIR OBJDIR INSTDIR SERIAL_TTY
-export CLANG LLC
+export CLANG LLC USE_CLANG
 
 # Don't perform the sub-make if we're running a clean or distclean target.
 ifeq "$(findstring clean, $(MAKECMDGOALS))" ""
@@ -164,7 +170,7 @@ ifeq "$(findstring clean, $(MAKECMDGOALS))" ""
 # At this point, we will create the BUILD_DIR if it does not exist, change to
 # it, and then start the actual build.
 
-#MAKEFLAGS += --no-print-directory
+MAKEFLAGS += --no-print-directory
 
 .PHONY: _all sub-make $(MAKECMDGOALS)
 _all:
@@ -204,7 +210,7 @@ OUTIMAGE := $(UIMAGE)
 endif
 
 # Using clang for static analysis, for the win.
-LINT := clang --analyze
+LINT := $(CLANG) --analyze
 export LINT
 
 # Directories under src/ to visit
