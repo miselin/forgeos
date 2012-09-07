@@ -18,7 +18,7 @@ PLATFORM = $(PLATFORM_TARGET)
 ARCH = $(ARCH_TARGET)
 
 # Compiler specific.
-libgcc = $(shell $(CC) -print-file-name=libgcc.a)
+libgcc = $(shell $(CC) -print-file-name=libgcc.a) 
 LIBS := $(libgcc)
 
 stdinc = $(shell $(CC) -print-file-name=include)
@@ -46,7 +46,7 @@ LOADER_SOURCES += ui.c video.c
 
 SOURCES := $(ARCH_SOURCES) $(PLATFORM_SOURCES) $(LOADER_SOURCES)
 
-OBJECTS := $(addsuffix .o, $(basename $(SOURCES)))
+OBJECTS := $(addsuffix .gcc.o, $(basename $(SOURCES)))
 
 OBJDIR := $(OBJDIR)/kboot
 
@@ -65,6 +65,7 @@ ASFLAGS += -m32
 endif
 
 ifeq "$(ARCH_TARGET)" "arm"
+CFLAGS +=
 CCFLAGS += -mno-thumb-interwork
 endif
 
@@ -100,7 +101,7 @@ ifeq "$(PLATFORM_TARGET)" "pc"
 all: $(OBJDIR)/cdboot $(OBJDIR)/pxeboot
 
 $(OBJDIR)/cdboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
-$(OBJDIR)/cdboot.elf: $(OBJDIR)/source/platform/$(PLATFORM)/stage1/cdboot.o
+$(OBJDIR)/cdboot.elf: $(OBJDIR)/source/platform/$(PLATFORM)/stage1/cdboot.gcc.o
 	@echo "  LINKING     cdboot.elf"
 	@$(LD) $(LDFLAGS) -o $@ $<
 
@@ -109,7 +110,7 @@ $(OBJDIR)/cdboot: $(OBJDIR)/cdboot.elf
 	@$(OBJCOPY) -O binary --strip-all -R '.note.*' -R .comment $< $@
 
 $(OBJDIR)/pxeboot.elf: LDFLAGS += -T source/platform/$(PLATFORM)/stage1/stage1.ld
-$(OBJDIR)/pxeboot.elf: $(OBJDIR)/source/platform/$(PLATFORM)/stage1/pxeboot.o
+$(OBJDIR)/pxeboot.elf: $(OBJDIR)/source/platform/$(PLATFORM)/stage1/pxeboot.gcc.o
 	@echo "  LINKING     pxeboot.elf"
 	@$(LD) $(LDFLAGS) -o $@ $<
 

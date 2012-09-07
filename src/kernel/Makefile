@@ -13,11 +13,11 @@ endif
 # Set ARCH_SUBTARGET_CFLAGS and ARCH_SUBTARGET_DEFINE automatically depending on how ARCH_SUBTARGET is set
 ifeq "$(ARCH_SUBTARGET)" "x86"
   ARCH_SUBTARGET_CFLAGS := -m32
-  ARCH_SUBTARGET_ASFLAGS :=
+  ARCH_SUBTARGET_ASFLAGS := -m32
   ARCH_SUBTARGET_DEFINE :=
 endif
 ifeq "$(ARCH_SUBTARGET)" "armv7"
-  ARCH_SUBTARGET_CFLAGS :=
+  ARCH_SUBTARGET_CFLAGS := 
   ARCH_SUBTARGET_ASFLAGS :=
   ARCH_SUBTARGET_DEFINE := -DARMV7
 endif
@@ -29,8 +29,8 @@ ifeq "$(PLATFORM_TARGET)" "pc"
   PLATFORM_DEFINES :=
 endif
 ifeq "$(PLATFORM_TARGET)" "omap3"
-  PLATFORM_CFLAGS := -mcpu=cortex-a8 -mfpu=vfp
-  PLATFORM_ASFLAGS := -mcpu=cortex-a8 -mfpu=vfp
+  PLATFORM_CFLAGS := -mtune=cortex-a8 -mfpu=vfp
+  PLATFORM_ASFLAGS := -mtune=cortex-a8 -mfpu=vfp
   PLATFORM_DEFINES := -DOMAP3 -DMACH_REQUIRES_EARLY_DEVINIT
 endif
 
@@ -61,7 +61,7 @@ ASMFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.s")
 SRCFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.c")
 HDRFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.h")
 
-OBJFILES := $(abspath $(patsubst %.s,$(OBJDIR)/%.o,$(ASMFILES)) $(patsubst %.c,$(OBJDIR)/%.o,$(SRCFILES)))
+OBJFILES := $(abspath $(patsubst %.s,$(OBJDIR)/%.gcc.o,$(ASMFILES)) $(patsubst %.c,$(OBJDIR)/%.gcc.o,$(SRCFILES)))
 DEPFILES := $(abspath $(patsubst %.c,$(OBJDIR)/%.d,$(SRCFILES)))
 
 KERNEL := $(OBJDIR)/kernel

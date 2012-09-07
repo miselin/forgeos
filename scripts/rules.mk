@@ -1,19 +1,24 @@
 # Rules to use when building
 
-$(OBJDIR)/%.o: %.c Makefile
+$(OBJDIR)/%.gcc.o: %.c Makefile
 	@echo '  [CC] $<...'
 	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
 	$(CC) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-$(OBJDIR)/%.o: %.S Makefile
+$(OBJDIR)/%.clang.o: %.c Makefile
+	@echo '  [CC] $<...'
+	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
+	$(CLANG) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
+
+$(OBJDIR)/%.gcc.o: %.S Makefile
 	@echo '  [AS] $<...'
 	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
 	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
 
-$(OBJDIR)/%.o: %.s Makefile
+$(OBJDIR)/%.gcc.o: %.s Makefile
 	@echo '  [AS] $<...'
 	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
-	$(CC) $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
+	$(CC) -v $(ASFLAGS) $(CPPFLAGS) -c $< -o $@
 
 $(OBJDIR)/%.ld: %.ld.in
 	@echo '  [LDS] $<...'

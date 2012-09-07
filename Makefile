@@ -130,6 +130,14 @@ ifneq "$(XCOMPILER_PREFIX)" ""
   OBJCOPY := $(XCOMPILER)objcopy
   OBJDUMP := $(XCOMPILER)objdump
   STRIP := $(XCOMPILER)strip
+
+  ifneq "$(LLVM_PATH)" ""
+    LLC := $(LLVM_PATH)/llc
+    CLANG := $(LLVM_PATH)/clang
+  else
+    LLC := llc
+    CLANG := clang
+  endif
 endif
 
 # BUILD_DIR is the base build directory, set up like build/x86-pc/debug/
@@ -148,6 +156,7 @@ export ARCH_TARGET ARCH_SUBTARGET PLATFORM_TARGET SHELL
 export AR AS CC CPP CXX LD NM OBJCOPY OBJDUMP STRIP MKISOFS
 export HOSTAR HOSTAS HOSTCC HOSTCPP HOSTCXX HOSTLD HOSTNM HOSTSTRIP
 export OUTPUT_DIR BUILD_ENV BUILD_DIR OBJDIR INSTDIR SERIAL_TTY
+export CLANG LLC
 
 # Don't perform the sub-make if we're running a clean or distclean target.
 ifeq "$(findstring clean, $(MAKECMDGOALS))" ""
