@@ -1,18 +1,43 @@
 FORGE: a new operating system
 ===============================
 
-Compiling
-=========
+System Requirements
+===================
 
-You'll need to have an i586-elf cross-compiler available to build FORGE.
+FORGE on x86 requires a reasonably modern (Pentium4+) system to run.
 
-You'll also need 'clang', 'cppcheck', and 'mkisofs' installed.
+You may run FORGE in as little as 16 MB of RAM.
 
-If one does not exist, create a 'make.config' file with the following
-contents:
+Compile Requirements
+====================
 
-XCOMPILER_PREFIX := /path/to/your/cross/compiler/bin
-XCOMPILER_TARGET := {i[3456]86, arm, ppc}
+You'll need to have a cross-compiler capable of targeting ELF available to build
+FORGE. Host triples that can be used for reference include:
+* i586-none-elf
+* arm-none-eabi (don't use arm-none-elf)
+
+You will also need to install `clang' and `cppcheck' for static analysis.
+
+If you wish to use clang/LLVM to compile FORGE, you will need a version of LLVM available, including llvm-gcc. It is recommended that you build one from source,
+ideally from the Subversion repository, as this helps reduce a variety of issues
+that can come up during the compilation process.
+
+For x86, you will need `mkisofs'.
+
+For ARM, you will need u-boot's mkImage program to be available.
+
+Building FORGE
+==============
+
+If one does not exist, create a 'make.config' file with the following contents:
+
+XCOMPILER_PATH := /path/to/your/cross/compiler/bin
+XCOMPILER_PREFIX := {i[3456]86, arm}
+
+To build for alternative targets such as ARM, you will also need to add and set:
+* ARCH_TARGET - x86, arm
+* ARCH_SUBTARGET - x86, x86_64 (not supported yet), arm
+* PLATFORM_TARGET - pc, omap3
 
 This just makes sure the build system knows where everything is on your
 particular system.
@@ -21,12 +46,26 @@ Once everything's set up, just type:
 
 make
 
-And the compilation will begin.
+The compilation will begin.
 
-Running
-=======
+Running - x86
+=============
 
 Just boot the 'forge.iso' disc image in the 'build' directory.
 
 For your convenience, a script to run QEMU is provided in the 'scripts'
 directory.
+
+Compiling with LLVM + clang
+===========================
+
+If you would like to compile FORGE with clang and use the LLVM backend instead
+of GCC, this is currently supported for the kernel (but not KBoot for x86).
+
+Simply add `USE_CLANG = yes' to your make.config and set the LLVM_PATH variable
+to the location of your LLVM installation. For example, /home/user/llvm/bin.
+
+It is highly recommended that you build LLVM from scratch, including compiler-rt
+and llvm-gcc-4.2, in order to get the best results. Please note that to build
+compiler-rt, you will need cmake 2.8.8+, and you should use ccmake instead of
+autoconf to configure the LLVM+clang build.
