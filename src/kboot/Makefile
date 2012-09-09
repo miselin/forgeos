@@ -50,7 +50,7 @@ ifeq "$(USE_CLANG)" "yes"
   OBJECTS := $(patsubst %.S,%.gcc.o,$(SOURCES))
   OBJECTS := $(patsubst %.c,%.clang.o,$(OBJECTS))
 else
-  OBJECTS := $(addsuffix .clang.o, $(basename $(SOURCES)))
+  OBJECTS := $(addsuffix .gcc.o, $(basename $(SOURCES)))
 endif
 
 OBJDIR := $(OBJDIR)/kboot
