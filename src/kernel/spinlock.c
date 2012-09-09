@@ -53,8 +53,7 @@ void spinlock_acquire(void *s) {
 		panic("spinlock already acquired - deadlock");
 
 	interrupts_disable();
-	atomic_compare_and_swap(&sl->locked, 1, sl->locked, __asm__ (""));
-
+	atomic_compare_and_swap(&sl->locked, 1, void * _a __unused, sl->locked, __asm__ (""));
 
 	assert(sl->locked);
 }

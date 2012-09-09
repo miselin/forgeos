@@ -102,18 +102,12 @@ int init_omap3_gptimer(size_t n, inthandler_t irqhandler) {
     // Reset the timer.
     gptimer[n][TIOCP_CFG] = 0x2;
     gptimer[n][TSICR] = 0x2;
-    dprintf("ptr: %x\n", gptimer[n]);
-    dprintf("status: %x\n", gptimer[n][TISTAT]);
     while((gptimer[n][TISTAT] & 1) == 0);
-
-    dprintf("reset complete\n");
 
     // Use the 32 kHZ functional clock now that reset is complete.
     if(n > 0) {
         per_clocksel(n, CLOCK_32K);
     }
-
-    dprintf("1\n");
 
     // Set up for 1 ms ticks. 16.2.4.2.1, OMAP35xx manual.
     gptimer[n][TPIR] = 232000;
@@ -121,27 +115,17 @@ int init_omap3_gptimer(size_t n, inthandler_t irqhandler) {
     gptimer[n][TLDR] = 0xFFFFFFE0;
     gptimer[n][TTGR] = 1;
 
-    dprintf("2\n");
-
     // Clear any existing interrupts pending.
     gptimer[n][TISR] = 0x7;
-
-    dprintf("3\n");
 
     // Install our IRQ handler.
     interrupts_irq_reg(37 + (int) n, 1, irqhandler);
 
-    dprintf("4\n");
-
     // Enable overflow interrupt - will fire an IRQ when the tick counter overflows.
     gptimer[n][TIER] = 0x2;
 
-    dprintf("5\n");
-
     // Start the timer!
     gptimer[n][TCLR] = 0x3;
-
-    dprintf("timer init done\n");
 
     return 0;
 }

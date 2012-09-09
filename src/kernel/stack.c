@@ -60,7 +60,7 @@ void stack_push(void *stack, void *data) {
 
 	// Replace the head of the stack with n, but only if our new node next
 	// pointer is still the head of the stack.
-	atomic_compare_and_swap(&s->head, n, n->next, n->next = s->head);
+	atomic_compare_and_swap(&s->head, n, n->next, n->next, n->next = s->head);
 }
 
 void *stack_pop(void *stack) {
@@ -72,7 +72,7 @@ void *stack_pop(void *stack) {
 
 	// Remove the first item from the stack by updating the head to point to the
 	// next item from the head. Atomically.
-	atomic_compare_and_swap(&s->head, top->next, top, top = s->head);
+	atomic_compare_and_swap(&s->head, s->head->next, void * _a __unused, top, top = s->head);
 
 	void *ret = top->p;
 	free(top);

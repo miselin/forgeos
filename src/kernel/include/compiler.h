@@ -28,7 +28,7 @@
 #define __used            __attribute__((used))
 
 #if defined(__clang__) && !defined(NO_CLANG_BUILTINS)
-#define atomic_compare_and_swap(old_val, new_val, ...)     __sync_swap((old_val), (new_val))
+#define atomic_compare_and_swap(old_val, new_val, out_val, ...)    out_val = __sync_swap((old_val), (new_val))
 #else
 
 #ifdef ARM
@@ -38,7 +38,7 @@ extern int __arm_bool_compare_and_swap(void **d, void *o, void *n);
 #define atomic_bool_compare_and_swap __sync_bool_compare_and_swap
 #endif
 
-#define atomic_compare_and_swap(old_val, new_val, cmp_val, stmt) do { stmt; } while(!atomic_bool_compare_and_swap((old_val), (cmp_val), (new_val)))
+#define atomic_compare_and_swap(old_val, new_val, out_val, cmp_val, stmt) do { stmt; } while(!atomic_bool_compare_and_swap((old_val), (cmp_val), (new_val)))
 
 #endif
 
