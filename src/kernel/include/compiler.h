@@ -25,6 +25,7 @@
 #define __section(s)      __attribute__((section(s)))
 
 #define __unused          __attribute__((unused))
+#define __used          __attribute__((used))
 
 #ifndef ARM
 #define atomic_bool_compare_and_swap __sync_bool_compare_and_swap
