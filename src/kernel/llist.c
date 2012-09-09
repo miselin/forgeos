@@ -140,7 +140,7 @@ void *list_at(void *list, size_t index) {
 
 size_t list_len(void *list) {
     if(!list)
-        return;
+        return 0;
 
     struct llist *l = (struct llist *) list;
     return l->len;

@@ -88,6 +88,7 @@ void switch_threads(struct thread *old, struct thread *new) {
         if(!current_thread)
             current_thread = new;
         new->state = THREAD_STATE_RUNNING;
+
         switch_context(0, new->ctx);
     }
     else
@@ -179,6 +180,7 @@ void start_scheduler() {
     // Install a timer handler - tick for timeslice completion.
     if(install_timer(sched_timer, ((THREAD_DEFAULT_TIMESLICE_MS << TIMERRES_SHIFT) | TIMERRES_MILLI), TIMERFEAT_PERIODIC) < 0) {
         dprintf("scheduler install failed - no useful timer available\n");
+        kprintf("scheduler install failed - system will have its usability greatly reduced\n");
     }
 }
 

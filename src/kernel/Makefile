@@ -12,8 +12,8 @@ endif
 
 # Set ARCH_SUBTARGET_CFLAGS and ARCH_SUBTARGET_DEFINE automatically depending on how ARCH_SUBTARGET is set
 ifeq "$(ARCH_SUBTARGET)" "x86"
-  ARCH_SUBTARGET_CFLAGS := -m32
-  ARCH_SUBTARGET_ASFLAGS := -m32
+  ARCH_SUBTARGET_CFLAGS := -mtune=i686 -m32  -mno-sse -mno-mmx -mno-sse2 -mno-3dnow
+  ARCH_SUBTARGET_ASFLAGS := -m32  -mno-sse -mno-mmx -mno-sse2 -mno-3dnow
   ARCH_SUBTARGET_DEFINE :=
 endif
 ifeq "$(ARCH_SUBTARGET)" "armv7"
@@ -54,7 +54,12 @@ DIRS := . arch/$(ARCH_TARGET) arch/$(ARCH_TARGET)/$(ARCH_SUBTARGET) mach/$(PLATF
 INCLUDES := -Iinclude -Iarch/$(ARCH_TARGET)/include -Iarch/$(ARCH_TARGET)/$(ARCH_SUBTARGET)/include -Imach/$(PLATFORM_TARGET) -Imach/$(PLATFORM_TARGET)/include
 LIBDIRS :=
 
-libgcc = $(shell $(CC) -print-file-name=libgcc.a)
+ifeq "$(USE_CLANG)" "yes"
+  # compiler-rt automatically linked.
+  libgcc =
+else
+  libgcc = $(shell $(CC) -print-file-name=libgcc.a)
+endif
 LIBS := $(libgcc)
 
 ASMFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.s")
@@ -63,11 +68,13 @@ HDRFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.h")
 
 OBJFILES := $(abspath $(patsubst %.s,$(OBJDIR)/%.gcc.o,$(ASMFILES)))
 ifeq "$(USE_CLANG)" "yes"
-  OBJFILES += $(patsubst %.c,$(OBJDIR)/%.clang.o,$(SRCFILES))
+  ASMOBJS := $(OBJFILES)
+  OBJFILES := $(patsubst %.c,$(OBJDIR)/%.clang.o,$(SRCFILES))
+  DEPFILES := $(abspath $(patsubst %.c,$(OBJDIR)/%.clang.d,$(SRCFILES)))
 else
   OBJFILES += $(patsubst %.c,$(OBJDIR)/%.gcc.o,$(SRCFILES))
+  DEPFILES := $(abspath $(patsubst %.c,$(OBJDIR)/%.d,$(SRCFILES)))
 endif
-DEPFILES := $(abspath $(patsubst %.c,$(OBJDIR)/%.d,$(SRCFILES)))
 
 KERNEL := $(OBJDIR)/kernel
 
@@ -96,9 +103,9 @@ ASFLAGS := $(ARCH_ASFLAGS) $(ARCH_SUBTARGET_ASFLAGS) $(PLATFORM_ASFLAGS)
 LINT_FLAGS := $(CFLAGS) $(INCLUDES)
 LINT_IGNORE := dlmalloc.c
 
-$(KERNEL): $(OBJFILES)
+$(KERNEL): $(OBJFILES) $(ASMOBJS)
 	@echo Linking kernel...
-	@$(LD) $(LDFLAGS) $(LIBDIRS) -o $@ -T $(KERNEL_LSCRIPT) $(OBJFILES) $(LIBS)
+	@$(LD) $(LDFLAGS) $(LIBDIRS) -o $@ -T $(KERNEL_LSCRIPT) $(OBJFILES) $(ASMOBJS) $(LIBS)
 
 -include $(DEPFILES)
 

@@ -18,7 +18,7 @@ PLATFORM = $(PLATFORM_TARGET)
 ARCH = $(ARCH_TARGET)
 
 # Compiler specific.
-libgcc = $(shell $(CC) -print-file-name=libgcc.a) 
+libgcc = $(shell $(CC) -print-file-name=libgcc.a)
 LIBS := $(libgcc)
 
 stdinc = $(shell $(CC) -print-file-name=include)
@@ -81,7 +81,7 @@ ASFLAGS += -include 'source/platform/$(PLATFORM)/include/platform/config.h'
 # Final flags (override anything from earlier)
 CFLAGS += -Os
 
-# DPADD is the platform linker script, as it needs some preprocessing. 
+# DPADD is the platform linker script, as it needs some preprocessing.
 DPADD := $(OBJDIR)/source/platform/$(PLATFORM)/link.ld
 
 WARNINGS := -Wall -Wextra -Werror -Wno-variadic-macros -Wno-unused-parameter -Wwrite-strings

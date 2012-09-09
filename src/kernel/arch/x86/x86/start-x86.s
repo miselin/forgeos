@@ -20,6 +20,8 @@
 # KBoot loads us to 0x400000
 .equ KERNEL_BASE, 0xC0000000 - 0x400000
 
+# TODO: read core tag for physical address rather than assuming 0x400000
+
 # Simple here: create some page tables, map in the kernel.
 _start:
 	push %ebx # EBX is callee save.
@@ -66,7 +68,7 @@ _start:
 	# Set up the page directory, and enable paging.
 	movl $pdir - KERNEL_BASE, %eax
 	mov %eax, %cr3
-	
+
 	pop %ebx
 	ret
 
