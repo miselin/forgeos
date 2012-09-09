@@ -3,11 +3,13 @@ ifeq "$(ARCH_TARGET)" "x86"
   ARCH_CFLAGS :=
   ARCH_ASFLAGS :=
   ARCH_DEFINE := -DX86
+  ARCH_LLCFLAGS := -march=x86
 endif
 ifeq "$(ARCH_TARGET)" "arm"
   ARCH_CFLAGS :=
   ARCH_ASFLAGS :=
   ARCH_DEFINE := -DARM
+  ARCH_LLCFLAGS := -march=arm
 endif
 
 # Set ARCH_SUBTARGET_CFLAGS and ARCH_SUBTARGET_DEFINE automatically depending on how ARCH_SUBTARGET is set
@@ -15,6 +17,7 @@ ifeq "$(ARCH_SUBTARGET)" "x86"
   ARCH_SUBTARGET_CFLAGS := -mtune=i686 -m32  -mno-sse -mno-mmx -mno-sse2 -mno-3dnow
   ARCH_SUBTARGET_ASFLAGS := -m32  -mno-sse -mno-mmx -mno-sse2 -mno-3dnow
   ARCH_SUBTARGET_DEFINE :=
+  ARCH_LLCFLAGS += -mcpu=i686 -mattr=-sse,-sse2,-mmx,-3dnow
 endif
 ifeq "$(ARCH_SUBTARGET)" "armv7"
   ARCH_SUBTARGET_CFLAGS := -march=armv7-a
@@ -32,6 +35,7 @@ ifeq "$(PLATFORM_TARGET)" "omap3"
   PLATFORM_CFLAGS := -mtune=cortex-a8 -mfpu=vfp
   PLATFORM_ASFLAGS := -mtune=cortex-a8 -mfpu=vfp
   PLATFORM_DEFINES := -DOMAP3 -DMACH_REQUIRES_EARLY_DEVINIT
+  ARCH_LLCFLAGS += -mcpu=cortex-a8
 endif
 
 # Examples on how to set build flags depending on the build environment
@@ -103,9 +107,22 @@ ASFLAGS := $(ARCH_ASFLAGS) $(ARCH_SUBTARGET_ASFLAGS) $(PLATFORM_ASFLAGS)
 LINT_FLAGS := $(CFLAGS) $(INCLUDES)
 LINT_IGNORE := dlmalloc.c
 
+ifeq "$(USE_CLANG)" "yes"
+  CFLAGS += -emit-llvm
+
 $(KERNEL): $(OBJFILES) $(ASMOBJS)
+
 	@echo Linking kernel...
+	@mkdir -p $(OBJDIR)/llbc
+	@$(LLVMLD) -o $(OBJDIR)/llbc/kernel.bc $(OBJFILES)
+	@$(LLC) $(ARCH_LLCFLAGS) -o $(OBJDIR)/llbc/kernel.s $(OBJDIR)/llbc/kernel.bc
+	@$(CC) $(ASFLAGS) $(CPPFLAGS) -o $(OBJDIR)/llbc/kernel.bo -c $(OBJDIR)/llbc/kernel.s
+	@$(LD) $(LDFLAGS) $(LIBDIRS) -o $@ -T $(KERNEL_LSCRIPT) $(OBJDIR)/llbc/kernel.bo $(ASMOBJS) $(LIBS)
+	-@$(RM) -r $(OBJDIR)/llbc
+else
+$(KERNEL): $(OBJFILES) $(ASMOBJS)
 	@$(LD) $(LDFLAGS) $(LIBDIRS) -o $@ -T $(KERNEL_LSCRIPT) $(OBJFILES) $(ASMOBJS) $(LIBS)
+endif
 
 -include $(DEPFILES)
 
