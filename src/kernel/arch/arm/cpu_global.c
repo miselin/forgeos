@@ -18,12 +18,14 @@
 
 static int set(int n) {
     uint32_t cpsr = 0;
-    asm volatile("MRS %0, cpsr" : "=r" (cpsr));
+    __asm__ __volatile__("MRS %0, cpsr" : "=r" (cpsr));
     if(n)
-        cpsr &= ~0x80;
+        cpsr &= ~0x80UL;
     else
         cpsr |= 0x80;
-    asm volatile("MSR cpsr_c, %0" :: "r" (cpsr));
+    __asm__ __volatile__("MSR cpsr_c, %0" :: "r" (cpsr));
+
+    return n;
 }
 
 void arch_interrupts_enable() {

@@ -20,8 +20,13 @@ ifeq "$(ARCH_SUBTARGET)" "x86"
   ARCH_LLCFLAGS += -mcpu=i686 -mattr=-sse,-sse2,-mmx,-3dnow
 endif
 ifeq "$(ARCH_SUBTARGET)" "armv7"
-  ARCH_SUBTARGET_CFLAGS := -march=armv7-a
-  ARCH_SUBTARGET_ASFLAGS := -march=armv7-a
+  ifeq "$(USE_CLANG)" "yes"
+    ARCH_SUBTARGET_CFLAGS := -ccc-host-triple armv7-unknown-gnueabi
+    ARCH_SUBTARGET_ASFLAGS :=
+  else
+    ARCH_SUBTARGET_CFLAGS := -march=armv7-a
+    ARCH_SUBTARGET_ASFLAGS := -march=armv7-a
+  endif
   ARCH_SUBTARGET_DEFINE := -DARMV7
 endif
 
@@ -61,6 +66,16 @@ LIBDIRS :=
 ifeq "$(USE_CLANG)" "yes"
   # compiler-rt automatically linked.
   libgcc =
+
+  # compiler-rt does not build as easily on non-x86, however, so use libgcc for
+  # now. Hopefully this won't be an issue for too much longer.
+  ifneq "$(ARCH_TARGET)" "x86"
+    libgcc = $(shell $(CC) -print-file-name=libgcc.a)
+
+    # compiler-rt still doesn't give __builtin_memset or __builtin_memcpy, they
+    # just forward straight on to memcpy/memset.
+    CFLAGS += -DNO_BUILTIN_MEMFUNCS
+  endif
 else
   libgcc = $(shell $(CC) -print-file-name=libgcc.a)
 endif

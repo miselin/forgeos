@@ -299,7 +299,7 @@ void machine_putc(char c) {
     serial_write(c);
 }
 
-void machine_putc_at(char c, int x, int y) {
+void machine_putc_at(char c __unused, int x __unused, int y __unused) {
     // Use VT-100 codes to make this work.
     /// \todo implement
 }

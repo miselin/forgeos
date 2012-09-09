@@ -37,7 +37,6 @@ void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_
 
     memset(ctx, 0, sizeof(context_t));
 
-    /// \todo Don't use malloc!
     void *stack_ptr = 0;
     if(stack)
         stack_ptr = (void *) stack;
@@ -46,7 +45,7 @@ void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_
 
     assert(stack_ptr != 0);
 
-    ctx->lr = start;
+    ctx->lr = (unative_t) start;
     ctx->usersp = (unative_t) stack_ptr;
     ctx->usersp += stacksz - 4;
 

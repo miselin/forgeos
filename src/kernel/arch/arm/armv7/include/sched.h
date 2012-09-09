@@ -14,7 +14,7 @@ typedef struct _arm_ctx {
     unative_t lr, usersp, userlr;
 } __packed __aligned(8) context_t;
 
-#define __halt asm volatile("wfi")
+#define __halt __asm__ __volatile__("wfi")
 
 #define _CONTEXT_T_DEFINED
 

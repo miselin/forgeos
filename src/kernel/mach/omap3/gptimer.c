@@ -69,7 +69,7 @@ static struct timer *timers[] = {
 };
 
 /// GP Timer IRQ
-int irq_omap3_gptimer(int n, struct intr_stack *s) {
+int irq_omap3_gptimer(size_t n, struct intr_stack *s __unused) {
     int ret = timer_ticked(timers[n], ((1 << TIMERRES_SHIFT) | TIMERRES_MILLI));
 
     // ACK the interrupt.
@@ -79,7 +79,7 @@ int irq_omap3_gptimer(int n, struct intr_stack *s) {
 }
 
 /// All init_omap3_gpn functions end up here.
-int init_omap3_gptimer(int n, inthandler_t irqhandler) {
+int init_omap3_gptimer(size_t n, inthandler_t irqhandler) {
     assert(n < sizeof gptimer_phys);
 
     // Configure clock sources and enable clocks for timers other than GPTIMER1.
@@ -129,7 +129,7 @@ int init_omap3_gptimer(int n, inthandler_t irqhandler) {
     dprintf("3\n");
 
     // Install our IRQ handler.
-    interrupts_irq_reg(37 + n, 1, irqhandler);
+    interrupts_irq_reg(37 + (int) n, 1, irqhandler);
 
     dprintf("4\n");
 

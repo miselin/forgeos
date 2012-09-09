@@ -29,7 +29,7 @@ paddr_t pmem_size() {
     return totalKiB;
 }
 
-int mach_phys_init(phys_ptr_t tags) {
+int mach_phys_init(phys_ptr_t tags __unused) {
 	unative_t kernel_start = (unative_t) &init;
 	unative_t kernel_end = (unative_t) &end;
 

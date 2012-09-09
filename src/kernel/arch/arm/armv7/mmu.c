@@ -158,16 +158,16 @@ struct second_level
 static void tlb_invalall() {
     // Completely invalidate the TLBs and the branch target cache.
     const uint32_t ignore = 0;
-    asm volatile("MCR p15, 0, %0, c8, c7, 0" :: "r" (ignore));
-    asm volatile("MCR p15, 0, %0, c7, c5, 6" :: "r" (ignore));
+    __asm__ __volatile__("MCR p15, 0, %0, c8, c7, 0" :: "r" (ignore));
+    __asm__ __volatile__("MCR p15, 0, %0, c7, c5, 6" :: "r" (ignore));
 
     __barrier;
 }
 
 static void tlb_invalpage(vaddr_t addr) {
     const uint32_t ignore = 0;
-    asm volatile("MCR p15, 0, %0, c8, c7, 1" :: "r" (addr));
-    asm volatile("MCR p15, 0, %0, c7, c5, 6" :: "r" (ignore));
+    __asm__ __volatile__("MCR p15, 0, %0, c8, c7, 1" :: "r" (addr));
+    __asm__ __volatile__("MCR p15, 0, %0, c7, c5, 6" :: "r" (ignore));
 
     __barrier;
 }
@@ -211,7 +211,7 @@ int arch_vmem_map(vaddr_t v, paddr_t p, size_t f) {
     }
 
     unative_t vaddr = v;
-    unative_t paddr = p;
+    unative_t paddr = (unative_t) (p & PADDR_MASK);
 
     uint32_t pdir_offset = vaddr >> 20;
     uint32_t ptab_offset = (vaddr >> 12) & 0xFF;
@@ -288,19 +288,17 @@ void arch_vmem_unmap(vaddr_t v) {
 
     // Invalidate the TLB entry for this virtual address now that it is unmapped
     tlb_invalpage(vaddr);
-
-    return 0;
 }
 
-int arch_vmem_modify(vaddr_t v, size_t nf) {
+int arch_vmem_modify(vaddr_t v __unused, size_t nf __unused) {
 	return -1;
 }
 
 int arch_vmem_ismapped(vaddr_t v) {
     // Same operation as for v2p, except only care about the status bits.
     unative_t pa = 0;
-    asm volatile("MCR p15, 0, %0, c7, c8, 3" :: "r" (v));
-    asm volatile("MRC p15, 0, %0, c7, c4, 0" : "=r" (pa));
+    __asm__ __volatile__("MCR p15, 0, %0, c7, c8, 3" :: "r" (v));
+    __asm__ __volatile__("MRC p15, 0, %0, c7, c4, 0" : "=r" (pa));
 
     // Failure?
     return (pa & 0x1) ? 0 : 1;
@@ -309,8 +307,8 @@ int arch_vmem_ismapped(vaddr_t v) {
 paddr_t arch_vmem_v2p(vaddr_t v) {
     // Lookup the virtual address, return physical address.
     unative_t pa = 0;
-    asm volatile("MCR p15, 0, %0, c7, c8, 3" :: "r" (v));
-    asm volatile("MRC p15, 0, %0, c7, c4, 0" : "=r" (pa));
+    __asm__ __volatile__("MCR p15, 0, %0, c7, c8, 3" :: "r" (v));
+    __asm__ __volatile__("MRC p15, 0, %0, c7, c4, 0" : "=r" (pa));
 
     // Failure?
     if(pa & 0x1) {
@@ -319,26 +317,26 @@ paddr_t arch_vmem_v2p(vaddr_t v) {
     }
 
     // Return the physical address.
-    return (paddr_t) (pa & ~0xFFF);
+    return (paddr_t) (pa & ~0xFFFUL);
 }
 
 vaddr_t arch_vmem_create() {
 	return 0;
 }
 
-void arch_vmem_switch(vaddr_t pd) {
+void arch_vmem_switch(vaddr_t pd __unused) {
 }
 
 void arch_vmem_init() {
-    int i;
+    size_t i;
     dprintf("armv7: vmem init\n");
 
     // Disable the MMU before we start creating mappings and modifying physical
     // memory. We can't trust that the bootloader has setup sensible mappings.
     unative_t sctlr = 0;
-    asm volatile("MRC p15,0,%0,c1,c0,0" : "=r" (sctlr));
-    sctlr &= ~1;
-    asm volatile("MCR p15,0,%0,c1,c0,0" :: "r" (sctlr));
+    __asm__ __volatile__("MRC p15,0,%0,c1,c0,0" : "=r" (sctlr));
+    sctlr &= ~1UL;
+    __asm__ __volatile__("MCR p15,0,%0,c1,c0,0" :: "r" (sctlr));
 
     // Clear out the TLB now that we have disabled the MMU.
     tlb_invalall();
@@ -372,8 +370,8 @@ void arch_vmem_init() {
 
     // Page directories are four pages long!
     for(i = 0; i < 4; i++) {
-        ptab_offset = ((vaddr + (i * 0x1000)) >> 12) & 0xFF;
-        ptab[ptab_offset].descriptor.entry = PAGEDIR_PHYS + (i * 0x1000);
+        ptab_offset = ((vaddr + (i * 0x1000UL)) >> 12) & 0xFF;
+        ptab[ptab_offset].descriptor.entry = PAGEDIR_PHYS + (i * 0x1000UL);
         ptab[ptab_offset].descriptor.smallpage.type = SECLEVEL_SMALLNX;
         ptab[ptab_offset].descriptor.smallpage.ap1 = AP1_KERNEL;
         ptab[ptab_offset].descriptor.smallpage.ap2 = AP2_READWRITE;
@@ -430,7 +428,7 @@ void arch_vmem_init() {
 
         // 1024 page tables in this region...
         for(i = 0; i < 1024; i++, paddr += 0x400) {
-            vaddr = (offset << 10) + (i * 0x100000);
+            vaddr = (offset << 10) + (i * 0x100000UL);
             pdir_offset = vaddr >> 20;
 
             // Existing mappings shouldn't be overwritten.
@@ -447,28 +445,28 @@ void arch_vmem_init() {
     __barrier;
 
     // Write TTBR0 with null - user part of address space split
-    asm volatile("MCR p15,0,%0,c2,c0,0" :: "r" (0));
+    __asm__ __volatile__("MCR p15,0,%0,c2,c0,0" :: "r" (0));
 
     // Write TTBR1 with the kernel page directory
-    asm volatile("MCR p15,0,%0,c2,c0,1" :: "r" (PAGEDIR_PHYS));
+    __asm__ __volatile__("MCR p15,0,%0,c2,c0,1" :: "r" (PAGEDIR_PHYS));
 
     // Write TTBCR to configure a 4K directory, and a 1/3 GB split of the address
     // space - user/kernel.
-    asm volatile("MCR p15,0,%0,c2,c0,2" :: "r" (2));
+    __asm__ __volatile__("MCR p15,0,%0,c2,c0,2" :: "r" (2));
 
     // Client access to all domains - reflect permission bits in TLB.
     unative_t domain = 0;
     domain |= DOMAINACC_CLIENT << (DOMAIN_KERNEL * 2);
     domain |= DOMAINACC_CLIENT << (DOMAIN_USER * 2);
-    asm volatile("MCR p15,0,%0,c3,c0,0" :: "r" (domain));
+    __asm__ __volatile__("MCR p15,0,%0,c3,c0,0" :: "r" (domain));
 
     // Enable the MMU.
     sctlr = 0;
-    asm volatile("MRC p15,0,%0,c1,c0,0" : "=r" (sctlr));
+    __asm__ __volatile__("MRC p15,0,%0,c1,c0,0" : "=r" (sctlr));
     sctlr |= CONTROL_MMUENABLE | CONTROL_STRICTALIGN;
     sctlr |= CONTROL_DATACACHE | CONTROL_INSCACHE;
     sctlr |= CONTROL_FLOWPREDICT | CONTROL_ACCESSFLAG;
-    asm volatile("MCR p15,0,%0,c1,c0,0" :: "r" (sctlr));
+    __asm__ __volatile__("MCR p15,0,%0,c1,c0,0" :: "r" (sctlr));
 
     // The UART code refers to the actual physical addresses of the UARTs...
     // The UART output code mustn't run until after the UARTs can be remapped.

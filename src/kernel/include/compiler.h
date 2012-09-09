@@ -29,7 +29,7 @@
 
 #if defined(__clang__) && !defined(NO_CLANG_BUILTINS)
 #define atomic_compare_and_swap(old_val, new_val, ...)     __sync_swap((old_val), (new_val))
-#elif defined(__GCC__)
+#else
 
 #ifdef ARM
 #define atomic_bool_compare_and_swap __arm_bool_compare_and_swap

@@ -43,13 +43,13 @@ void __attribute__((interrupt("SWI"))) arm_swint_handler()
     dprintf("ARMv7 data abort\n");
 
     vaddr_t dfar = 0;
-    asm volatile("MRC p15,0,%0,c6,c0,0" : "=r" (dfar));
+    __asm__ __volatile__("MRC p15,0,%0,c6,c0,0" : "=r" (dfar));
 
     vaddr_t dfsr = 0;
-    asm volatile("MRC p15,0,%0,c5,c0,0" : "=r" (dfsr));
+    __asm__ __volatile__("MRC p15,0,%0,c5,c0,0" : "=r" (dfsr));
 
     vaddr_t linkreg = 0;
-    asm volatile("mov %0, lr" : "=r" (linkreg));
+    __asm__ __volatile__("mov %0, lr" : "=r" (linkreg));
 
     dprintf("at %x status %x lr %x\n", dfar, dfsr, linkreg);
 
