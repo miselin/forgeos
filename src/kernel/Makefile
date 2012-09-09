@@ -105,8 +105,7 @@ endif
 
 WARNINGS := -Wall -Wextra -pedantic -Wshadow -Wpointer-arith -Wcast-align \
 			-Wwrite-strings -Wredundant-decls -Wnested-externs -Winline \
-			-Wno-long-long -Wuninitialized -Wconversion \
-			-Wno-empty-translation-unit
+			-Wno-long-long -Wuninitialized -Wconversion
 
 CFLAGS += -std=gnu99 -nostdinc -nostdlib -ffreestanding
 
@@ -128,10 +127,10 @@ LINT_FLAGS := $(CFLAGS) $(INCLUDES)
 LINT_IGNORE := dlmalloc.c
 
 ifeq "$(USE_CLANG)" "yes"
+  WARNINGS += -Wno-empty-translation-unit
   CFLAGS += -emit-llvm
 
 $(KERNEL): $(OBJFILES) $(ASMOBJS)
-
 	@echo Linking kernel...
 	@mkdir -p $(OBJDIR)/llbc
 	@$(LLVMLD) -o $(OBJDIR)/llbc/kernel.bc $(OBJFILES)
@@ -141,6 +140,7 @@ $(KERNEL): $(OBJFILES) $(ASMOBJS)
 	-@$(RM) -r $(OBJDIR)/llbc
 else
 $(KERNEL): $(OBJFILES) $(ASMOBJS)
+	@echo Linking kernel...
 	@$(LD) $(LDFLAGS) $(LIBDIRS) -o $@ -T $(KERNEL_LSCRIPT) $(OBJFILES) $(ASMOBJS) $(LIBS)
 endif
 

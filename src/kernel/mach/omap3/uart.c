@@ -321,6 +321,7 @@ void init_serial() {
 #ifdef DEBUG
     // Wait for one character to be transmitted before continuing.
     // This makes debugging a little easier.
+    serial_puts("Push a key to continue startup...\n");
     serial_read();
 #endif
 }

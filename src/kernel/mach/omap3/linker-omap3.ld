@@ -31,6 +31,8 @@ SECTIONS
         *(.data*);
         *(.rodata*);
 
+        . = ALIGN(4);
+
         __begin_timer_table = .;
         *(.table.timers*);
         __end_timer_table = .;
