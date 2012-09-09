@@ -46,7 +46,12 @@ LOADER_SOURCES += ui.c video.c
 
 SOURCES := $(ARCH_SOURCES) $(PLATFORM_SOURCES) $(LOADER_SOURCES)
 
-OBJECTS := $(addsuffix .gcc.o, $(basename $(SOURCES)))
+ifeq "$(USE_CLANG)" "yes"
+  OBJECTS := $(patsubst %.S,%.gcc.o,$(SOURCES))
+  OBJECTS := $(patsubst %.c,%.clang.o,$(OBJECTS))
+else
+  OBJECTS := $(addsuffix .clang.o, $(basename $(SOURCES)))
+endif
 
 OBJDIR := $(OBJDIR)/kboot
 
@@ -60,7 +65,7 @@ ASFLAGS  := -D __ASM__ -nostdinc
 
 # Arch (x86) Flags
 ifeq "$(ARCH_TARGET)" "x86"
-CFLAGS  += -m32 -mno-sse -mno-mmx -mno-sse2 -mno-3dnow
+CFLAGS  += -mtune=i686 -m32 -mno-sse -mno-mmx -mno-sse2 -mno-3dnow
 ASFLAGS += -m32
 endif
 
@@ -85,7 +90,11 @@ CFLAGS += -Os
 DPADD := $(OBJDIR)/source/platform/$(PLATFORM)/link.ld
 
 WARNINGS := -Wall -Wextra -Werror -Wno-variadic-macros -Wno-unused-parameter -Wwrite-strings
-WARNINGS += -Wmissing-declarations -Wredundant-decls -Wno-format -Wno-unused-but-set-variable
+WARNINGS += -Wmissing-declarations -Wredundant-decls -Wno-format
+
+ifneq "$(USE_CLANG)" "yes"
+  WARNINGS += -Wno-unused-but-set-variable
+endif
 
 CPPFLAGS := $(CCFLAGS) $(INCLUDES) $(WARNINGS)
 

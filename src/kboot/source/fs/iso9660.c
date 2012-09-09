@@ -43,7 +43,7 @@ typedef struct iso9660_handle {
 
 /** Convert a wide character to a multibyte sequence. */
 static int utf8_wctomb(uint8_t *s, uint32_t wc, size_t max) {
-	unsigned int bits, j, k;
+	unsigned int bits, j = 0, k;
 
 	if(s == NULL) {
 		return (wc >= 0x80);
