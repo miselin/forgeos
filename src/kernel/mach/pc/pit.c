@@ -32,7 +32,7 @@ static struct timer t;
 volatile size_t ticks = 0;
 
 /// Timer IRQ handler
-static int pit_irq(struct intr_stack *p) {
+static int pit_irq(struct intr_stack *p __unused) {
 	return timer_ticked(&t, ((10 << TIMERRES_SHIFT) | TIMERRES_MILLI));
 }
 

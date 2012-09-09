@@ -90,7 +90,8 @@ endif
 
 WARNINGS := -Wall -Wextra -pedantic -Wshadow -Wpointer-arith -Wcast-align \
 			-Wwrite-strings -Wredundant-decls -Wnested-externs -Winline \
-			-Wno-long-long -Wuninitialized -Wconversion
+			-Wno-long-long -Wuninitialized -Wconversion \
+			-Wno-empty-translation-unit
 
 CFLAGS += -std=gnu99 -nostdinc -nostdlib -ffreestanding
 

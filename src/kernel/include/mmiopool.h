@@ -25,6 +25,6 @@ extern void init_mmiopool(vaddr_t mmiobase, size_t maxsz);
 extern void *mmiopool_alloc(size_t len, paddr_t tophys);
 
 /** Returns a region to the MMIO pool. */
-extern void *mmiopool_dealloc(void *p);
+extern void mmiopool_dealloc(void *p);
 
 #endif

@@ -84,6 +84,8 @@ void machine_putc_at(char c, int x, int y) {
 
 	screenX = sx;
 	screenY = sy;
+	screenW = sw;
+	screenH = sh;
 }
 
 void machine_define_screen_extents(int x, int y) {

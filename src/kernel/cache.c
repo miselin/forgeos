@@ -189,7 +189,7 @@ int cache_iscached(void *cache, unative_t offset) {
         return 0;
 }
 
-void destroy_cache(void *cache) {
+void destroy_cache(void *cache __unused) {
     /// \todo Implement me! :)
 }
 

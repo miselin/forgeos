@@ -191,7 +191,6 @@ int tree_iterator_bof(void *t, void *it) {
 	if(!t || !it)
 		return 0;
 
-    struct tree *meta = (struct tree *) t;
     struct iterator *i = (struct iterator *) it;
 
     return i->n == tree_min(t) ? 1 : 0;
@@ -201,7 +200,6 @@ int tree_iterator_eof(void *t, void *it) {
 	if(!t || !it)
 		return 0;
 
-    struct tree *meta = (struct tree *) t;
     struct iterator *i = (struct iterator *) it;
 
     return i->n ? 0 : 1;

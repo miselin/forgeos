@@ -108,17 +108,17 @@ int arch_vmem_map(vaddr_t v, paddr_t p, size_t f) {
 		if(ptab_phys == 0)
 		    return -1;
 		pdir[PDIR_OFFSET(v)] = ((vaddr_t) ptab_phys) | FLAGS_PRESENT | FLAGS_WRITEABLE; // Non-user, Present
-		
+
 		dprintf("vmem: allocated a new page table for %x at %x\n", v, ptab_phys);
 
 	    // Invalidate the TLB cache for this page table
 	    invlpg((char *) ptab);
-		
+
 		memset(ptab, 0, PAGE_SIZE - 1);
 	}
 
 	// Complete the mapping.
-	ptab[PTAB_OFFSET(v)] = p | flags;
+	ptab[PTAB_OFFSET(v)] = ((unative_t) (p & PADDR_MASK)) | flags;
 
 	// Invalidate the TLB cache for this newly mapped page
 	invlpg((char *) v);
@@ -186,7 +186,7 @@ paddr_t arch_vmem_v2p(vaddr_t v) {
 	if(ptab[PTAB_OFFSET(v)] & FLAGS_PRESENT) {
 		return ptab[PTAB_OFFSET(v)] & (paddr_t) ~0xFFF;
 	}
-	
+
 	return 0;
 }
 
@@ -194,7 +194,7 @@ vaddr_t arch_vmem_create() {
 	return 0;
 }
 
-void arch_vmem_switch(vaddr_t pd) {
+void arch_vmem_switch(vaddr_t pd __unused) {
 }
 
 void gdt_set(int n, uintptr_t base, uint32_t limit, uint8_t access, uint8_t gran) {
@@ -234,18 +234,18 @@ void arch_vmem_init() {
 	for(c = stack_phys; c < (stack_phys + STACK_SIZE); c += 0x1000, stack_virt += 0x1000) {
 		vmem_map(stack_virt, c, VMEM_READWRITE);
 	}
-	
+
 	// We need to copy the existing KBoot stack, and then we need to switch stacks.
 	// Because I'm masochistic, I'm doing this in C.
-	
+
 	uint32_t esp = 0;
 	__asm__ volatile("mov %%esp, %0" : "=r" (esp));
-	
+
 	dprintf("current stack is %x, moving to base %x\n", esp, stack_base);
-	
+
 	// Assume it's page-aligned, so we can figure out how much to copy.
 	size_t stacksz = 0x1000 - (esp & 0xFFF);
-	
+
 	// Copy.
 	memcpy((void *) (STACK_TOP - stacksz), (void *) esp, stacksz);
 

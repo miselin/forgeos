@@ -65,7 +65,7 @@ void pmem_dealloc(paddr_t p) {
 	freeKiB += PAGE_SIZE / 1024;
 }
 
-void pmem_pin(paddr_t p) {
+void pmem_pin(paddr_t p __unused) {
 	/// \note Do we even need this function?
 	assert(0);
 }

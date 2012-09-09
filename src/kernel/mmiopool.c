@@ -91,7 +91,7 @@ void *mmiopool_alloc(size_t len, paddr_t tophys) {
     return (void *) ret;
 }
 
-void *mmiopool_dealloc(void *p) {
+void mmiopool_dealloc(void *p __unused) {
     // Find where this address is, in the list, merge with surrounding unallocated
     // regions if they exist.
 

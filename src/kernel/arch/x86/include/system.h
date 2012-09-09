@@ -17,18 +17,21 @@
 #ifndef _SYSTEM_H
 #define _SYSTEM_H
 
-#define PHYS_ADDR		0x400000
+#define PHYS_ADDR		0x400000UL
 
-#define KERNEL_BASE		0xC0000000
-#define HEAP_BASE		0xD0000000
-#define POOL_BASE       0xE0000000
-#define MMIO_BASE       0xF0000000
-#define STACK_TOP		0xFFC00000
-#define STACK_SIZE		0x4000 // 16 KB
+#define KERNEL_BASE		0xC0000000UL
+#define HEAP_BASE		0xD0000000UL
+#define POOL_BASE       0xE0000000UL
+#define MMIO_BASE       0xF0000000UL
+#define STACK_TOP		0xFFC00000UL
+#define STACK_SIZE		0x4000UL // 16 KB
 
-#define MMIO_LENGTH     0xF0000000
+#define MMIO_LENGTH     0xF0000000UL
 
-#define PAGE_SIZE		0x1000
+#define PAGE_SIZE		0x1000UL
+
+/// Mask to be applied against a paddr_t to get a full physical address.
+#define PADDR_MASK      0xFFFFFFFFUL
 
 #define log2phys(x)		(((x) - KERNEL_BASE) + PHYS_ADDR)
 #define phys2log(x)		(((x) - PHYS_ADDR) + KERNEL_BASE)

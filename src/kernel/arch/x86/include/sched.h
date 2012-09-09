@@ -14,7 +14,7 @@ typedef struct _x86_ctx {
 	uint32_t ebp, esp, eip;
 } __packed context_t;
 
-#define __halt asm volatile("hlt")
+#define __halt __asm__ __volatile__ ("hlt")
 
 #define _CONTEXT_T_DEFINED
 

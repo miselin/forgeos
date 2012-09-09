@@ -68,7 +68,7 @@ void *create_trie() {
 	return (void *) t;
 }
 
-void delete_trie(void *t) {
+void delete_trie(void *t __unused) {
 	/// \todo implement me! :)
 }
 

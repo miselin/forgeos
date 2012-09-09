@@ -20,7 +20,7 @@
 #include <types.h>
 #include <util.h>
 
-#define ABORT					dlmalloc_abort
+#define ABORT					dlmalloc_abort()
 #define MORECORE				dlmalloc_sbrk
 #define HAVE_MORECORE			1
 // #define MORECORE_CANNOT_TRIM	1
