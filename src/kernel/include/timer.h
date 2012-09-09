@@ -30,7 +30,7 @@ struct timer_table_entry {
 
 /// Exports a timer entry in the timer table.
 #define EXPORT_TIMER(name, ent) \
-	struct timer_table_entry _tmr_##name __section(".table.timers") __unused = {&ent}
+	struct timer_table_entry _tmr_##name __section(".table.timers") __used = {&ent}
 
 // Supported timer resolutions.
 #define TIMERRES_TERRIBLE		0xFF // > second resolution
