@@ -49,6 +49,9 @@ USE_CLANG := no
 # Path to LLVM binaries, including `llc' and `clang'.
 LLVM_PATH :=
 
+# Set to anything to enable building with -Werror.
+ENABLE_WERROR :=
+
 # END CONFIGURATION SECTION
 
 
@@ -163,7 +166,7 @@ export ARCH_TARGET ARCH_SUBTARGET PLATFORM_TARGET SHELL
 export AR AS CC CPP CXX LD NM OBJCOPY OBJDUMP STRIP MKISOFS
 export HOSTAR HOSTAS HOSTCC HOSTCPP HOSTCXX HOSTLD HOSTNM HOSTSTRIP
 export OUTPUT_DIR BUILD_ENV BUILD_DIR OBJDIR INSTDIR SERIAL_TTY
-export CLANG LLC LLVMLD USE_CLANG
+export CLANG LLC LLVMLD USE_CLANG ENABLE_WERROR
 
 # Don't perform the sub-make if we're running a clean or distclean target.
 ifeq "$(findstring clean, $(MAKECMDGOALS))" ""

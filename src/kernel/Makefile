@@ -99,6 +99,10 @@ CFLAGS += $(ARCH_SUBTARGET_CFLAGS) $(ARCH_SUBTARGET_DEFINE)
 CFLAGS += $(PLATFORM_CFLAGS) $(PLATFORM_DEFINES)
 CFLAGS += $(WARNINGS)
 
+ifneq "$(ENABLE_WERROR)" ""
+  CFLAGS += -Werror
+endif
+
 CFLAGS := $(strip $(CFLAGS))
 
 LDFLAGS := -nostdlib -nostartfiles
