@@ -25,13 +25,19 @@
 #define __section(s)      __attribute__((section(s)))
 
 #define __unused          __attribute__((unused))
-#define __used          __attribute__((used))
+#define __used            __attribute__((used))
 
-#ifndef ARM
-#define atomic_bool_compare_and_swap __sync_bool_compare_and_swap
-#else
+#if defined(__clang__) && !defined(NO_CLANG_BUILTINS)
+#define atomic_compare_and_swap(old_val, new_val, ...)     __sync_swap((old_val), (new_val))
+#elif defined(__GCC__)
+
+#ifdef ARM
 #define atomic_bool_compare_and_swap __arm_bool_compare_and_swap
 extern int __arm_bool_compare_and_swap(void **d, void *o, void *n);
+#endif
+
+#define atomic_compare_and_swap(old_val, new_val, cmp_val, stmt) do { stmt; } while(!atomic_bool_compare_and_swap((old_val), (cmp_val), (new_val)))
+
 #endif
 
 #define STRINGIFY(val)          #val

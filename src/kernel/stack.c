@@ -56,23 +56,24 @@ void stack_push(void *stack, void *data) {
 	struct node *n = (struct node *) malloc(sizeof(struct node));
 	n->p = data;
 
-	/// \todo Atomicity.
 	struct stack *s = (struct stack *) stack;
-	do {
-		n->next = s->head;
-	} while(!atomic_bool_compare_and_swap(&s->head, n->next, n));
+
+	// Replace the head of the stack with n, but only if our new node next
+	// pointer is still the head of the stack.
+	atomic_compare_and_swap(&s->head, n, n->next, n->next = s->head);
 }
 
 void *stack_pop(void *stack) {
 	if(!stack)
 		return 0;
 
-	/// \todo Atomicity.
 	struct stack *s = (struct stack *) stack;
-	struct node *top;
-	do {
-		top = s->head;
-	} while(!atomic_bool_compare_and_swap(&s->head, top, top->next));
+	struct node *top = s->head;
+
+	// Remove the first item from the stack by updating the head to point to the
+	// next item from the head. Atomically.
+	atomic_compare_and_swap(&s->head, top->next, top, top = s->head);
+
 	void *ret = top->p;
 	free(top);
 
