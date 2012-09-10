@@ -36,6 +36,12 @@ void arch_interrupts_disable() {
 	set(0);
 }
 
+int arch_interrupts_get() {
+    uint32_t cpsr = 0;
+    __asm__ __volatile__("MRS %0, cpsr" : "=r" (cpsr));
+    return (cpsr & 0x80UL) == 0 ? 1 : 0;
+}
+
 /// \note Not actually atomic!
 int __arm_bool_compare_and_swap(void **d, void *o, void *n) {
     if(*d == o) {

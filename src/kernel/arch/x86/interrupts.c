@@ -78,7 +78,7 @@ const char* trapnames[] =
 
 int cpu_trap(struct intr_stack *stack) {
 	int ret = 0;
-	
+
 	uint32_t n = stack->intnum;
 	if(interrupts[n] != 0) {
 		ret = interrupts[n](stack);
@@ -104,7 +104,7 @@ int cpu_trap(struct intr_stack *stack) {
 		} else
 			kprintf(" (unhandled)\n");
 	}
-	
+
 	dprintf("trap %d returns %d\n", n, ret);
 
 	return ret;
@@ -145,6 +145,12 @@ void arch_interrupts_enable() {
 
 void arch_interrupts_disable() {
 	__asm__ volatile("cli");
+}
+
+int arch_interrupts_get() {
+	unative_t eflags;
+	__asm__ volatile("pushf; pop %0" : "=r" (eflags));
+	return (eflags & (1UL << 9)) == 0 ? 0 : 1;
 }
 
 void arch_interrupts_reg(int n, inthandler_t handler) {

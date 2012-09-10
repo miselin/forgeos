@@ -31,6 +31,9 @@ typedef int (*inthandler_t)(struct intr_stack *);
 /// Disables interrupts
 #define interrupts_disable	arch_interrupts_disable
 
+/// Gets current interrupt state - 1 = on, 0 = off.
+#define interrupts_get      arch_interrupts_get
+
 /// Registers a new software interrupt
 #define interrupts_trap_reg	arch_interrupts_reg
 
@@ -41,6 +44,7 @@ extern void arch_interrupts_init();
 
 extern void arch_interrupts_enable();
 extern void arch_interrupts_disable();
+extern int arch_interrupts_get();
 
 extern void arch_interrupts_reg(int n, inthandler_t handler);
 extern void mach_interrupts_reg(int n, int leveltrig, inthandler_t handler);
