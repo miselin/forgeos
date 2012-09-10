@@ -25,6 +25,8 @@
 #define POOL_STACK_SZ       0x1000
 #define POOL_STACK_COUNT    0x1000
 
+#define EFLAGS_INT_ENBALE   (1UL << 9)
+
 static void *stackpool = 0;
 
 void init_context() {
@@ -34,21 +36,22 @@ void init_context() {
 
 void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_t stacksz) {
     assert(stackpool != 0);
-    
+
     memset(ctx, 0, sizeof(context_t));
-    
+
     /// \todo Don't use malloc!
     void *stack_ptr = 0;
     if(stack)
         stack_ptr = (void *) stack;
     else
         stack_ptr = (void *) pool_alloc(stackpool);
-    
+
     assert(stack_ptr != 0);
-    
+
     ctx->eip = (uint32_t) start;
     ctx->esp = ctx->ebp = (uint32_t) ((char *) stack_ptr) + (stacksz - 4);
-    
+    ctx->eflags = EFLAGS_INT_ENBALE;
+
     dprintf("new x86 context %x: eip=%x, esp=%x-%x\n", ctx, ctx->eip, ctx->esp - stacksz + 4, ctx->esp);
 }
 

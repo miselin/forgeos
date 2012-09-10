@@ -14,7 +14,14 @@
 
 .globl switch_context
 
+.extern arch_interrupts_get
+
 switch_context:
+	# Save EFLAGS, before it gets changed by the cmpl below.
+	pushf
+	mov (%esp), %ecx
+	add $4, %esp
+
 	# Old context - don't save current if it's null.
 	mov 4(%esp), %eax
 	cmpl %eax, 0
@@ -35,7 +42,11 @@ switch_context:
 	mov (%esp), %ecx
 	mov %ecx, 20(%eax)
 
+	# Safe flags.
+	mov %ecx, 24(%edi)
+
 .onlyload:
+
 
 	mov 8(%esp), %eax
 	mov (%eax), %edi
@@ -45,6 +56,10 @@ switch_context:
 	mov 12(%eax), %ebp
 	mov 16(%eax), %esp
 	addl $4, %esp
+
+	# EFLAGS.
+	push 24(%eax)
+	popf
 
 	mov 20(%eax), %ecx
 	jmp *%ecx

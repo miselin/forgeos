@@ -37,7 +37,12 @@ KBOOT_IMAGE(0);
 
 void idle() {
     dprintf("idle thread has started...\n");
+    while(1) {
+        __halt;
+    }
+}
 
+void banner() {
     char idlebuf[81];
     while(1) {
         interrupts_disable();
@@ -47,7 +52,6 @@ void idle() {
         sprintf(idlebuf, "FORGE Operating System: mem %d/%d KiB used, heap ends at %x", (uintptr_t) (pmem_size() - pmem_freek()), (uintptr_t) pmem_size(), dlmalloc_sbrk(0));
         puts_at(idlebuf, 0, 24);
         interrupts_enable();
-        __halt;
     }
 }
 
@@ -57,7 +61,6 @@ void init2() {
 
     dprintf("FORGE initialisation complete.\n");
     while(1) {
-        interrupts_enable();
         __halt;
     }
 }
@@ -135,8 +138,10 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
     struct process *initproc = create_process("init", 0);
     struct thread *init_thread = create_thread(initproc, THREAD_PRIORITY_HIGH, init2, 0, 0);
     struct thread *idle_thread = create_thread(initproc, THREAD_PRIORITY_LOW, idle, 0, 0);
+    struct thread *banner_thread = create_thread(initproc, THREAD_PRIORITY_LOW, banner, 0, 0);
 
     thread_wake(idle_thread);
+    thread_wake(banner_thread);
     switch_threads(0, init_thread);
 
     while(1)

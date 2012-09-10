@@ -12,6 +12,7 @@
 typedef struct _x86_ctx {
 	uint32_t edi, esi, ebx;
 	uint32_t ebp, esp, eip;
+    uint32_t eflags;
 } __packed context_t;
 
 #define __halt __asm__ __volatile__ ("hlt")
