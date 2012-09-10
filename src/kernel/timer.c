@@ -136,6 +136,10 @@ int timer_ticked(struct timer *tim, uint32_t in_ticks) {
 	// Convert the ticks.
 	uint64_t ticks = conv_ticks(in_ticks);
 
+#ifdef SPAM_THE_LOGS
+	dprintf("%d %d ns\n", (uint32_t) (ticks >> 32), (uint32_t) ticks);
+#endif
+
 	while((p = (struct timer_handler_meta *) list_at(timer_list, index++))) {
 		// Ignore if not for this timer.
 		if(p->tim != tim)
@@ -145,19 +149,20 @@ int timer_ticked(struct timer *tim, uint32_t in_ticks) {
 		if((tim->timer_feat & TIMERFEAT_ONESHOT) != 0) {
 			if(((p->feat & TIMERFEAT_ONESHOT) != 0) && (p->ticks == ticks)) {
 				ret += p->th(ticks);
-				list_remove(timer_list, index--);
+				list_remove(timer_list, --index);
 			}
 		}
 
 		// Handle periodic timers.
 		if((tim->timer_feat & TIMERFEAT_PERIODIC) != 0) {
 			if((p->feat & TIMERFEAT_PERIODIC) != 0) {
-				if(ticks >= p->ticks)
-					ticks = p->ticks;
-				p->ticks -= ticks;
+				if(p->ticks < ticks)
+					p->ticks = 0;
+				else
+					p->ticks -= ticks;
 
 				if(!p->ticks) {
-					ret += p->th(p->orig_ticks);
+					ret += p->th(ticks > p->orig_ticks ? ticks : p->orig_ticks);
 					p->ticks = p->orig_ticks; // Reload the timer.
 				}
 			}
@@ -166,13 +171,14 @@ int timer_ticked(struct timer *tim, uint32_t in_ticks) {
 		// One-shot emulation.
 		if(((tim->timer_feat & TIMERFEAT_ONESHOT) == 0) && ((tim->timer_feat & TIMERFEAT_PERIODIC) != 0)) {
 			if((p->feat & TIMERFEAT_ONESHOT) != 0) {
-				if(ticks >= p->ticks)
-					ticks = p->ticks;
-				p->ticks -= ticks;
+				if(p->ticks < ticks)
+					p->ticks = 0;
+				else
+					p->ticks -= ticks;
 
 				if(!p->ticks) {
-					ret += p->th(p->orig_ticks);
-					list_remove(timer_list, index--);
+					ret += p->th(ticks > p->orig_ticks ? ticks : p->orig_ticks);
+					list_remove(timer_list, --index);
 				}
 			}
 		}
