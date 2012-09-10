@@ -16,6 +16,7 @@
 
 #include <types.h>
 #include <test.h>
+#include <spinlock.h>
 
 #ifdef memset
 #undef memset
@@ -39,6 +40,50 @@ void *memcpy(void *dest, void *src, size_t len) {
 	char *s1 = (char *) src, *s2 = (char *) dest;
 	while(len--) *s2++ = *s1++;
 	return dest;
+}
+
+extern void *dlmalloc(size_t);
+extern void *dlrealloc(void *, size_t);
+extern void dlfree(void *);
+
+static void *alloc_spinlock = 0;
+
+void init_malloc() {
+	alloc_spinlock = create_spinlock();
+}
+
+void *malloc(size_t s) {
+	if(alloc_spinlock)
+		spinlock_acquire(alloc_spinlock);
+
+	void *ret = dlmalloc(s);
+
+	if(alloc_spinlock)
+		spinlock_release(alloc_spinlock);
+
+	return ret;
+}
+
+void *realloc(void *p, size_t s) {
+	if(alloc_spinlock)
+		spinlock_acquire(alloc_spinlock);
+
+	void *ret = dlrealloc(p, s);
+
+	if(alloc_spinlock)
+		spinlock_release(alloc_spinlock);
+
+	return ret;
+}
+
+void free(void *p) {
+	if(alloc_spinlock)
+		spinlock_acquire(alloc_spinlock);
+
+	dlfree(p);
+
+	if(alloc_spinlock)
+		spinlock_release(alloc_spinlock);
 }
 
 /*

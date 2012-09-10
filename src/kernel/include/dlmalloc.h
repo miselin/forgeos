@@ -30,6 +30,8 @@
 
 #define NO_MALLOC_STATS			1
 
+#define USE_DL_PREFIX           1
+
 #define LACKS_TIME_H			1
 #define LACKS_SYS_MMAN_H		1
 #define LACKS_UNISTD_H			1
