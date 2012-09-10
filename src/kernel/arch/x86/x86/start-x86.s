@@ -75,12 +75,12 @@ _start:
 .section .bss
 
 .align 4096
-.lcomm pdir, 4096
-.lcomm ptab0, 4096
-.lcomm ptab1, 4096
+.comm pdir, 4096
+.comm ptab0, 4096
+.comm ptab1, 4096
 
 # Kernel stack. Physical pages, virtual addresses not used.
-.lcomm tmpstack_base, 16384
+.comm tmpstack_base, 16384
 
 .section .text
 

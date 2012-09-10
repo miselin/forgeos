@@ -12,7 +12,19 @@ $(OBJDIR)/%.clang.o: %.c Makefile
 	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
 	$(CLANG) $(CFLAGS) $(CPPFLAGS) $(INCLUDES) -MMD -MP -c $< -o $@
 
-# Assemble code. This is currently done with GCC.
+# Assemble code with LLVM/clang
+$(OBJDIR)/%.clang.o: %.s Makefile
+	@echo '  [AS] $<...'
+	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
+	$(LLVMAS) $(CLANG_ASFLAGS) -filetype=obj -assemble $< -o $@
+
+$(OBJDIR)/%.clang.o: %.S Makefile
+	@echo '  [AS] $<...'
+	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
+	$(CPP) $(ASFLAGS) $(CPPFLAGS) $< -o $@.s && \
+	$(LLVMAS) $(CLANG_ASFLAGS) -filetype=obj -assemble $@.s -o $@
+
+# Assemble code with GCC
 $(OBJDIR)/%.gcc.o: %.S Makefile
 	@echo '  [AS] $<...'
 	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \

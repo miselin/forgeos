@@ -17,16 +17,17 @@ ifeq "$(ARCH_SUBTARGET)" "x86"
   ARCH_SUBTARGET_CFLAGS := -mtune=i686 -m32  -mno-sse -mno-mmx -mno-sse2 -mno-3dnow
   ARCH_SUBTARGET_ASFLAGS := -m32  -mno-sse -mno-mmx -mno-sse2 -mno-3dnow
   ARCH_SUBTARGET_DEFINE :=
+  CLANG_ASFLAGS := -arch x86 -mcpu=i686
+
+  CLANG_TRIPLE := -ccc-host-triple i686-unknown-none
   ARCH_LLCFLAGS += -mcpu=i686 -mattr=-sse,-sse2,-mmx,-3dnow
 endif
 ifeq "$(ARCH_SUBTARGET)" "armv7"
-  ifeq "$(USE_CLANG)" "yes"
-    ARCH_SUBTARGET_CFLAGS := -ccc-host-triple armv7-unknown-gnueabi
-    ARCH_SUBTARGET_ASFLAGS :=
-  else
-    ARCH_SUBTARGET_CFLAGS := -march=armv7-a
-    ARCH_SUBTARGET_ASFLAGS := -march=armv7-a
-  endif
+  ARCH_SUBTARGET_CFLAGS := -march=armv7-a
+  ARCH_SUBTARGET_ASFLAGS := -march=armv7-a
+  CLANG_ASFLAGS := -arch arm
+
+  CLANG_TRIPLE := -ccc-host-triple armv7-unknown-gnueabi
   ARCH_SUBTARGET_DEFINE := -DARMV7
 endif
 
@@ -40,6 +41,8 @@ ifeq "$(PLATFORM_TARGET)" "omap3"
   PLATFORM_CFLAGS := -mtune=cortex-a8 -mfpu=vfp
   PLATFORM_ASFLAGS := -mtune=cortex-a8 -mfpu=vfp
   PLATFORM_DEFINES := -DOMAP3 -DMACH_REQUIRES_EARLY_DEVINIT
+
+  CLANG_ASFLAGS += -mcpu=cortex-a8
   ARCH_LLCFLAGS += -mcpu=cortex-a8
 endif
 
@@ -67,6 +70,9 @@ ifeq "$(USE_CLANG)" "yes"
   # compiler-rt automatically linked.
   libgcc =
 
+  # Add in the CLANG-specific flags
+  CFLAGS += $(CLANG_TRIPLE) -emit-llvm -integrated-as
+
   # compiler-rt does not build as easily on non-x86, however, so use libgcc for
   # now. Hopefully this won't be an issue for too much longer.
   ifneq "$(ARCH_TARGET)" "x86"
@@ -87,7 +93,7 @@ HDRFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.h")
 
 OBJFILES := $(abspath $(patsubst %.s,$(OBJDIR)/%.gcc.o,$(ASMFILES)))
 ifeq "$(USE_CLANG)" "yes"
-  ASMOBJS := $(OBJFILES)
+  ASMOBJS := $(patsubst %.s,$(OBJDIR)/%.clang.o,$(ASMFILES))
   OBJFILES := $(patsubst %.c,$(OBJDIR)/%.clang.o,$(SRCFILES))
   DEPFILES := $(abspath $(patsubst %.c,$(OBJDIR)/%.clang.d,$(SRCFILES)))
 else
@@ -128,14 +134,13 @@ LINT_IGNORE := dlmalloc.c
 
 ifeq "$(USE_CLANG)" "yes"
   WARNINGS += -Wno-empty-translation-unit
-  CFLAGS += -emit-llvm
 
 $(KERNEL): $(OBJFILES) $(ASMOBJS)
 	@echo Linking kernel...
 	@mkdir -p $(OBJDIR)/llbc
 	@$(LLVMLD) -o $(OBJDIR)/llbc/kernel.bc $(OBJFILES)
 	@$(LLC) $(ARCH_LLCFLAGS) -o $(OBJDIR)/llbc/kernel.s $(OBJDIR)/llbc/kernel.bc
-	@$(CC) $(ASFLAGS) $(CPPFLAGS) -o $(OBJDIR)/llbc/kernel.bo -c $(OBJDIR)/llbc/kernel.s
+	@$(LLVMAS) $(CLANG_ASFLAGS) $(CPPFLAGS) -filetype=obj -o $(OBJDIR)/llbc/kernel.bo -assemble $(OBJDIR)/llbc/kernel.s
 	@$(LD) $(LDFLAGS) $(LIBDIRS) -o $@ -T $(KERNEL_LSCRIPT) $(OBJDIR)/llbc/kernel.bo $(ASMOBJS) $(LIBS)
 	-@$(RM) -r $(OBJDIR)/llbc
 else
