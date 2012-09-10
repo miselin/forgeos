@@ -49,9 +49,11 @@ void banner() {
         sprintf(idlebuf, "%-79s", "");
         puts_at(idlebuf, 0, 24);
 
-        sprintf(idlebuf, "FORGE Operating System: mem %d/%d KiB used, heap ends at %x", (uintptr_t) (pmem_size() - pmem_freek()), (uintptr_t) pmem_size(), dlmalloc_sbrk(0));
+        sprintf(idlebuf, "FORGE Operating System: mem %d/%d KiB used, heap ends at %x %d", (uintptr_t) (pmem_size() - pmem_freek()), (uintptr_t) pmem_size(), dlmalloc_sbrk(0));
         puts_at(idlebuf, 0, 24);
         interrupts_enable();
+
+        sleep_ms(1000);
     }
 }
 
@@ -86,7 +88,7 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
     // This will make sure there's about 4K of space for malloc to use until physical
     // memory management is available for proper virtual memory.
-    kprintf("Initialising malloc()...\n");
+    kprintf("Initialising sbrk()...\n");
     dlmalloc_sbrk(0);
 
 	kprintf("Initialising physical memory manager...\n");
@@ -108,6 +110,9 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
     kprintf("Configuring MMIO pools...\n");
     init_mmiopool(MMIO_BASE, MMIO_LENGTH);
 #endif
+
+    kprintf("Initialising malloc...\n");
+    init_malloc();
 
 	kprintf("Configuring software and hardware interrupts...\n");
 	interrupts_init();

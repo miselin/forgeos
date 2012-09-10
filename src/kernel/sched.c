@@ -41,6 +41,10 @@ static int sched_timer(uint64_t ticks) {
     return current_thread->timeslice ? 0 : 1;
 }
 
+struct thread *sched_current_thread() {
+    return current_thread;
+}
+
 struct process *create_process(const char *name, struct process *parent) {
     struct process *ret = (struct process *) malloc(sizeof(struct process));
     memset(ret, 0, sizeof(struct process));
@@ -162,7 +166,7 @@ void reschedule() {
     if(thr != current_thread) {
         if(current_thread->parent != thr->parent) {
             /// \todo Process switch - address space and such.
-            dprintf("TODO: process switch - address space etc\n");
+            dprintf("TODO: process switch - address space etc %x %x\n", current_thread->parent, thr->parent);
         }
 
         struct thread *tmp = current_thread;

@@ -119,4 +119,7 @@ extern void init_scheduler();
 /** Begins the scheduler proper: pre-emption rather than co-operative multitasking. */
 extern void start_scheduler();
 
+/** Get the currently running thread. */
+extern struct thread *sched_current_thread();
+
 #endif
