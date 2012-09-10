@@ -23,6 +23,10 @@ extern void *malloc(size_t sz);
 extern void *realloc(void *p, size_t newsz);
 extern void free(void *m);
 
+extern void *malloc_nolock(size_t sz);
+extern void *realloc_nolock(void *p, size_t newsz);
+extern void free_nolock(void *m);
+
 extern void init_malloc();
 
 #endif

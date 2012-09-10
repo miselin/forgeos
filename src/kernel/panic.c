@@ -22,6 +22,7 @@ void panic(const char *s) {
 	while(1) __halt;
 }
 
-void dlmalloc_abort() {
+void dlmalloc_abort(const char *f, int l) {
+    dprintf("dlmalloc abort in %s:%d\n", f, l);
 	panic("dlmalloc abort");
 }

@@ -44,7 +44,7 @@ paddr_t pmem_alloc() {
 	if(!page)
 		return 0;
 	ret = page->addr;
-	free(page);
+	free_nolock(page);
 
 	freeKiB -= PAGE_SIZE / 1024;
 
@@ -54,10 +54,14 @@ paddr_t pmem_alloc() {
 void pmem_dealloc(paddr_t p) {
 	struct phys_page *page = 0;
 
-	if(page_stack == 0)
+	// No page stack? Create one, and configure it to use non-locked versions
+	// of malloc and free.
+	if(page_stack == 0) {
 		page_stack = create_stack();
+		stack_flags(page_stack, STACK_FLAGS_NOMEMLOCK);
+	}
 
-	page = (struct phys_page *) malloc(sizeof(struct phys_page));
+	page = (struct phys_page *) malloc_nolock(sizeof(struct phys_page));
 	page->addr = p;
 
 	stack_push(page_stack, page);

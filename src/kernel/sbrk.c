@@ -72,7 +72,7 @@ void *dlmalloc_sbrk(intptr_t incr) {
 		base += (uintptr_t) incr;
 		if(PAGE_ALIGNED(old) != PAGE_ALIGNED(base)) {
 			vaddr_t v = old;
-			for(; v <= base; v += PAGE_SIZE) {
+			for(; v < base; v += PAGE_SIZE) {
 				if(vmem_ismapped(v) == 0) {
 					vmem_map(v, (paddr_t) ~0, VMEM_READWRITE | VMEM_SUPERVISOR | VMEM_GLOBAL);
 				}

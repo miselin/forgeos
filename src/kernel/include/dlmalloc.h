@@ -20,7 +20,7 @@
 #include <types.h>
 #include <util.h>
 
-#define ABORT					dlmalloc_abort()
+#define ABORT					dlmalloc_abort(__FILE__, __LINE__)
 #define MORECORE				dlmalloc_sbrk
 #define HAVE_MORECORE			1
 // #define MORECORE_CANNOT_TRIM	1
@@ -43,7 +43,7 @@
 #define LACKS_STDLIB_H
 #define LACKS_ERRNO_H
 
-extern void dlmalloc_abort();
+extern void dlmalloc_abort(const char *f, int l);
 extern void *dlmalloc_sbrk(size_t incr);
 
 #define EINVAL					-1000

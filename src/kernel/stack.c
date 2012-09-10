@@ -25,13 +25,22 @@ struct node {
 
 struct stack {
 	struct node *head;
+	uint32_t flags;
 };
 
 void *create_stack() {
 	void *ret = malloc(sizeof(struct stack));
 	struct stack *s = (struct stack *) ret;
 	s->head = 0;
+	s->flags = 0;
 	return ret;
+}
+
+void stack_flags(void *p, uint32_t flags) {
+	if(!p)
+		return;
+	struct stack *s = (struct stack *) p;
+	s->flags = flags;
 }
 
 void delete_stack(void *p) {
@@ -45,7 +54,11 @@ void delete_stack(void *p) {
 	while(n) {
 		tmp = n;
 		n = n->next;
-		free(tmp);
+
+		if(s->flags & STACK_FLAGS_NOMEMLOCK)
+			free_nolock(tmp);
+		else
+			free(tmp);
 	}
 }
 
@@ -53,10 +66,13 @@ void stack_push(void *stack, void *data) {
 	if(!stack)
 		return;
 
-	struct node *n = (struct node *) malloc(sizeof(struct node));
-	n->p = data;
-
 	struct stack *s = (struct stack *) stack;
+	struct node *n = 0;
+	if(s->flags & STACK_FLAGS_NOMEMLOCK)
+		n = (struct node *) malloc_nolock(sizeof(struct node));
+	else
+		n = (struct node *) malloc(sizeof(struct node));
+	n->p = data;
 
 	// Replace the head of the stack with n, but only if our new node next
 	// pointer is still the head of the stack.
@@ -75,7 +91,11 @@ void *stack_pop(void *stack) {
 	atomic_compare_and_swap(&s->head, s->head->next, void * _a __unused, top, top = s->head);
 
 	void *ret = top->p;
-	free(top);
+
+	if(s->flags & STACK_FLAGS_NOMEMLOCK)
+		free_nolock(top);
+	else
+		free(top);
 
 	return ret;
 }

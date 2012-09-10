@@ -79,11 +79,12 @@ void arch_vmem_prime(paddr_t p) {
 int arch_vmem_map(vaddr_t v, paddr_t p, size_t f) {
 	uint32_t flags = flags_to_x86(f);
 	if(p == (paddr_t) ~0) {
-		p = pmem_alloc();
+		p = g_primedpage;
 		if(p == 0) {
-		    p = g_primedpage;
+		    p = pmem_alloc();
+		} else
 		    g_primedpage = 0;
-		}
+
 		if(p == 0)
 			panic("Out of memory.");
 	} else if((p & 0xFFF) != 0) {
@@ -100,11 +101,11 @@ int arch_vmem_map(vaddr_t v, paddr_t p, size_t f) {
 	uint32_t *ptab = (uint32_t *) PTAB_FROM_VADDR(v);
 	if(entry == 0) {
 		// No page table yet - allocate one.
-		paddr_t ptab_phys = pmem_alloc();
+		paddr_t ptab_phys = g_primedpage;
 		if(ptab_phys == 0) {
-		    ptab_phys = g_primedpage;
+		    ptab_phys = pmem_alloc();
+		} else
 		    g_primedpage = 0;
-		}
 		if(ptab_phys == 0)
 		    return -1;
 		pdir[PDIR_OFFSET(v)] = ((vaddr_t) ptab_phys) | FLAGS_PRESENT | FLAGS_WRITEABLE; // Non-user, Present

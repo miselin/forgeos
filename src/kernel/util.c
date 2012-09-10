@@ -86,6 +86,18 @@ void free(void *p) {
 		spinlock_release(alloc_spinlock);
 }
 
+void *malloc_nolock(size_t sz) {
+	return dlmalloc(sz);
+}
+
+void *realloc_nolock(void *p, size_t newsz) {
+	return dlrealloc(p, newsz);
+}
+
+void free_nolock(void *m) {
+	return dlfree(m);
+}
+
 /*
  * Tests for the above functions. Using the ',' operator and macros to
  * create some truly convoluted things here. Note that none of this exists

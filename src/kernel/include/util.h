@@ -19,6 +19,8 @@
 
 #include <types.h>
 
+#define STACK_FLAGS_NOMEMLOCK       1
+
 typedef int (*tree_comparer)(void *, void *);
 
 #ifndef NO_BUILTIN_MEMFUNCS
@@ -32,6 +34,7 @@ extern void *memcpy(void *dst, void *src, size_t len);
 extern void *create_stack();
 extern void delete_stack(void *s);
 
+extern void stack_flags(void *p, uint32_t flags);
 extern void stack_push(void *s, void *p);
 extern void *stack_pop(void *s);
 
