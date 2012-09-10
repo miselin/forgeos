@@ -28,6 +28,8 @@ size_t runqueue_n = 0;
 
 static struct thread *current_thread = 0;
 
+static size_t nextpid = 0;
+
 /** Initialises the architecture-specific context layer (for create_context). */
 extern void init_context();
 
@@ -39,7 +41,7 @@ static int sched_timer(uint64_t ticks) {
     return current_thread->timeslice ? 0 : 1;
 }
 
-struct process *create_process(const char *name, uint32_t prio, struct process *parent) {
+struct process *create_process(const char *name, struct process *parent) {
     struct process *ret = (struct process *) malloc(sizeof(struct process));
     memset(ret, 0, sizeof(struct process));
 
@@ -47,6 +49,8 @@ struct process *create_process(const char *name, uint32_t prio, struct process *
         strcpy(ret->name, DEFAULT_PROCESS_NAME);
     else
         strncpy(ret->name, name, PROCESS_NAME_MAX);
+
+    ret->pid = nextpid++;
 
     ret->child_list = create_list();
     ret->thread_list = create_list();
@@ -58,12 +62,10 @@ struct process *create_process(const char *name, uint32_t prio, struct process *
         list_insert(parent->child_list, ret, 0);
     }
 
-    ret->base_priority = ret->priority = prio;
-
     return ret;
 }
 
-struct thread *create_thread(struct process *parent, thread_entry_t start, uintptr_t stack, size_t stacksz) {
+struct thread *create_thread(struct process *parent, uint32_t prio, thread_entry_t start, uintptr_t stack, size_t stacksz) {
     if(stacksz == 0)
         stacksz = 0x1000;
 
@@ -73,6 +75,8 @@ struct thread *create_thread(struct process *parent, thread_entry_t start, uintp
     t->state = THREAD_STATE_SLEEPING;
     t->timeslice = THREAD_DEFAULT_TIMESLICE;
     t->parent = parent;
+
+    t->base_priority = t->priority = prio;
 
     t->ctx = (context_t *) malloc(sizeof(context_t));
     create_context(t->ctx, start, stack, stacksz);
@@ -110,8 +114,10 @@ void thread_wake(struct thread *thr) {
     queue_push(runqueue, thr);
 }
 
-uint32_t process_priority(struct process *prio) {
-    assert(prio != 0);
+uint32_t thread_priority(struct thread *prio) {
+    if(prio == NULL) {
+        prio = current_thread;
+    }
 
     return prio->priority;
 }

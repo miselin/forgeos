@@ -32,11 +32,11 @@ typedef void context_t;
 
 #define DEFAULT_PROCESS_NAME    "<untitled process>"
 
-#define PROCESS_PRIORITY_REALTIME       0
-#define PROCESS_PRIORITY_VERYHIGH       20
-#define PROCESS_PRIORITY_HIGH           40
-#define PROCESS_PRIORITY_MEDIUM         60
-#define PROCESS_PRIORITY_LOW            79
+#define THREAD_PRIORITY_REALTIME       0
+#define THREAD_PRIORITY_VERYHIGH       20
+#define THREAD_PRIORITY_HIGH           40
+#define THREAD_PRIORITY_MEDIUM         60
+#define THREAD_PRIORITY_LOW            79
 
 #define THREAD_STATE_RUNNING            0
 #define THREAD_STATE_READY              1
@@ -52,42 +52,45 @@ typedef void (*thread_entry_t)();
 
 struct thread {
     context_t *ctx;
-    
+
     uint32_t state;
-    
+
     uint64_t timeslice;
-    
+
+    /**
+     * Base priority: the priority of the thread cannot exceed this.
+     * This avoids threads with high I/O managing to achieve realtime
+     * priority when they give up their timeslice all the time.
+     */
+    uint32_t base_priority;
+
+    /// Actual, current, priority of the thread.
+    uint32_t priority;
+
     struct process *parent;
 };
 
 /** A process. */
 struct process {
     char name[PROCESS_NAME_MAX];
-    
+
     struct process *next;
-    
+
     void *child_list;
     void *thread_list;
-    
-    /**
-     * Base priority: the priority of the process cannot exceed this.
-     * This avoids processes with high I/O managing to achieve realtime
-     * priority when they give up their timeslice all the time.
-     */
-    uint32_t base_priority;
-    
-    /// Actual, current, priority of the process.
-    uint32_t priority;
+
+    /// Process ID.
+    size_t pid;
 };
 
 /** Creates a process and returns a pointer to it. */
-extern struct process *create_process(const char *name, uint32_t prio, struct process *parent);
+extern struct process *create_process(const char *name, struct process *parent);
 
 /**
  * Creates a new thread under a given process.
  * A zero stack or stacksz parameter will allocate a new stack for this thread.
  */
-extern struct thread *create_thread(struct process *parent, thread_entry_t start, uintptr_t stack, size_t stacksz);
+extern struct thread *create_thread(struct process *parent, uint32_t prio, thread_entry_t start, uintptr_t stack, size_t stacksz);
 
 /** Performs a context switch to a new context. */
 extern void switch_context(context_t *oldctx, context_t *newctx);
@@ -104,8 +107,8 @@ extern void thread_sleep();
 /** Wakes up a thread (threads begin in the SLEEPING state). */
 extern void thread_wake(struct thread *thr);
 
-/** Reads the current priority of a process. */
-extern uint32_t process_priority(struct process *prio);
+/** Reads the current priority of a thread. Pass NULL for the current thread. */
+extern uint32_t thread_priority(struct thread *prio);
 
 /** Performs a reschedule. */
 extern void reschedule();
