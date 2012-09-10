@@ -29,6 +29,8 @@
 #include <sched.h>
 #include <pool.h>
 #include <test.h>
+#include <malloc.h>
+#include <sleep.h>
 
 extern void init_serial();
 extern void _start();
@@ -49,7 +51,7 @@ void banner() {
         sprintf(idlebuf, "%-79s", "");
         puts_at(idlebuf, 0, 24);
 
-        sprintf(idlebuf, "FORGE Operating System: mem %d/%d KiB used, heap ends at %x %d", (uintptr_t) (pmem_size() - pmem_freek()), (uintptr_t) pmem_size(), dlmalloc_sbrk(0));
+        sprintf(idlebuf, "FORGE Operating System: mem %d/%d KiB used, heap ends at %x", (uintptr_t) (pmem_size() - pmem_freek()), (uintptr_t) pmem_size(), dlmalloc_sbrk(0));
         puts_at(idlebuf, 0, 24);
         interrupts_enable();
 

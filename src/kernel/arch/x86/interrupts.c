@@ -105,8 +105,6 @@ int cpu_trap(struct intr_stack *stack) {
 			kprintf(" (unhandled)\n");
 	}
 
-	dprintf("trap %d returns %d\n", n, ret);
-
 	return ret;
 }
 

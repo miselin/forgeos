@@ -20,15 +20,25 @@
 #include <assert.h>
 #include <timer.h>
 #include <util.h>
+#include <vmem.h>
 #include <io.h>
 
-static void *runqueue = 0;
-static void *alreadyqueue = 0;
-size_t runqueue_n = 0;
+// #define VERBOSE_LOGGING
 
 static struct thread *current_thread = 0;
 
 static size_t nextpid = 0;
+
+static size_t current_priolevel = 0;
+
+#define QUEUE_COUNT (THREAD_PRIORITY_LOW + 1)
+
+/// Run queues for each priority level.
+/// \todo Group threads with a common parent process.
+static void *prio_queues[THREAD_PRIORITY_LOW + 1] = {0};
+
+/// Already queues for the above.
+static void *prio_already_queues[THREAD_PRIORITY_LOW + 1] = {0};
 
 /** Initialises the architecture-specific context layer (for create_context). */
 extern void init_context();
@@ -91,7 +101,9 @@ struct thread *create_thread(struct process *parent, uint32_t prio, thread_entry
 }
 
 void switch_threads(struct thread *old, struct thread *new) {
+#ifdef VERBOSE_LOGGING
     dprintf("switch_threads: %x -> %x\n", old, new);
+#endif
     if(!old) {
         if(!current_thread)
             current_thread = new;
@@ -115,7 +127,9 @@ void thread_wake(struct thread *thr) {
     assert(thr != 0);
 
     thr->state = THREAD_STATE_READY;
-    queue_push(runqueue, thr);
+    if(!prio_queues[thr->priority])
+        prio_queues[thr->priority] = create_queue();
+    queue_push(prio_queues[thr->priority], thr);
 }
 
 uint32_t thread_priority(struct thread *prio) {
@@ -126,12 +140,33 @@ uint32_t thread_priority(struct thread *prio) {
     return prio->priority;
 }
 
+static void go_next_priolevel() {
+    while((current_priolevel < QUEUE_COUNT)) {
+        if(prio_queues[current_priolevel]) {
+            if(!queue_empty(prio_queues[current_priolevel])) {
+                break;
+            }
+        }
+
+        current_priolevel = current_priolevel + 1;
+    }
+}
+
 void reschedule() {
     if(current_thread->timeslice > 0) {
+#ifdef VERBOSE_LOGGING
         dprintf("reschedule before timeslice completes\n");
+#endif
+        if(current_thread->priority > current_thread->base_priority)
+            current_thread->priority--;
     } else {
-        /// \todo Multilevel feedback scheduler will use this to identify
-        ///       that we need to drop priority on the thread/process.
+#ifdef VERBOSE_LOGGING
+        dprintf("reschedule due to completed timeslice\n");
+#endif
+        current_thread->priority++;
+
+        if(current_thread->priority > THREAD_PRIORITY_LOW)
+            current_thread->priority = THREAD_PRIORITY_LOW;
     }
 
     // RUNNING -> READY transition for the current thread. State could be
@@ -139,13 +174,30 @@ void reschedule() {
     // leaving the current thread off the queue.
     if(current_thread->state == THREAD_STATE_RUNNING) {
         current_thread->state = THREAD_STATE_READY;
-        queue_push(alreadyqueue, current_thread);
+
+        if(!prio_already_queues[current_thread->priority])
+            prio_already_queues[current_thread->priority] = create_queue();
+        queue_push(prio_already_queues[current_thread->priority], current_thread);
     }
 
-    assert(!queue_empty(runqueue) || !queue_empty(alreadyqueue));
+    // Find the next priority level with items in it.
+    go_next_priolevel();
+
+    if(current_priolevel >= QUEUE_COUNT) {
+        for(size_t i = 0; i < QUEUE_COUNT; i++) {
+            void *tmp = prio_queues[i];
+            prio_queues[i] = prio_already_queues[i];
+            prio_already_queues[i] = tmp;
+        }
+
+        current_priolevel = 0;
+        go_next_priolevel();
+    }
+
+    assert(!queue_empty(prio_queues[current_priolevel]));
 
     // Pop a thread off the run queue.
-    struct thread *thr = (struct thread *) queue_pop(runqueue);
+    struct thread *thr = (struct thread *) queue_pop(prio_queues[current_priolevel]);
     assert(thr != 0);
 
     // Reset the timeslice and prepare for context switch.
@@ -153,14 +205,13 @@ void reschedule() {
     thr->state = THREAD_STATE_RUNNING;
 
     // Empty run queue?
-    if(queue_empty(runqueue)) {
-        dprintf("Empty runqueue, swapping queues\n");
-        void *tmp = runqueue;
-        runqueue = alreadyqueue;
-        alreadyqueue = tmp;
+    if(queue_empty(prio_queues[current_priolevel])) {
+        current_priolevel++;
     }
 
-    dprintf("reschedule: queues now run: %sempty / already: %sempty\n", queue_empty(runqueue) ? "" : "not ", queue_empty(alreadyqueue) ? "" : "not ");
+#ifdef VERBOSE_LOGGING
+    dprintf("reschedule: queues now run: %sempty / already: %sempty\n", queue_empty(prio_queues[current_priolevel]) ? "" : "not ", queue_empty(prio_already_queues[current_priolevel]) ? "" : "not ");
+#endif
 
     // Perform the context switch if this isn't the already-running thread.
     if(thr != current_thread) {
@@ -176,8 +227,10 @@ void reschedule() {
 }
 
 void init_scheduler() {
-    runqueue = create_queue();
-    alreadyqueue = create_queue();
+    for(size_t i = 0; i < QUEUE_COUNT; i++) {
+        prio_queues[i] = 0;
+        prio_already_queues[i] = 0;
+    }
 
     init_context();
 }
