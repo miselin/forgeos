@@ -153,12 +153,16 @@ void list_remove(void *list, size_t index) {
 	struct llist *l = (struct llist *) list;
 	struct node *n = 0;
 
-	dprintf("list_remove %x: idx %d\n", list, index);
+	dprintf("list_remove %x: idx %d len %d\n", list, index, l->len);
 
 	if(index == 0) {
 		n = l->head;
-		l->head = l->head->next;
-		l->head->prev = 0;
+		if(l->head == l->tail) {
+			l->head = l->tail = 0;
+		} else {
+			l->head = l->head->next;
+			l->head->prev = 0;
+		}
 	} else if(index >= (l->len - 1)) {
 		n = l->tail;
 		l->tail = n->prev;
