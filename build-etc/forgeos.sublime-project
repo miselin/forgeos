@@ -12,5 +12,20 @@
             "cmd": ["make"],
             "working_dir": "${project_path}/.."
         }
-    ]
+    ],
+    "settings":
+    {
+        "sublimeclang_options":
+        [
+            "-Wall",
+            "-I${folder:${project_path:src}}/src/kernel/include",
+            "-I${folder:${project_path:src}}/src/kernel/include/mach/pc",
+            "-I${folder:${project_path:src}}/src/kernel/include/mach/omap3",
+            "-I${folder:${project_path:src}}/src/kernel/arch/x86/include",
+            "-I${folder:${project_path:src}}/src/kernel/arch/x86/include/arch",
+            "-I${folder:${project_path:src}}/src/kernel/arch/arm/include",
+            "-I${folder:${project_path:src}}/src/kernel/arch/arm/include/arch",
+            "-I${folder:${project_path:src}}/src/kernel/arch/armv7/include"
+        ]
+    }
 }
