@@ -43,7 +43,9 @@
 #define LACKS_STDLIB_H
 #define LACKS_ERRNO_H
 
+#ifdef DEBUG
 #define FOOTERS                 1
+#endif
 
 extern void dlmalloc_abort(const char *f, int l);
 extern void *dlmalloc_sbrk(size_t incr);
