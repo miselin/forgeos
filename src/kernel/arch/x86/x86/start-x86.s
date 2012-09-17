@@ -73,14 +73,20 @@ _start:
 	ret
 
 .section .bss
-
 .align 4096
-.comm pdir, 4096
-.comm ptab0, 4096
-.comm ptab1, 4096
+
+pdir:
+.fill 4096, 1, 0
+
+ptab0:
+.fill 4096, 1, 0
+
+ptab1:
+.fill 4096, 1, 0
 
 # Kernel stack. Physical pages, virtual addresses not used.
-.comm tmpstack_base, 16384
+tmpstack_base:
+.fill 16384, 1, 0
 
 .section .text
 
