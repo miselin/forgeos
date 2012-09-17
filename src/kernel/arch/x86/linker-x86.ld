@@ -21,6 +21,8 @@ SECTIONS {
     	code = .; _code = .; __code = .;
     	*(.text*);
 
+        . = ALIGN(4);
+
     	__begin_tests_0 = .;
     	*(.__test.0*);
     	__begin_tests_1 = .;
@@ -45,6 +47,9 @@ SECTIONS {
     .bss : AT(ADDR(.bss) - 0xBFF00000) {
     	. = ALIGN(4096);
     	*(.bss*);
+
+        . = ALIGN(4096);
+        *(.pagstructs*);
     }
 
     . = ALIGN(4096);

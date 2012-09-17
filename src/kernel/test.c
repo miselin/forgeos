@@ -32,7 +32,7 @@ int perform_tests() {
 
 	while(begin < end) {
 		struct __test *test = (struct __test *) begin;
-		kprintf("Test %d of %d: %s ", n++, testcount, test->name);
+		kprintf("Test %d of %d: %s ", ++n, testcount, test->name);
 		if(!test->routine())
 			kprintf("PASS\n");
 		else {
