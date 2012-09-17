@@ -64,9 +64,8 @@ void init2() {
     start_scheduler();
 
     dprintf("FORGE initialisation complete.\n");
-    while(1) {
-        __halt;
-    }
+
+    thread_kill();
 }
 
 void _kmain(uint32_t magic, phys_ptr_t tags) {

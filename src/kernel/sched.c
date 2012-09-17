@@ -40,6 +40,9 @@ static void *prio_queues[THREAD_PRIORITY_LOW + 1] = {0};
 /// Already queues for the above.
 static void *prio_already_queues[THREAD_PRIORITY_LOW + 1] = {0};
 
+/// Zombie thread queue.
+static void *zombie_queue = 0;
+
 /** Initialises the architecture-specific context layer (for create_context). */
 extern void init_context();
 
@@ -49,6 +52,23 @@ static int sched_timer(uint64_t ticks) {
     current_thread->timeslice -= ticks;
 
     return current_thread->timeslice ? 0 : 1;
+}
+
+static int zombie_reaper(uint64_t ticks) {
+    if(zombie_queue == 0)
+        return 0;
+
+    // Clean up ALL the threads.
+    while(!queue_empty(zombie_queue)) {
+        struct thread *thr = (struct thread *) queue_pop(zombie_queue);
+        dprintf("reaping zombie thread %p\n", thr);
+
+        /// \todo Destroy context, remove from parent thread lists.
+
+        free(thr);
+    }
+
+    return 0;
 }
 
 struct thread *sched_current_thread() {
@@ -113,6 +133,15 @@ void switch_threads(struct thread *old, struct thread *new) {
     }
     else
         switch_context(old->ctx, new->ctx);
+}
+
+void thread_kill() {
+    assert(current_thread != 0);
+
+    // Put the thread into the zombie state and then kill it.
+    current_thread->state = THREAD_STATE_ZOMBIE;
+    queue_push(zombie_queue, current_thread);
+    reschedule();
 }
 
 void thread_sleep() {
@@ -200,6 +229,20 @@ void reschedule() {
     struct thread *thr = (struct thread *) queue_pop(prio_queues[current_priolevel]);
     assert(thr != 0);
 
+    // Thread not actually alive?
+    if(thr->state != THREAD_STATE_READY) {
+        dprintf("reschedule: thread %p in queue wasn't really ready\n", thr);
+
+        // Threads in the zombie state need to be added to the zombie queue here.
+        // They cannot be added to the zombie queue if they are 'remotely' killed
+        // by another process (as they are already in the queue).
+        if(thr->state == THREAD_STATE_ZOMBIE) {
+            queue_push(zombie_queue, thr);
+        }
+
+        reschedule();
+    }
+
     // Reset the timeslice and prepare for context switch.
     thr->timeslice = THREAD_DEFAULT_TIMESLICE;
     thr->state = THREAD_STATE_RUNNING;
@@ -233,6 +276,11 @@ void init_scheduler() {
     }
 
     init_context();
+
+    zombie_queue = create_queue();
+
+    // Timer handler for the zombie reaper.
+    install_timer(zombie_reaper, ((1 << TIMERRES_SHIFT) | TIMERRES_SECONDS), TIMERFEAT_PERIODIC);
 }
 
 

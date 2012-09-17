@@ -101,6 +101,12 @@ extern void switch_threads(struct thread *old, struct thread *new);
 /** Creates a new context (archictecture-specific). */
 extern void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_t stacksz);
 
+/**
+ * Kills the given thread.
+ * Technically, adds the thread to the zombie queue for future reaping.
+ */
+extern void thread_kill() __noreturn;
+
 /** Puts the current thread to sleep (MUST be woken, no time for this one). */
 extern void thread_sleep();
 

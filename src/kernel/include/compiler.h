@@ -27,6 +27,8 @@
 #define __unused          __attribute__((unused))
 #define __used            __attribute__((used))
 
+#define __noreturn        __attribute__((noreturn))
+
 #if defined(__clang__) && !defined(NO_CLANG_BUILTINS)
 #define atomic_compare_and_swap(old_val, new_val, out_val, ...)    out_val = __sync_swap((old_val), (new_val))
 #else
