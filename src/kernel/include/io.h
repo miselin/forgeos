@@ -47,14 +47,14 @@ extern void puts_at(const char *s, int x, int y);
 
 extern void serial_puts(const char *s);
 
-#ifdef DEBUG
-extern int dprintf(const char *fmt, ...);
+#if defined(DEBUG) || defined(_TESTING)
+extern int dprintf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 #else
 #define dprintf(a, ...)
 #endif
 
-extern int kprintf(const char *fmt, ...);
-extern int sprintf(char * s, const char *fmt, ...);
+extern int kprintf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+extern int sprintf(char * s, const char *fmt, ...)  __attribute__((format(printf, 2, 3)));
 
 // I don't like doing this, but x86 just has to be different...
 #ifdef X86
