@@ -68,7 +68,8 @@ LIBDIRS :=
 
 ifeq "$(USE_CLANG)" "yes"
   # compiler-rt automatically linked.
-  libgcc =
+  # TODO: fix compiler-rt integration
+  libgcc = $(shell $(CC) -print-file-name=libgcc.a)
 
   # Add in the CLANG-specific flags
   CFLAGS += $(CLANG_TRIPLE) -emit-llvm -integrated-as
