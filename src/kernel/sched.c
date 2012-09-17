@@ -63,8 +63,9 @@ static int zombie_reaper(uint64_t ticks) {
         struct thread *thr = (struct thread *) queue_pop(zombie_queue);
         dprintf("reaping zombie thread %p\n", thr);
 
-        /// \todo Destroy context, remove from parent thread lists.
+        destroy_context(thr->ctx);
 
+        free(thr->ctx);
         free(thr);
     }
 

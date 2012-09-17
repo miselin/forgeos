@@ -39,19 +39,28 @@ void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_
 
     memset(ctx, 0, sizeof(context_t));
 
-    /// \todo Don't use malloc!
     void *stack_ptr = 0;
-    if(stack)
+    if(stack) {
         stack_ptr = (void *) stack;
-    else
+        ctx->stackispool = 0;
+    } else {
         stack_ptr = (void *) pool_alloc(stackpool);
+        ctx->stackispool = 1;
+    }
 
     assert(stack_ptr != 0);
 
     ctx->eip = (uint32_t) start;
+    ctx->stackbase = (uint32_t) stack_ptr;
     ctx->esp = ctx->ebp = (uint32_t) ((char *) stack_ptr) + (stacksz - 4);
     ctx->eflags = EFLAGS_INT_ENBALE;
 
-    dprintf("new x86 context %x: eip=%x, esp=%x-%x\n", ctx, ctx->eip, ctx->esp - stacksz + 4, ctx->esp);
+    dprintf("new x86 context %p: eip=%x, esp=%lx-%x\n", ctx, ctx->eip, ctx->esp - stacksz + 4, ctx->esp);
 }
 
+void destroy_context(context_t *ctx) {
+    assert(ctx != 0);
+
+    if(ctx->stackispool)
+        pool_dealloc_and_free(stackpool, (void *) ctx->stackbase);
+}
