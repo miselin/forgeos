@@ -22,6 +22,7 @@
 #include <util.h>
 #include <vmem.h>
 #include <io.h>
+#include <spinlock.h>
 
 // #define VERBOSE_LOGGING
 
@@ -42,6 +43,9 @@ static void *prio_already_queues[THREAD_PRIORITY_LOW + 1] = {0};
 
 /// Zombie thread queue.
 static void *zombie_queue = 0;
+
+/// Global scheduler lock - to ensure queue operations are done atomically.
+static void *sched_spinlock = 0;
 
 /** Initialises the architecture-specific context layer (for create_context). */
 extern void init_context();
@@ -132,8 +136,10 @@ void switch_threads(struct thread *old, struct thread *new) {
 
         switch_context(0, new->ctx);
     }
-    else
+    else {
+        dprintf("old ctx %p -> new ctx %p\n", old->ctx, new->ctx);
         switch_context(old->ctx, new->ctx);
+    }
 }
 
 void thread_kill() {
@@ -157,9 +163,12 @@ void thread_wake(struct thread *thr) {
     assert(thr != 0);
 
     thr->state = THREAD_STATE_READY;
+
+    spinlock_acquire(sched_spinlock);
     if(!prio_queues[thr->priority])
         prio_queues[thr->priority] = create_queue();
     queue_push(prio_queues[thr->priority], thr);
+    spinlock_release(sched_spinlock);
 }
 
 uint32_t thread_priority(struct thread *prio) {
@@ -183,6 +192,8 @@ static void go_next_priolevel() {
 }
 
 void reschedule() {
+    spinlock_acquire(sched_spinlock);
+
     if(current_thread->timeslice > 0) {
 #ifdef VERBOSE_LOGGING
         dprintf("reschedule before timeslice completes\n");
@@ -241,7 +252,10 @@ void reschedule() {
             queue_push(zombie_queue, thr);
         }
 
+        spinlock_release(sched_spinlock);
         reschedule();
+
+        return;
     }
 
     // Reset the timeslice and prepare for context switch.
@@ -256,6 +270,8 @@ void reschedule() {
 #ifdef VERBOSE_LOGGING
     dprintf("reschedule: queues now run: %sempty / already: %sempty\n", queue_empty(prio_queues[current_priolevel]) ? "" : "not ", queue_empty(prio_already_queues[current_priolevel]) ? "" : "not ");
 #endif
+
+    spinlock_release(sched_spinlock);
 
     // Perform the context switch if this isn't the already-running thread.
     if(thr != current_thread) {
@@ -279,6 +295,8 @@ void init_scheduler() {
     init_context();
 
     zombie_queue = create_queue();
+
+    sched_spinlock = create_spinlock();
 
     // Timer handler for the zombie reaper.
     install_timer(zombie_reaper, ((1 << TIMERRES_SHIFT) | TIMERRES_SECONDS), TIMERFEAT_PERIODIC);
