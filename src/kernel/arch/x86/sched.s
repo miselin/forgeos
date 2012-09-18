@@ -39,11 +39,11 @@ switch_context:
 	mov %esp, 16(%eax)
 
 	# EIP
-	mov (%esp), %ecx
-	mov %ecx, 20(%eax)
+	mov (%esp), %edx
+	mov %edx, 20(%eax)
 
 	# Safe flags.
-	mov %ecx, 24(%edi)
+	mov %ecx, 24(%eax)
 
 .onlyload:
 
