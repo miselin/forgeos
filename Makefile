@@ -60,8 +60,8 @@ ifndef BUILD_SRC
 # If BUILD_CONFIG was specified on the command line, read that file. It is an
 # error if BUILD_CONFIG was specified and the file doesn't exist, but it is NOT
 # an error if the default make.config file does not exist.
-ifeq "$(origin $(BUILD_CONFIG))" "command line"
-$(info "READING CONFIG")
+ifeq "$(origin BUILD_CONFIG)" "command line"
+$(info "Reading configuration from $(BUILD_CONFIG)")
   # Make sure $(CONFIG) exists before reading it.
   ifeq "$(wildcard $(BUILD_CONFIG))" ""
     $(error Config file '$(BUILD_CONFIG)' does not exist)
