@@ -42,6 +42,20 @@ void *memcpy(void *dest, void *src, size_t len) {
 	return dest;
 }
 
+int memcmp(void *a, void *b, size_t len) {
+	char *ac = (char *) a;
+	char *bc = (char *) b;
+	while(len--) {
+		int c = *ac - *bc;
+		if(c != 0)
+			return c;
+
+		ac++; bc++;
+	}
+
+	return 0;
+}
+
 extern void *dlmalloc(size_t);
 extern void *dlrealloc(void *, size_t);
 extern void dlfree(void *);

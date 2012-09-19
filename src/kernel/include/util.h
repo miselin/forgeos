@@ -31,6 +31,8 @@ extern void memset(void *p, int c, size_t len);
 extern void *memcpy(void *dst, void *src, size_t len);
 #endif
 
+extern int memcmp(void *a, void *b, size_t len);
+
 extern void *create_stack();
 extern void delete_stack(void *s);
 
