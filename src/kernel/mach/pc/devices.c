@@ -18,8 +18,24 @@
 #include <serial.h>
 #include <pit.h>
 #include <pic.h>
+#include <acpi.h>
 
 void mach_init_devices() {
 	init_pic();
 	init_serial();
+
+    // Initialise ACPI
+    dprintf("pc: acpi init starting...\n");
+    AcpiInitializeSubsystem();
+    AcpiInitializeTables(NULL, 16, 0);
+    AcpiLoadTables();
+
+    AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION);
+    dprintf("pc: acpi init done...\n");
+
+#if 0
+    // Shut down the machine!
+    AcpiEnterSleepStatePrep(5);
+    AcpiEnterSleepState(5);
+#endif
 }
