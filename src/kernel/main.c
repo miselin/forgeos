@@ -37,14 +37,14 @@ extern void _start();
 
 KBOOT_IMAGE(0);
 
-void idle() {
+void idle(void *p __unused) {
     dprintf("idle thread has started...\n");
     while(1) {
         __halt;
     }
 }
 
-void banner() {
+void banner(void *p __unused) {
     char idlebuf[81];
     while(1) {
         interrupts_disable();
@@ -59,13 +59,11 @@ void banner() {
     }
 }
 
-void init2() {
+void init2(void *p __unused) {
     dprintf("Starting the scheduler...\n");
     start_scheduler();
 
     dprintf("FORGE initialisation complete.\n");
-
-    thread_kill();
 }
 
 void _kmain(uint32_t magic, phys_ptr_t tags) {
