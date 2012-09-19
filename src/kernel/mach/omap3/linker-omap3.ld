@@ -31,7 +31,7 @@ SECTIONS
         *(.data*);
         *(.rodata*);
 
-        . = ALIGN(4);
+	. = ALIGN(4);
 
         __begin_timer_table = .;
         *(.table.timers*);
@@ -40,6 +40,12 @@ SECTIONS
         . = ALIGN(4096);
         *(.ivt*);
         __end_arm_vector_table = .;
+    }
+
+    .ARM.exidx : {
+	__exidx_start = .;
+	*(.ARM.exidx* .gnu.linkonce.armexidx.*);
+	__exidx_end = .;
     }
 
     .bss : {

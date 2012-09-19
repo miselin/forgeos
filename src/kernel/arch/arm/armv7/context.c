@@ -52,3 +52,7 @@ void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_
     dprintf("new arm context %x\n", ctx);
 }
 
+void destroy_context(context_t *ctx) {
+    /// \todo Clean up stack etc
+}
+
