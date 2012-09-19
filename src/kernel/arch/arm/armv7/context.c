@@ -27,6 +27,25 @@
 
 static void *stackpool = 0;
 
+struct initial_data {
+    void *param;
+    thread_entry_t start;
+};
+
+/// Entry point for ARM threads - handles return from the threads properly.
+void arm_thread(void *data) {
+    struct initial_data *d = (struct initial_data *) data;
+
+    thread_entry_t start = d->start;
+    void *param = d->param;
+
+    free(d);
+
+    start(param);
+
+    thread_return();
+}
+
 void init_context() {
     // Create a pool for stacks - 4096, 4KB stacks = 16 MB maximum pool size.
     stackpool = create_pool_at(POOL_STACK_SZ, POOL_STACK_COUNT, (STACK_TOP - STACK_SIZE) - (POOL_STACK_SZ * POOL_STACK_COUNT));
@@ -38,22 +57,32 @@ void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_
     memset(ctx, 0, sizeof(context_t));
 
     void *stack_ptr = 0;
-    if(stack)
+    if(stack) {
         stack_ptr = (void *) stack;
-    else
+    } else {
         stack_ptr = (void *) pool_alloc(stackpool);
+        ctx->stackispool = 1;
+    }
 
     assert(stack_ptr != 0);
 
-    ctx->lr = (unative_t) start;
-    ctx->usersp = (unative_t) stack_ptr;
+    struct initial_data *d = (struct initial_data *) malloc(sizeof(struct initial_data));
+    d->start = start;
+    d->param = param;
+
+    ctx->lr = (unative_t) arm_thread;
+    ctx->usersp = ctx->stackbase = (unative_t) stack_ptr;
     ctx->usersp += stacksz - 4;
 
-    /// \todo do something about the param???
+    ctx->r0 = (unative_t) d;
 
     dprintf("new arm context %p\n", ctx);
 }
 
 void destroy_context(context_t *ctx) {
-    /// \todo Clean up stack etc
+    assert(ctx != 0);
+
+    if(ctx->stackispool) {
+        pool_dealloc_and_free(stackpool, (void *) ctx->stackbase);
+    }
 }

@@ -21,14 +21,20 @@ switch_context:
 
     # Save current state.
     mov r12, lr
-    stmia r0, {r4 - r11, r12, sp}^
+    stmia r0, {r0, r4 - r11, r12, sp}^
 
 .restoreonly:
 
     # Load new state.
-    ldmia r1, {r4 - r11, r12, sp}^
+    ldmia r1, {r0, r4 - r11, r12, sp}^
     mov lr, r12
 
-    mov r0, #0
-    bx lr
+    cmp r2, #0
+    beq .nolock
 
+    mov r1, #0
+    str r1, [r2]
+
+.nolock:
+
+    bx lr
