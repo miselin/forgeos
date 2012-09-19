@@ -46,7 +46,7 @@ int init_pit() {
 	outb(PIT_PORT + 0, (div >> 8) & 0xFF);
 
 	// Install the IRQ handler
-	interrupts_irq_reg(0, 0, pit_irq);
+	interrupts_irq_reg(0, 0, pit_irq, 0);
 
 	return 0;
 }

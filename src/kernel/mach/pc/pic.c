@@ -24,6 +24,7 @@
 struct irqhandler {
 	inthandler_t	handler;
 	int				leveltrig;
+	void			*param;
 };
 
 static struct irqhandler handlers[16];
@@ -50,7 +51,7 @@ static void enable(size_t irqnum) {
 	}
 }
 
-static int irq_stub(struct intr_stack *stack) {
+static int irq_stub(struct intr_stack *stack, void *p __unused) {
 	size_t irqnum = stack->intnum - IRQ_INT_BASE;
 	int ret = 0;
 	if(handlers[irqnum].handler == 0) {
@@ -65,7 +66,7 @@ static int irq_stub(struct intr_stack *stack) {
 
 	// Call the handler.
 	/// \todo Allow multiple IRQ handlers for one IRQ.
-	ret = handlers[irqnum].handler(stack);
+	ret = handlers[irqnum].handler(stack, handlers[irqnum].param);
 
 	// Send an EOI if level triggered.
 	if(handlers[irqnum].leveltrig > 0)
@@ -99,8 +100,9 @@ void init_pic() {
 	}
 }
 
-void mach_interrupts_reg(int n, int leveltrig, inthandler_t handler) {
+void mach_interrupts_reg(int n, int leveltrig, inthandler_t handler, void *p) {
 	handlers[n].handler = handler;
 	handlers[n].leveltrig = leveltrig;
+	handlers[n].param = p;
 	enable((size_t) n);
 }

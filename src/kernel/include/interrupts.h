@@ -20,7 +20,7 @@
 #include <types.h>
 #include <stack.h> // Pull in the architecture interrupt stack struct.
 
-typedef int (*inthandler_t)(struct intr_stack *);
+typedef int (*inthandler_t)(struct intr_stack *, void *);
 
 /// Initialises interrupts for this system.
 #define interrupts_init		arch_interrupts_init
@@ -47,6 +47,6 @@ extern void arch_interrupts_disable();
 extern int arch_interrupts_get();
 
 extern void arch_interrupts_reg(int n, inthandler_t handler);
-extern void mach_interrupts_reg(int n, int leveltrig, inthandler_t handler);
+extern void mach_interrupts_reg(int n, int leveltrig, inthandler_t handler, void *p);
 
 #endif

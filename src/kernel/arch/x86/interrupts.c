@@ -81,7 +81,7 @@ int cpu_trap(struct intr_stack *stack) {
 
 	uint32_t n = stack->intnum;
 	if(interrupts[n] != 0) {
-		ret = interrupts[n](stack);
+		ret = interrupts[n](stack, 0);
 	} else {
 		kprintf("CPU trap #%d", n);
 		if(n < 32) {
