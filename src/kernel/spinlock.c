@@ -22,10 +22,12 @@
 #include <assert.h>
 #include <panic.h>
 #include <util.h>
+#include <io.h>
 
 struct spinlock {
-	uint8_t locked;
-};
+	uint32_t locked;
+	uint8_t wasints;
+} __packed;
 
 void *create_spinlock() {
 	void *r = malloc(sizeof(struct spinlock));
@@ -42,6 +44,14 @@ void delete_spinlock(void *s) {
 	free(s);
 }
 
+void *spinlock_getatom(void *s) {
+	if(!s)
+		return NULL;
+
+	struct spinlock *sl = (struct spinlock *) s;
+	return (void *) &sl->locked;
+}
+
 void spinlock_acquire(void *s) {
 	if(!s)
 		return;
@@ -49,11 +59,11 @@ void spinlock_acquire(void *s) {
 	struct spinlock *sl = (struct spinlock *) s;
 
 	/// \todo Check for multiple processors.
-	if(sl->locked)
-		panic("spinlock already acquired - deadlock");
-
+	uint8_t wasints = interrupts_get();
 	interrupts_disable();
-	atomic_compare_and_swap(&sl->locked, 1, void * _a __unused, sl->locked, __asm__ (""));
+	atomic_compare_and_swap(&sl->locked, 1, void * _a __unused, 0, dprintf("deadlock in spinlock %p\n", s); panic("deadlock"));
+
+	sl->wasints = wasints;
 
 	assert(sl->locked);
 }
@@ -62,11 +72,17 @@ void spinlock_release(void *s) {
 	if(!s)
 		return;
 
+	uint8_t wasints = interrupts_get();
+	if(wasints)
+		panic("spinlock released with interrupts enabled!");
+
+	/// \todo Check for multiple processors.
 	struct spinlock *sl = (struct spinlock *) s;
-	sl->locked = 0;
+	wasints = sl->wasints;
+	atomic_compare_and_swap(&sl->locked, 0, void * _a __unused, 1, dprintf("deadlock in spinlock %p\n", s); panic("deadlock"));
 
-	/// \todo panic if interrupts are enabled.
-	/// \todo restore old interrupt state (don't assume 'enabled').
-
-	interrupts_enable();
+	if(wasints)
+		interrupts_enable();
+	else
+		interrupts_disable();
 }
