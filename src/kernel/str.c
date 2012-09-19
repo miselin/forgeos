@@ -103,6 +103,17 @@ const char *strsearch(const char *s, const char c) {
         return NULL;
 }
 
+char *strcat(char *a, char *b) {
+    char *ret = a;
+    while(*a)
+        a++;
+    a--;
+    while(*b)
+        *a++ = *b++;
+    *a = 0;
+    return ret;
+}
+
 DEFINE_TEST(strlen_zero, ORDER_SECONDARY, 0, NOP, strlen(""))
 DEFINE_TEST(strlen_hello, ORDER_SECONDARY, 5, NOP, strlen("Hello"))
 DEFINE_TEST(strlen_midnull, ORDER_SECONDARY, 3, NOP, strlen("Hel\0lo"))
@@ -121,3 +132,7 @@ DEFINE_TEST(strncmp_posret, ORDER_SECONDARY, 1, NOP, strncmp("abc", "a", 2))
 
 DEFINE_TEST(search_found, ORDER_SECONDARY, "abc" + 2, NOP, strsearch("abc", 'c'))
 DEFINE_TEST(search_notfound, ORDER_SECONDARY, 0, NOP, strsearch("abc", 'd'))
+
+DEFINE_TEST(strcat_basic, ORDER_SECONDARY, "abcdef", NOP, strcat("abc", "def"))
+
+DEFINE_TEST(strtoul_basic, ORDER_SECONDARY, 123456UL, INIT_TEST_VAR(char, test[32], "123456"), strtoul(test, test + 6, 10))
