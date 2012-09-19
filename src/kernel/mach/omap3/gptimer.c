@@ -119,7 +119,7 @@ int init_omap3_gptimer(size_t n, inthandler_t irqhandler) {
     gptimer[n][TISR] = 0x7;
 
     // Install our IRQ handler.
-    interrupts_irq_reg(37 + (int) n, 1, irqhandler);
+    interrupts_irq_reg(37 + (int) n, 1, irqhandler, 0);
 
     // Enable overflow interrupt - will fire an IRQ when the tick counter overflows.
     gptimer[n][TIER] = 0x2;
@@ -136,7 +136,7 @@ int init_omap3_gptimer(size_t n, inthandler_t irqhandler) {
     }
 
 #define IRQ_GP(n) \
-    int irq_omap3_gp##n (struct intr_stack *s) { \
+    int irq_omap3_gp##n (struct intr_stack *s, void *p __unused) { \
         return irq_omap3_gptimer(n, s); \
     }
 

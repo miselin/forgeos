@@ -89,6 +89,7 @@ const char *g_ExceptionNames[32] = {
 struct intinfo {
     inthandler_t handler;
     int leveltrig;
+    void *param;
 };
 
 static struct intinfo interrupts[96];
@@ -156,12 +157,13 @@ static void mask(int n) {
 }
 
 void arch_interrupts_reg(int n, inthandler_t handler) {
-    mach_interrupts_reg(n, 1, handler);
+    mach_interrupts_reg(n, 1, handler, 0);
 }
 
-void mach_interrupts_reg(int n, int leveltrig, inthandler_t handler) {
+void mach_interrupts_reg(int n, int leveltrig, inthandler_t handler, void *param) {
     interrupts[n].handler = handler;
     interrupts[n].leveltrig = leveltrig;
+    interrupts[n].param = param;
 
     if(handler == 0)
         mask(n);
@@ -177,7 +179,7 @@ static void handle(struct intr_stack *p) {
             mpuintc[MPUINT_CONTROL] = 1; // ACK.
         }
 
-        interrupts[num].handler(p);
+        interrupts[num].handler(p, interrupts[num].param);
 
         if(interrupts[num].leveltrig) {
             mpuintc[MPUINT_CONTROL] = 1; // ACK.
