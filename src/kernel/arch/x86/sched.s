@@ -19,8 +19,9 @@
 switch_context:
 	# Save EFLAGS, before it gets changed by the cmpl below.
 	pushf
-	mov (%esp), %ecx
 	add $4, %esp
+
+	mov 12(%esp), %ecx
 
 	# Old context - don't save current if it's null.
 	mov 4(%esp), %eax
@@ -43,7 +44,8 @@ switch_context:
 	mov %edx, 20(%eax)
 
 	# Safe flags.
-	mov %ecx, 24(%eax)
+	movl -4(%esp), %edx
+	mov %edx, 24(%eax)
 
 .onlyload:
 
@@ -60,6 +62,14 @@ switch_context:
 	# EFLAGS.
 	push 24(%eax)
 	popf
+
+	cmpl %ecx, 0
+	je .nolock
+
+	# ECX contains pointer to a spinlock - unlock it.
+	movl $0, (%ecx)
+
+.nolock:
 
 	mov 20(%eax), %ecx
 	jmp *%ecx

@@ -134,11 +134,11 @@ void switch_threads(struct thread *old, struct thread *new) {
             current_thread = new;
         new->state = THREAD_STATE_RUNNING;
 
-        switch_context(0, new->ctx);
+        switch_context(0, new->ctx, 0);
     }
     else {
         dprintf("old ctx %p -> new ctx %p\n", old->ctx, new->ctx);
-        switch_context(old->ctx, new->ctx);
+        switch_context(old->ctx, new->ctx, spinlock_getatom(sched_spinlock));
     }
 }
 
@@ -152,6 +152,7 @@ void thread_kill() {
 }
 
 void thread_return() {
+    dprintf("sched: thread returning - killing\n");
     thread_kill();
 }
 
@@ -193,6 +194,10 @@ static void go_next_priolevel() {
 
         current_priolevel = current_priolevel + 1;
     }
+}
+
+void sched_yield() {
+    reschedule();
 }
 
 void reschedule() {
@@ -275,8 +280,6 @@ void reschedule() {
     dprintf("reschedule: queues now run: %sempty / already: %sempty\n", queue_empty(prio_queues[current_priolevel]) ? "" : "not ", queue_empty(prio_already_queues[current_priolevel]) ? "" : "not ");
 #endif
 
-    spinlock_release(sched_spinlock);
-
     // Perform the context switch if this isn't the already-running thread.
     if(thr != current_thread) {
         if(current_thread->parent != thr->parent) {
@@ -287,6 +290,8 @@ void reschedule() {
         struct thread *tmp = current_thread;
         current_thread = thr;
         switch_threads(tmp, thr);
+    } else {
+        spinlock_release(sched_spinlock);
     }
 }
 
@@ -301,6 +306,8 @@ void init_scheduler() {
     zombie_queue = create_queue();
 
     sched_spinlock = create_spinlock();
+
+    dprintf("scheduler spinlock is %p\n", sched_spinlock);
 
     // Timer handler for the zombie reaper.
     install_timer(zombie_reaper, ((1 << TIMERRES_SHIFT) | TIMERRES_SECONDS), TIMERFEAT_PERIODIC);

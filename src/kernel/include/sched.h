@@ -93,7 +93,7 @@ extern struct process *create_process(const char *name, struct process *parent);
 extern struct thread *create_thread(struct process *parent, uint32_t prio, thread_entry_t start, uintptr_t stack, size_t stacksz, void *param);
 
 /** Performs a context switch to a new context. */
-extern void switch_context(context_t *oldctx, context_t *newctx);
+extern void switch_context(context_t *oldctx, context_t *newctx, void *lock);
 
 /** Performs a context switch between two threads. */
 extern void switch_threads(struct thread *old, struct thread *new);
@@ -130,6 +130,9 @@ extern void start_scheduler();
 
 /** Get the currently running thread. */
 extern struct thread *sched_current_thread();
+
+/** Yields the current timeslice immediately. */
+extern void sched_yield();
 
 /** Function to be called when a thread returns from its entry point. */
 extern void thread_return() __attribute__((naked));
