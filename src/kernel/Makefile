@@ -66,6 +66,11 @@ DIRS := . arch/$(ARCH_TARGET) arch/$(ARCH_TARGET)/$(ARCH_SUBTARGET) mach/$(PLATF
 INCLUDES := -Iinclude -Iarch/$(ARCH_TARGET)/include -Iarch/$(ARCH_TARGET)/$(ARCH_SUBTARGET)/include -Imach/$(PLATFORM_TARGET) -Imach/$(PLATFORM_TARGET)/include
 LIBDIRS :=
 
+ifeq "$(PLATFORM_TARGET)" "pc"
+  DIRS += $(shell find mach/$(PLATFORM_TARGET)/acpica -type d)
+  INCLUDES += -Imach/$(PLATFORM_TARGET)/acpica/include -Imach/$(PLATFORM_TARGET)/acpica/include/platform
+endif
+
 ifeq "$(USE_CLANG)" "yes"
   # compiler-rt automatically linked.
   # TODO: fix compiler-rt integration
@@ -120,6 +125,8 @@ CFLAGS += $(ARCH_CFLAGS) $(ARCH_DEFINE)
 CFLAGS += $(ARCH_SUBTARGET_CFLAGS) $(ARCH_SUBTARGET_DEFINE)
 CFLAGS += $(PLATFORM_CFLAGS) $(PLATFORM_DEFINES)
 CFLAGS += $(WARNINGS)
+
+CFLAGS += -D_FORGEOS
 
 ifneq "$(ENABLE_WERROR)" ""
   CFLAGS += -Werror
