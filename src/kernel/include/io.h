@@ -18,6 +18,7 @@
 #define _IO_H
 
 #include <types.h>
+#include <stdarg.h>
 
 /// Print a single character to the screen abstraction provided by the machine.
 #define putc(c)	machine_putc(c)
@@ -48,13 +49,17 @@ extern void puts_at(const char *s, int x, int y);
 extern void serial_puts(const char *s);
 
 #if defined(DEBUG) || defined(_TESTING)
+extern int dputs(const char *s);
 extern int dprintf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 #else
+#define dputs(a)
 #define dprintf(a, ...)
 #endif
 
 extern int kprintf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
 extern int sprintf(char * s, const char *fmt, ...)  __attribute__((format(printf, 2, 3)));
+
+extern int vsprintf(char *buf, const char *fmt, va_list args);
 
 // I don't like doing this, but x86 just has to be different...
 #ifdef X86

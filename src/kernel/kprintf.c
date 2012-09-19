@@ -25,7 +25,7 @@ extern int vsprintf(char *buf, const char *fmt, va_list args);
 ///       user, libc, whatever so we can figure out where each debug line comes
 ///       from in big logs.
 
-#ifdef DEBUG
+#if defined(DEBUG) || defined(_TESTING)
 int dprintf(const char *fmt, ...) {
 	int len = 0;
 	char buf[512];
@@ -36,6 +36,11 @@ int dprintf(const char *fmt, ...) {
     serial_puts("[kernel] ");
 	serial_puts(buf);
 	return len;
+}
+
+int dputs(const char *s) {
+    serial_puts("[kernel] ");
+	serial_puts(s);
 }
 #endif
 
