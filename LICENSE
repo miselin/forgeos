@@ -1,4 +1,6 @@
-Copyright (c) 2011 Matthew Iselin, Rich Edelman
+Unless otherwise specified, all content in this repository is: 
+
+Copyright (c) 2012 Matthew Iselin, Rich Edelman
 
 Permission to use, copy, modify, and distribute this software for any
 purpose with or without fee is hereby granted, provided that the above
@@ -11,3 +13,8 @@ ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
 WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
 ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+====
+
+Source files under a different license will have a license header within
+the file or subdirectory itself (eg, ACPICA, KBoot, dlmalloc).
