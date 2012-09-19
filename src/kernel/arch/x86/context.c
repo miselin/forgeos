@@ -52,12 +52,13 @@ void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_
 
     ctx->eip = (uint32_t) start;
     ctx->stackbase = (uint32_t) stack_ptr;
-    ctx->esp = ctx->ebp = (uint32_t) ((char *) stack_ptr) + (stacksz - 4);
     ctx->eflags = EFLAGS_INT_ENBALE;
 
-    uintptr_t *stackp = (uintptr_t *) ctx->esp;
+    uintptr_t *stackp = (uintptr_t *) (((char *) stack_ptr) + (stacksz - 4));
     *stackp-- = (uintptr_t) thread_return;
-    *stackp-- = (uintptr_t) param;
+    *stackp = (uintptr_t) param;
+
+    ctx->esp = ctx->ebp = (uint32_t) stackp;
 
     dprintf("new x86 context %p: eip=%x, esp=%lx-%x\n", ctx, ctx->eip, ctx->esp - stacksz + 4, ctx->esp);
 }
