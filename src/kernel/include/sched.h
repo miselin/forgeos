@@ -48,7 +48,7 @@ typedef void context_t;
 #define THREAD_DEFAULT_TIMESLICE_MS     10
 #define THREAD_DEFAULT_TIMESLICE        (THREAD_DEFAULT_TIMESLICE_MS*1000000)
 
-typedef void (*thread_entry_t)();
+typedef void (*thread_entry_t)(void*);
 
 struct thread {
     context_t *ctx;
@@ -90,7 +90,7 @@ extern struct process *create_process(const char *name, struct process *parent);
  * Creates a new thread under a given process.
  * A zero stack or stacksz parameter will allocate a new stack for this thread.
  */
-extern struct thread *create_thread(struct process *parent, uint32_t prio, thread_entry_t start, uintptr_t stack, size_t stacksz);
+extern struct thread *create_thread(struct process *parent, uint32_t prio, thread_entry_t start, uintptr_t stack, size_t stacksz, void *param);
 
 /** Performs a context switch to a new context. */
 extern void switch_context(context_t *oldctx, context_t *newctx);
@@ -99,7 +99,7 @@ extern void switch_context(context_t *oldctx, context_t *newctx);
 extern void switch_threads(struct thread *old, struct thread *new);
 
 /** Creates a new context (archictecture-specific). */
-extern void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_t stacksz);
+extern void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_t stacksz, void *param);
 
 /** Destroys the given context (architecture-specific). */
 extern void destroy_context(context_t *ctx);
@@ -130,5 +130,8 @@ extern void start_scheduler();
 
 /** Get the currently running thread. */
 extern struct thread *sched_current_thread();
+
+/** Function to be called when a thread returns from its entry point. */
+extern void thread_return() __attribute__((naked));
 
 #endif

@@ -32,7 +32,7 @@ void init_context() {
     stackpool = create_pool_at(POOL_STACK_SZ, POOL_STACK_COUNT, (STACK_TOP - STACK_SIZE) - (POOL_STACK_SZ * POOL_STACK_COUNT));
 }
 
-void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_t stacksz) {
+void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_t stacksz, void *param) {
     assert(stackpool != 0);
 
     memset(ctx, 0, sizeof(context_t));
@@ -49,10 +49,11 @@ void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_
     ctx->usersp = (unative_t) stack_ptr;
     ctx->usersp += stacksz - 4;
 
-    dprintf("new arm context %x\n", ctx);
+    /// \todo do something about the param???
+
+    dprintf("new arm context %p\n", ctx);
 }
 
 void destroy_context(context_t *ctx) {
     /// \todo Clean up stack etc
 }
-

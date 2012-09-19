@@ -142,9 +142,9 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
     kprintf("Startup complete.\n");
 
     struct process *initproc = create_process("init", 0);
-    struct thread *init_thread = create_thread(initproc, THREAD_PRIORITY_HIGH, init2, 0, 0);
-    struct thread *idle_thread = create_thread(initproc, THREAD_PRIORITY_LOW, idle, 0, 0);
-    struct thread *banner_thread = create_thread(initproc, THREAD_PRIORITY_LOW, banner, 0, 0);
+    struct thread *init_thread = create_thread(initproc, THREAD_PRIORITY_HIGH, init2, 0, 0, 0);
+    struct thread *idle_thread = create_thread(initproc, THREAD_PRIORITY_LOW, idle, 0, 0, 0);
+    struct thread *banner_thread = create_thread(initproc, THREAD_PRIORITY_LOW, banner, 0, 0, 0);
 
     thread_wake(idle_thread);
     thread_wake(banner_thread);

@@ -104,7 +104,7 @@ struct process *create_process(const char *name, struct process *parent) {
     return ret;
 }
 
-struct thread *create_thread(struct process *parent, uint32_t prio, thread_entry_t start, uintptr_t stack, size_t stacksz) {
+struct thread *create_thread(struct process *parent, uint32_t prio, thread_entry_t start, uintptr_t stack, size_t stacksz, void *param) {
     if(stacksz == 0)
         stacksz = 0x1000;
 
@@ -118,7 +118,7 @@ struct thread *create_thread(struct process *parent, uint32_t prio, thread_entry
     t->base_priority = t->priority = prio;
 
     t->ctx = (context_t *) malloc(sizeof(context_t));
-    create_context(t->ctx, start, stack, stacksz);
+    create_context(t->ctx, start, stack, stacksz, param);
 
     list_insert(parent->thread_list, t, 0);
 
@@ -149,6 +149,10 @@ void thread_kill() {
     current_thread->state = THREAD_STATE_ZOMBIE;
     queue_push(zombie_queue, current_thread);
     reschedule();
+}
+
+void thread_return() {
+    thread_kill();
 }
 
 void thread_sleep() {
