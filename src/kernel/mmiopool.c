@@ -55,6 +55,9 @@ void *mmiopool_alloc(size_t len, paddr_t tophys) {
     if(len % PAGE_SIZE)
         len = (len + PAGE_SIZE) & ~(PAGE_SIZE - 1);
 
+    // Page-align the physical address.
+    tophys &= ~(PAGE_SIZE - 1);
+
     // Find an unallocated region big enough for us.
     size_t i = 0;
     struct region *p = 0;
