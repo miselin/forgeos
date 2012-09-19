@@ -19,6 +19,7 @@
 #include <sched.h>
 #include <spinlock.h>
 #include <interrupts.h>
+#include <semaphore.h>
 #include <mmiopool.h>
 #include <compiler.h>
 #include <stdarg.h>
@@ -153,39 +154,46 @@ void AcpiOsStall(UINT32 Microseconds) {
 
 ACPI_STATUS AcpiOsCreateMutex(ACPI_MUTEX *OutHandle) {
     dprintf("acpi: create mutex\n");
-    return AE_NO_MEMORY;
+    *OutHandle = create_semaphore(1, 1);
 }
 
 void AcpiOsDeleteMutex(ACPI_MUTEX Handle) {
     dprintf("acpi: delete mutex\n");
+    delete_semaphore(Handle);
 }
 
 ACPI_STATUS AcpiOsAcquireMutex(ACPI_MUTEX Handle, UINT16 Timeout) {
     dprintf("acpi: acquire mutex with %d ms timeout\n", Timeout);
-    return AE_NOT_ACQUIRED;
+    semaphore_acquire(Handle, 1);
+    return AE_OK;
 }
 
 void AcpiOsReleaseMutex(ACPI_MUTEX Handle) {
     dprintf("acpi: release mutex\n");
+    semaphore_release(Handle, 1);
 }
 
 ACPI_STATUS AcpiOsCreateSemaphore(UINT32 MaxUnits, UINT32 InitialUnits, ACPI_SEMAPHORE *OutHandle) {
     dprintf("acpi: create semaphore (max=%d, initial=%d)\n", MaxUnits, InitialUnits);
-    return AE_NO_MEMORY;
+    *OutHandle = create_semaphore(MaxUnits, InitialUnits);
+    return AE_OK;
 }
 
 ACPI_STATUS AcpiOsDeleteSemaphore(ACPI_SEMAPHORE Handle) {
     dprintf("acpi: delete semaphore\n");
+    delete_semaphore(Handle);
     return AE_OK;
 }
 
 ACPI_STATUS AcpiOsWaitSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units, UINT16 Timeout) {
     dprintf("acpi: wait semaphore for %d units, %d ms timeout\n", Units, Timeout);
-    return AE_NOT_ACQUIRED;
+    semaphore_acquire(Handle, Units);
+    return AE_OK;
 }
 
 ACPI_STATUS AcpiOsSignalSemaphore(ACPI_SEMAPHORE Handle, UINT32 Units) {
     dprintf("acpi: signal semaphore (%d units)\n", Units);
+    semaphore_release(Handle, Units);
     return AE_OK;
 }
 
