@@ -159,7 +159,7 @@ $(KERNEL): $(OBJFILES) $(ASMOBJS)
 	@mkdir -p $(OBJDIR)/llbc
 	@$(LLVMLD) -o $(OBJDIR)/llbc/kernel.bc $(OBJFILES)
 	@$(LLC) -O3 $(ARCH_LLCFLAGS) -o $(OBJDIR)/llbc/kernel.s $(OBJDIR)/llbc/kernel.bc
-	$(LLVMAS) $(CLANG_ASFLAGS) $(CPPFLAGS) -o $(OBJDIR)/llbc/kernel.bo $(LLVM_ASFLAGS) $(OBJDIR)/llbc/kernel.s
+	@$(LLVMAS) $(CLANG_ASFLAGS) $(CPPFLAGS) -o $(OBJDIR)/llbc/kernel.bo $(LLVM_ASFLAGS) $(OBJDIR)/llbc/kernel.s
 	@$(LD) $(LDFLAGS) $(LIBDIRS) -o $@ -T $(KERNEL_LSCRIPT) $(OBJDIR)/llbc/kernel.bo $(ASMOBJS) $(LIBS)
 	-@$(RM) -r $(OBJDIR)/llbc
 else
