@@ -43,7 +43,7 @@ ifeq "$(PLATFORM_TARGET)" "omap3"
   PLATFORM_DEFINES := -DOMAP3 -DMACH_REQUIRES_EARLY_DEVINIT
 
   CLANG_ASFLAGS += -mcpu=cortex-a8
-  ARCH_LLCFLAGS += -mcpu=cortex-a8
+  ARCH_LLCFLAGS += -mcpu=cortex-a8 -mattr=-neon,+vfp3,+v7
 endif
 
 # Examples on how to set build flags depending on the build environment
@@ -99,7 +99,11 @@ HDRFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.h")
 
 OBJFILES := $(abspath $(patsubst %.s,$(OBJDIR)/%.gcc.o,$(ASMFILES)))
 ifeq "$(USE_CLANG)" "yes"
-  ASMOBJS := $(patsubst %.s,$(OBJDIR)/%.clang.o,$(ASMFILES))
+  ifeq "$(ARCH_TARGET)" "arm"
+    ASMOBJS := $(patsubst %.s,$(OBJDIR)/%.gcc.o,$(ASMFILES))
+  else
+    ASMOBJS := $(patsubst %.s,$(OBJDIR)/%.clang.o,$(ASMFILES))
+  endif
   OBJFILES := $(patsubst %.c,$(OBJDIR)/%.clang.o,$(SRCFILES))
   DEPFILES := $(abspath $(patsubst %.c,$(OBJDIR)/%.clang.d,$(SRCFILES)))
 else
@@ -142,13 +146,20 @@ LINT_IGNORE := dlmalloc.c
 
 ifeq "$(USE_CLANG)" "yes"
   WARNINGS += -Wno-empty-translation-unit
+  LLVM_ASFLAGS := -filetype=obj -assemble
+
+  ifeq "$(ARCH_TARGET)" "arm"
+    LLVMAS := $(CC)
+    CLANG_ASFLAGS := $(ASFLAGS)
+    LLVM_ASFLAGS := -c
+  endif
 
 $(KERNEL): $(OBJFILES) $(ASMOBJS)
 	@echo Linking kernel...
 	@mkdir -p $(OBJDIR)/llbc
 	@$(LLVMLD) -o $(OBJDIR)/llbc/kernel.bc $(OBJFILES)
-	@$(LLC) $(ARCH_LLCFLAGS) -o $(OBJDIR)/llbc/kernel.s $(OBJDIR)/llbc/kernel.bc
-	@$(LLVMAS) $(CLANG_ASFLAGS) $(CPPFLAGS) -filetype=obj -o $(OBJDIR)/llbc/kernel.bo -assemble $(OBJDIR)/llbc/kernel.s
+	@$(LLC) -O3 $(ARCH_LLCFLAGS) -o $(OBJDIR)/llbc/kernel.s $(OBJDIR)/llbc/kernel.bc
+	$(LLVMAS) $(CLANG_ASFLAGS) $(CPPFLAGS) -o $(OBJDIR)/llbc/kernel.bo $(LLVM_ASFLAGS) $(OBJDIR)/llbc/kernel.s
 	@$(LD) $(LDFLAGS) $(LIBDIRS) -o $@ -T $(KERNEL_LSCRIPT) $(OBJDIR)/llbc/kernel.bo $(ASMOBJS) $(LIBS)
 	-@$(RM) -r $(OBJDIR)/llbc
 else
