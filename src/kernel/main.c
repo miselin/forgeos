@@ -23,6 +23,7 @@
 #include <interrupts.h>
 #include <mmiopool.h>
 #include <dlmalloc.h>
+#include <powerman.h>
 #include <system.h>
 #include <timer.h>
 #include <assert.h>
@@ -63,7 +64,13 @@ void init2(void *p __unused) {
     dprintf("Starting the scheduler...\n");
     start_scheduler();
 
+    kprintf("Initialising power management...\n");
+    powerman_init();
+
     dprintf("FORGE initialisation complete.\n");
+    kprintf("FORGE initialisation complete.\n");
+
+    powerman_enter(POWERMAN_STATE_OFF);
 }
 
 void _kmain(uint32_t magic, phys_ptr_t tags) {
@@ -109,6 +116,11 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
     kprintf("Configuring MMIO pools...\n");
     init_mmiopool(MMIO_BASE, MMIO_LENGTH);
 #endif
+
+    // Early power management features can be enabled early (eg, ACPI on x86-pc
+    // so we can find things like the HPET).
+    kprintf("Initialising initial power management...\n");
+    powerman_earlyinit();
 
     kprintf("Initialising malloc...\n");
     init_malloc();
