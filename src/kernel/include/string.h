@@ -31,18 +31,18 @@ extern unsigned long int strtoul(char *str, char **end, int base);
 
 extern char *strcat(char *a, char *b);
 
-#define islower(c) (c >= 'a' && c <= 'z')
-#define isupper(c) (c >= 'A' && c <= 'Z')
+#define islower(c) ((c) >= 'a' && (c) <= 'z')
+#define isupper(c) ((c) >= 'A' && (c) <= 'Z')
 #define isalpha(c) (isupper(c) || islower(c))
-#define isdigit(c) (c >= '0' && c <= '9')
-#define isxdigit(c) (isdigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'))
+#define isdigit(c) ((c) >= '0' && (c) <= '9')
+#define isxdigit(c) (isdigit((c)) || ((c) >= 'a' && (c) <= 'f') || ((c) >= 'A' && (c) <= 'F'))
 
 #define isprint(c) (isdigit(c) || isalpha(c))
-#define isspace(c) ((c == ' ') || (c == '\t') || (c == '\n') || \
-                    (c == '\v') || (c == '\f') || (c == '\r'))
+#define isspace(c) (((c) == ' ') || ((c) == '\t') || ((c) == '\n') || \
+                    ((c) == '\v') || ((c) == '\f') || ((c) == '\r'))
 
-#define tolower(c) (isupper(c) ? ((c) - 'A') + 'a' : c)
-#define toupper(c) (isupper(c) ? c : ((c) - 'a') + 'A')
+#define tolower(c) (isalpha(c) ? isupper(c) ? ((c) - 'A') + 'a' : (c) : (c))
+#define toupper(c) (isalpha(c) ? isupper(c) ? c : ((c) - 'a') + 'A' : (c))
 
 /// Find 'c' in s, return a pointer to the first location found or NULL if not found.
 extern const char *strsearch(const char *s, const char c);
