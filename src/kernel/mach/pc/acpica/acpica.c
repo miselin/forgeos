@@ -31,7 +31,7 @@
 
 #include <acpi.h>
 
-#define ACPICA_OSL_VERBOSE
+// #define ACPICA_OSL_VERBOSE
 
 #ifndef ACPICA_OSL_VERBOSE
 #undef dprintf
@@ -231,7 +231,6 @@ int acpi_inthandler(struct intr_stack *p, void *d) {
         ServiceRoute(d);
     return 0;
 }
-
 
 ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLER Handler, void *Context) {
     dprintf("acpi: install interrupt %d handler\n", InterruptLevel);

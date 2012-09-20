@@ -121,6 +121,8 @@
 #include <string.h>
 #include <util.h>
 
+#define ACPI_SINGLE_THREADED
+
 #define ACPI_USE_SYSTEM_CLIBRARY
 
 #define ACPI_USE_DO_WHILE_0
@@ -138,6 +140,8 @@
 #endif
 
 #define ACPI_MUTEX                  void *
+
+#define ACPI_UINTPTR_T              uintptr_t
 
 #include "acgcc.h"
 
