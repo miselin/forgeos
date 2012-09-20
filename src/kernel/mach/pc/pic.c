@@ -54,8 +54,36 @@ static void enable(size_t irqnum) {
 static int irq_stub(struct intr_stack *stack, void *p __unused) {
 	size_t irqnum = stack->intnum - IRQ_INT_BASE;
 	int ret = 0;
+
+	// Read the interrupt status register for master and slave
+	outb(0x20, 0x0b);
+	outb(0xa0, 0x0b);
+	uint16_t isr = (inb(0xa0) << 8) | inb(0x20);
+
+	// Handle spurious IRQs.
+	if(irqnum == 7) {
+		// Spurious?
+		if((isr & (1 << 7)) == 0) {
+			dprintf("pic: spurious irq 7\n");
+			return 0;
+		}
+	} else if(irqnum == 15) {
+		// Spurious?
+		if((isr & (1 << 15)) == 0) {
+			dprintf("pic: spurious irq 15\n");
+			eoi(7);
+			return 0;
+		}
+	}
+
+	// Legit call into the IRQ stub?
+	if((isr & (1 << irqnum)) == 0) {
+		dprintf("pic: irq %d came from nowhere!?\n", irqnum);
+		return 0;
+	}
+
 	if(handlers[irqnum].handler == 0) {
-		kprintf("Unhandled IRQ %d\n", irqnum);
+		dprintf("Unhandled IRQ %d\n", irqnum);
 		eoi(irqnum);
 		return 0;
 	}
