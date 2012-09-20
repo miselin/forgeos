@@ -42,13 +42,14 @@ void *memcpy(void *dest, void *src, size_t len) {
 	return dest;
 }
 
-int memcmp(void *a, void *b, size_t len) {
-	char *ac = (char *) a;
-	char *bc = (char *) b;
+int memcmp(const void *a, const void *b, size_t len) {
+	const unsigned char *ac = (const unsigned char *) a;
+	const unsigned char *bc = (const unsigned char *) b;
 	while(len--) {
-		int c = *ac - *bc;
-		if(c != 0)
-			return c;
+		if(*ac > *bc)
+			return 1;
+		else if(*ac < *bc)
+			return -1;
 
 		ac++; bc++;
 	}
@@ -109,7 +110,7 @@ void *realloc_nolock(void *p, size_t newsz) {
 }
 
 void free_nolock(void *m) {
-	return dlfree(m);
+	dlfree(m);
 }
 
 /*

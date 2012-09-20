@@ -77,10 +77,13 @@ ACPI_STATUS AcpiOsPhysicalTableOverride(ACPI_TABLE_HEADER *ExistingTable __unuse
 }
 
 void *AcpiOsMapMemory(ACPI_PHYSICAL_ADDRESS PhysicalAddress, ACPI_SIZE Length) {
-    dprintf("acpi: map memory %d bytes -> %x\n", Length, PhysicalAddress);
+    dprintf("acpi: map memory %d bytes -> %x [end %x]\n", Length, PhysicalAddress, PhysicalAddress + Length);
+    ACPI_PHYSICAL_ADDRESS addend = PhysicalAddress & (PAGE_SIZE - 1);
     void *addr = mmiopool_alloc(Length, PhysicalAddress);
     dprintf("acpi: mapped at %x\n", addr);
-    return (void *) (((uintptr_t) addr) + (PhysicalAddress & (PAGE_SIZE - 1)));
+    void *ret = (void *) (((uintptr_t) addr) + addend);
+    dprintf("acpi: map memory returns %p\n", ret);
+    return ret;
 }
 
 void AcpiOsUnmapMemory(void *where, ACPI_SIZE length) {
@@ -90,7 +93,8 @@ void AcpiOsUnmapMemory(void *where, ACPI_SIZE length) {
 
 ACPI_STATUS AcpiOsGetPhysicalAddress(void *LogicalAddress, ACPI_PHYSICAL_ADDRESS *PhysicalAddress) {
     dprintf("acpi: v2p %p\n", LogicalAddress);
-    return (ACPI_STATUS) vmem_v2p((vaddr_t) LogicalAddress);
+    *PhysicalAddress = (ACPI_PHYSICAL_ADDRESS) vmem_v2p((vaddr_t) LogicalAddress);
+    return AE_OK;
 }
 
 void *AcpiOsAllocate(ACPI_SIZE Size) {
@@ -107,7 +111,7 @@ BOOLEAN AcpiOsReadable(void *Memory, ACPI_SIZE Length) {
     dprintf("acpi: readable %p, %d bytes\n", Memory, Length);
     ACPI_SIZE i = 0;
     for(; i < Length; i += PAGE_SIZE) {
-        if(!vmem_ismapped((vaddr_t) Memory)) {
+        if(!vmem_ismapped(((vaddr_t) Memory) + (i * PAGE_SIZE))) {
             return FALSE;
         }
     }
@@ -155,6 +159,7 @@ void AcpiOsStall(UINT32 Microseconds) {
 ACPI_STATUS AcpiOsCreateMutex(ACPI_MUTEX *OutHandle) {
     dprintf("acpi: create mutex\n");
     *OutHandle = create_semaphore(1, 1);
+    return AE_OK;
 }
 
 void AcpiOsDeleteMutex(ACPI_MUTEX Handle) {
@@ -243,11 +248,12 @@ ACPI_STATUS AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLE
     return AE_OK;
 }
 
-void AcpiOsPrintf(const char *fmt __unused, ...) {
+void AcpiOsPrintf(const char *fmt, ...) {
     dprintf("acpi: printf\n");
     va_list args;
     va_start(args, fmt);
     AcpiOsVprintf(fmt, args);
+    va_end(args);
 }
 
 void AcpiOsVprintf(const char *fmt, va_list args) {
@@ -329,12 +335,14 @@ ACPI_STATUS AcpiOsWritePciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, UIN
 }
 
 UINT64 AcpiOsGetTimer() {
+    dprintf("acpi: get timer\n");
     UINT64 ret;
     __asm__ volatile("rdtsc" : "=A" (ret));
     return ret;
 }
 
 ACPI_STATUS AcpiOsSignal(UINT32 Function, void *Info __unused) {
+    dprintf("acpi: signal to OS - %d\n", Function);
     if(Function == ACPI_SIGNAL_BREAKPOINT)
         __asm__ volatile("int $3");
     else if(Function == ACPI_SIGNAL_FATAL)

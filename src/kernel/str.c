@@ -107,7 +107,6 @@ char *strcat(char *a, char *b) {
     char *ret = a;
     while(*a)
         a++;
-    a--;
     while(*b)
         *a++ = *b++;
     *a = 0;
