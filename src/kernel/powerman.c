@@ -126,6 +126,7 @@ int powerman_enter(int new_state) {
         spinlock_release(powerman_spinlock);
         return -1;
     }
+    dprintf("ok!\n");
 
     // Set the new state in variables.
     int old_state = current_state;
@@ -144,6 +145,7 @@ int powerman_enter(int new_state) {
 
         return -1;
     }
+    dprintf("ok!\n");
 
     // May not be reached, depending on new state!
     return 0;
