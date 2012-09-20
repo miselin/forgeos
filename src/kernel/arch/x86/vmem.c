@@ -22,6 +22,13 @@
 #include <util.h>
 #include <io.h>
 
+// #define VMEM_VERBOSE
+
+#ifndef VMEM_VERBOSE
+#undef dprintf
+#define dprintf(a, ...)
+#endif
+
 struct gdt_entry {
 	uint16_t	limit_low;
 	uint16_t	base_low;
