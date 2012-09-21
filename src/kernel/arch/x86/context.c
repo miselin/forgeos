@@ -22,7 +22,7 @@
 #include <system.h>
 #include <assert.h>
 
-#define POOL_STACK_SZ       0x1000
+#define POOL_STACK_SZ       0x4000
 #define POOL_STACK_COUNT    0x1000
 
 #define EFLAGS_INT_ENBALE   (1UL << 9)
@@ -39,6 +39,10 @@ void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_
 
     memset(ctx, 0, sizeof(context_t));
 
+    if(!stacksz) {
+        stacksz = POOL_STACK_SZ;
+    }
+
     void *stack_ptr = 0;
     if(stack) {
         stack_ptr = (void *) stack;
@@ -54,13 +58,17 @@ void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_
     ctx->stackbase = (uint32_t) stack_ptr;
     ctx->eflags = EFLAGS_INT_ENBALE;
 
-    uintptr_t *stackp = (uintptr_t *) (((char *) stack_ptr) + (stacksz - 4));
-    *stackp-- = (uintptr_t) thread_return;
+    uintptr_t stack_top = ((uintptr_t) stack_ptr) + (stacksz - sizeof(unative_t));
+    ctx->ebp = stack_top;
+
+    uintptr_t *stackp = (uintptr_t *) stack_top;
+    *stackp = (uintptr_t) thread_return;
+    stackp--;
     *stackp = (uintptr_t) param;
 
-    ctx->esp = ctx->ebp = (uint32_t) stackp;
+    ctx->esp = (uint32_t) stackp;
 
-    dprintf("new x86 context %p: eip=%x, esp=%lx-%x\n", ctx, ctx->eip, ctx->esp - stacksz + 4, ctx->esp);
+    dprintf("new x86 context %p: eip=%x, esp=%p-%x\n", ctx, ctx->eip, stack_ptr, stack_top + sizeof(unative_t));
 }
 
 void destroy_context(context_t *ctx) {

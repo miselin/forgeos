@@ -105,9 +105,6 @@ struct process *create_process(const char *name, struct process *parent) {
 }
 
 struct thread *create_thread(struct process *parent, uint32_t prio, thread_entry_t start, uintptr_t stack, size_t stacksz, void *param) {
-    if(stacksz == 0)
-        stacksz = 0x1000;
-
     struct thread *t = (struct thread *) malloc(sizeof(struct thread));
     memset(t, 0, sizeof(struct thread));
 
