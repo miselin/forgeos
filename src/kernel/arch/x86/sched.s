@@ -25,7 +25,7 @@ switch_context:
 
 	# Old context - don't save current if it's null.
 	mov 4(%esp), %eax
-	cmpl %eax, 0
+	cmpl $0, %eax
 	je .onlyload
 
 	# EDI, ESI, EBX
@@ -63,7 +63,7 @@ switch_context:
 	push 24(%eax)
 	popf
 
-	cmpl %ecx, 0
+	cmpl $0, %ecx
 	je .nolock
 
 	# ECX contains pointer to a spinlock - unlock it.
