@@ -19,11 +19,8 @@
 #include <malloc.h>
 #include <assert.h>
 #include <util.h>
+#include <pmem.h>
 #include <io.h>
-
-struct phys_page {
-	paddr_t addr;
-};
 
 static void *page_stack = 0;
 

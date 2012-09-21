@@ -19,6 +19,8 @@
 
 #include <types.h>
 
+#define PMEM_SPECIAL_STANDARD       0
+#define PMEM_SPECIAL_FIRMWARE       1 // eg, < 1 MB on x86
 
 /// Initialise the physical memory allocator
 #define pmem_init		mach_phys_init
@@ -28,6 +30,13 @@
 
 /// Allocate a single page from the physical allocator.
 extern paddr_t	pmem_alloc();
+
+/// Allocate a page from a special region. Must be implemented by an
+/// architecture or machine - simply return pmem_alloc if no special regions.
+extern paddr_t pmem_alloc_special(size_t how);
+
+/// Deallocate a page from a special region.
+extern void pmem_dealloc_special(size_t how, paddr_t p);
 
 /// Deallocate a single page, returning it to the physical allocator.
 extern void		pmem_dealloc(paddr_t p);
@@ -44,5 +53,10 @@ extern paddr_t	pmem_size();
 
 // Free physical memory, available to be allocated in KiB.
 extern paddr_t	pmem_freek();
+
+/// Structure defining a physical address.
+struct phys_page {
+    paddr_t addr;
+};
 
 #endif
