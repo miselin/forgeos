@@ -107,14 +107,32 @@ int powerman_enter(int new_state) {
     dprintf("powerman: request to enter state %d\n", new_state);
 
     size_t n = 0;
+    int cbr = 0;
+
+    uint8_t wasints = interrupts_get();
 
     spinlock_acquire(powerman_spinlock);
 
     // Call all of our callbacks - almost ready to go!
     powerman_callback_t cb = NULL;
     dprintf("powerman: calling callbacks due to pending transition\n");
-    while((cb = list_at(powerman_cblist, n++)) != NULL) cb(new_state);
+    while((cb = list_at(powerman_cblist, n++)) != NULL) {
+        cbr = cb(new_state);
+        if(cbr != 0) {
+            dprintf("powerman: callback %p returned non-zero code, aborting state transition\n");
+            break;
+        }
+    }
     n = 0;
+
+    // Did a callback fail? Notify callbacks again of the current state (as no
+    // state transition took place).
+    if(cbr != 0) {
+        while((cb = list_at(powerman_cblist, n++)) != NULL) cb(current_state);
+        spinlock_release(powerman_spinlock);
+
+        return cbr;
+    }
 
     // Prepare to enter the new state, if we can.
     dprintf("powerman: preparing to enter new state... ");
@@ -131,22 +149,29 @@ int powerman_enter(int new_state) {
     // Set the new state in variables.
     int old_state = current_state;
     current_state = new_state;
-    spinlock_release(powerman_spinlock);
 
     // Enter the new state proper.
     dprintf("powerman: entering new state... ");
     if(platform_powerman_enter(new_state) != 0) {
         dprintf("fail - notifying all callbacks and returning to state %d\n", old_state);
 
-        spinlock_acquire(powerman_spinlock);
         current_state = old_state;
         while((cb = list_at(powerman_cblist, n++)) != NULL) cb(current_state);
-        spinlock_release(powerman_spinlock);
 
+        spinlock_release(powerman_spinlock);
         return -1;
     }
     dprintf("ok!\n");
 
-    // May not be reached, depending on new state!
+    // Made it to here - sleep state was entered and exited okay.
+    // Notify callbacks of our new status, clean up, and we're done!
+    current_state = POWERMAN_STATE_WORKING;
+    while((cb = list_at(powerman_cblist, n++)) != NULL) cb(current_state);
+    spinlock_release(powerman_spinlock);
+
+    // Okay to bring back interrupts now if they were disabled during the
+    // platform-specific transition.
+    if(wasints)
+        interrupts_enable();
     return 0;
 }

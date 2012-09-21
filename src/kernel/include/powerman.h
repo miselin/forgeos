@@ -27,10 +27,11 @@
 #define POWERMAN_STATE_OFF          5
 #define POWERMAN_STATE_MAX          5
 
-typedef void (*powerman_callback_t)(int);
+typedef int (*powerman_callback_t)(int);
 
 /**
  * \brief Early initialisation for power management.
+ *
  * Some platforms won't need to do anything for early initialisation, but others
  * may want to load metadata and tables and such before too much of the system
  * is loaded, perhaps because those platforms mix power management and device
@@ -45,6 +46,7 @@ extern int powerman_earlyinit();
 
 /**
  * \brief Full initialisation of power management.
+ *
  * Performs initialisation of the power management subsystem. Platforms do this
  * in different ways.
  *
@@ -54,6 +56,7 @@ extern int powerman_init();
 
 /**
  * \brief Install a callback function for a power state change.
+ *
  * This function allows code in the kernel to install a callback to be notified
  * if the power state of the system changes for some reason. The callback is
  * called for all power state changes, but the callback does not need to handle
@@ -74,7 +77,13 @@ extern void powerman_installcallback(powerman_callback_t cb);
 extern void powerman_removecallback(powerman_callback_t cb);
 
 /**
- * Enter a new power state, calling callbacks along the way.
+ * \brief Enter a new power state, calling callbacks along the way.
+ *
+ * It can be safely assumed that if this function returns zero, that the system
+ * has successfully entered the new power state and then returned back to the
+ * previous state. That is, if you call powerman_enter(POWERMAN_STATE_STANDBY),
+ * and the return value is zero, the system has been put into standby and then
+ * resumed during the function call.
  */
 extern int powerman_enter(int new_state);
 
