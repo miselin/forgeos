@@ -19,7 +19,17 @@
 #include <pit.h>
 #include <pic.h>
 
+// arch/x86/vmem.c
+extern void vmem_powerman_init();
+
+// arch/x86/interrupts.c
+extern void ints_powerman_init();
+
 void mach_init_devices() {
 	init_pic();
 	init_serial();
+
+    // Make sure the GDTR and IDTR reload can happen.
+    vmem_powerman_init();
+    ints_powerman_init();
 }

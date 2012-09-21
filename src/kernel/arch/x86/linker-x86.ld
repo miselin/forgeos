@@ -21,6 +21,13 @@ SECTIONS {
     	code = .; _code = .; __code = .;
     	*(.text*);
 
+        . = ALIGN(4096);
+
+        __begin_lowmem = .;
+        *(.lowmem*)
+        . = ALIGN(4096);
+        __end_lowmem = .;
+
         . = ALIGN(4);
 
     	__begin_tests_0 = .;

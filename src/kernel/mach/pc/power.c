@@ -15,9 +15,13 @@
  */
 
 #include <powerman.h>
+#include <system.h>
 #include <interrupts.h>
+#include <mmiopool.h>
+#include <assert.h>
 #include <util.h>
 #include <vmem.h>
+#include <pmem.h>
 #include <io.h>
 
 #include <acpi.h>
@@ -26,6 +30,21 @@
 static ACPI_TABLE_DESC InitTables[ACPI_MAX_INIT_TABLES];
 
 static ACPI_TABLE_FACS *AcpiGbl_FACS;
+
+/// Architecture-specific code, called whenever the system returns from sleep.
+extern void pc_acpi_wakeup();
+
+/// Saves the CPU state before sleeping. After the system wakes up, this function
+/// will return '1' - otherwise, it will return '0'.
+extern int pc_acpi_save_state(void *);
+
+extern void *pc_acpi_saveblock_addr;
+
+static paddr_t pc_reloc_acpi_wakeup;
+
+static void *pc_wakeup_saveblock;
+
+extern char __begin_lowmem, __end_lowmem;
 
 static UINT8 powerman_state_to_acpi(int status) {
     UINT8 new_status = 0;
@@ -59,8 +78,10 @@ static UINT8 powerman_state_to_acpi(int status) {
                 new_status = ACPI_STATE_S2;
             else if(new_status == ACPI_STATE_S2)
                 new_status = ACPI_STATE_S1;
-            else if(new_status == ACPI_STATE_S1)
+            else if(new_status == ACPI_STATE_S1) {
                 new_status = ACPI_STATE_S0;
+                break;
+            }
         } else {
             break;
         }
@@ -69,9 +90,38 @@ static UINT8 powerman_state_to_acpi(int status) {
     return new_status;
 }
 
-static void pc_acpi_wakeup() {
-    dprintf("wakeup complete\n");
-    while(1);
+static void pc_remap_wakeup_data() {
+    // Allocate space for the save block.
+    paddr_t sblk_p = pmem_alloc_special(PMEM_SPECIAL_FIRMWARE);
+    vaddr_t sblk_v = mmiopool_alloc(PAGE_SIZE, sblk_p);
+
+    pc_acpi_saveblock_addr = (void *) sblk_p;
+    pc_wakeup_saveblock = (void *) sblk_v;
+
+    dprintf("save block is at %llx, %x\n", sblk_p, sblk_v);
+
+    // Wakeup function(s) and variables.
+    vaddr_t wakeup_virt = (vaddr_t) pc_acpi_wakeup;
+    vaddr_t begin_lowmem = (vaddr_t) &__begin_lowmem;
+    vaddr_t end_lowmem = (vaddr_t) &__end_lowmem;
+    size_t wakeup_region_size = end_lowmem - begin_lowmem;
+
+    // The section should never be bigger than one page!
+    assert(wakeup_region_size <= PAGE_SIZE);
+
+    // Copy data to the low memory area. It stays mapped as we call functions in
+    // the section, and leaving it mapped means we can also access all the
+    // kernel during wakeup.
+    paddr_t p = pmem_alloc_special(PMEM_SPECIAL_FIRMWARE);
+    vmem_map((vaddr_t) p, p, VMEM_SUPERVISOR | VMEM_READWRITE);
+    memcpy((void *) p, (void *) begin_lowmem, PAGE_SIZE);
+
+    // Unmap the current region and point it to that physical address, now that
+    // the copy has completed.
+    vmem_unmap(begin_lowmem);
+    vmem_map(begin_lowmem, p, VMEM_SUPERVISOR | VMEM_READWRITE);
+
+    pc_reloc_acpi_wakeup = p + (wakeup_virt & (PAGE_SIZE - 1));
 }
 
 int platform_powerman_earlyinit() {
@@ -135,17 +185,32 @@ int platform_powerman_init() {
         return -1;
     }
 
+    // Set up wakeup vectors and prepare state save block.
+    dprintf("pc: moving wakeup vector to low memory... ");
+    pc_remap_wakeup_data();
+    dprintf("ok!\n");
+
     return 0;
 }
 
 int platform_powerman_prep(int new_state) {
     ACPI_STATUS status;
+    UINT8 acpi_state = powerman_state_to_acpi(new_state);
+
+    // Preparing for S0? Yeah, that's an error.
+    if(acpi_state == ACPI_STATE_S0) {
+        dprintf("pc: attempt to prepare to enter S0, likely an unsupported state\n");
+        return -1;
+    }
 
     // Set firmware wakeup vector to our wakeup code
     /// \todo Put this wakeup code below 1 MB, write it properly etc...
-    AcpiSetFirmwareWakingVector((UINT32) vmem_v2p((vaddr_t) pc_acpi_wakeup));
+    if(acpi_state < ACPI_STATE_S5) {
+        dprintf("pc: setting waking vector to %llx\n", pc_reloc_acpi_wakeup);
+        AcpiSetFirmwareWakingVector((UINT32) pc_reloc_acpi_wakeup);
+    }
 
-    if(ACPI_FAILURE(status = AcpiEnterSleepStatePrep(powerman_state_to_acpi(new_state)))) {
+    if(ACPI_FAILURE(status = AcpiEnterSleepStatePrep(acpi_state))) {
         dprintf("pc: acpi state prep failed: %s\n", AcpiFormatException(status));
         return -1;
     } else {
@@ -178,10 +243,16 @@ int platform_powerman_enter(int new_state) {
         ACPI_FLUSH_CPU_CACHE();
     }
 
-    // Enter the new state.
-    if(ACPI_FAILURE(status = AcpiEnterSleepState(new_state_acpi))) {
-        dprintf("pc: acpi state entry failed: %s\n", AcpiFormatException(status));
-        return -1;
+    // Save state before we enter the new sleep state.
+    dprintf("pc: acpi saving state before entering new sleep state\n");
+    if(pc_acpi_save_state(pc_wakeup_saveblock) == 0) {
+        dprintf("ok!\n");
+
+        // Enter the new state.
+        if(ACPI_FAILURE(status = AcpiEnterSleepState(new_state_acpi))) {
+            dprintf("pc: acpi state entry failed: %s\n", AcpiFormatException(status));
+            return -1;
+        }
     }
 
     // We have now left the state (as this code is being executed)...

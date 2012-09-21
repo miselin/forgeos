@@ -21,8 +21,9 @@
 #include <pmem.h>
 #include <util.h>
 #include <io.h>
+#include <powerman.h>
 
-// #define VMEM_VERBOSE
+#define VMEM_VERBOSE
 
 #ifndef VMEM_VERBOSE
 #undef dprintf
@@ -219,21 +220,31 @@ void gdt_set(int n, uintptr_t base, uint32_t limit, uint8_t access, uint8_t gran
 	gdt[n].access = access;
 }
 
+static __noinline void reload_gdt() {
+	__asm__ volatile("lgdt %0; \
+					  jmp $0x08, $.flush;\n \
+					  .flush:\n \
+					  movw $0x10, %%ax; \
+					  movw %%ax, %%ds; \
+					  movw %%ax, %%es; \
+					  movw %%ax, %%fs; \
+					  movw %%ax, %%gs; \
+					  movw %%ax, %%ss" :: "m" (gdtr) : "eax");
+}
+
 void arch_vmem_init() {
 	// We can clear out the .init section, freeing some pages.
 	uintptr_t init_start_phys = log2phys((uintptr_t) &init);
-	uintptr_t init_end_phys = log2phys((uintptr_t) &init_end);
 	uintptr_t c = 0, n = 0;
 	for(c = (uintptr_t) &init; c < (uintptr_t) &init_end; c += PAGE_SIZE) {
 		vmem_unmap(c);
-	}
 
-	for(c = init_start_phys; c < init_end_phys; c += PAGE_SIZE) {
-		pmem_dealloc(c);
+		pmem_dealloc(init_start_phys);
+		init_start_phys += 0x1000;
 		n++;
 	}
 
-	kprintf("vmem: cleared %d KB of RAM used by kernel init\n", (n * PAGE_SIZE) / 1024);
+	kprintf("vmem: cleared %ld KB of RAM used by kernel init\n", (n * PAGE_SIZE) / 1024);
 
 	// We can also relocate the stack.
 	uintptr_t stack_phys = log2phys((uintptr_t) &tmpstack_base);
@@ -303,15 +314,38 @@ void arch_vmem_init() {
 	__barrier;
 
 	// Flush the GDT
-	__asm__ volatile("lgdt %0; \
-					  jmp $0x08, $.flush;\n \
-					  .flush:\n \
-					  movw $0x10, %%ax; \
-					  movw %%ax, %%ds; \
-					  movw %%ax, %%es; \
-					  movw %%ax, %%fs; \
-					  movw %%ax, %%gs; \
-					  movw %%ax, %%ss" :: "m" (gdtr) : "eax");
+	reload_gdt();
 
 	dprintf("gdtr limit: %x, base: %x\n", gdtr.limit, gdtr.base);
+}
+
+extern void *pc_acpi_gdt;
+
+int vmem_powerstate_change(int new_state) {
+	uint32_t *pdir = (uint32_t *) PDIR_VIRT;
+	static uint32_t persist_pdir = 0;
+
+	if(new_state == POWERMAN_STATE_WORKING) {
+		// Handle return to working state by reloading GDTR.
+		dprintf("pc: power state changed to working, reloading GDT\n");
+		reload_gdt();
+
+		// Restore the old 0 - 4 MB page table.
+		pdir[0] = persist_pdir;
+	} else if(new_state < POWERMAN_STATE_OFF) {
+		// Copy our current kernel code/data segments so the wakeup code can
+		// load a GDT with minimal effort.
+		dprintf("pc: copying gdt for wakeup to %p\n", &pc_acpi_gdt);
+		memcpy(&pc_acpi_gdt, gdt, sizeof(gdt[0]) * 3);
+
+		// Map in the first 4 MB with a large page again.
+		persist_pdir = pdir[0];
+		pdir[0] = 0x83;
+	}
+
+	return 0;
+}
+
+void vmem_powerman_init() {
+	powerman_installcallback(vmem_powerstate_change);
 }
