@@ -258,7 +258,28 @@ void arch_vmem_init() {
 	memcpy((void *) (STACK_TOP - stacksz), (void *) esp, stacksz);
 
 	// This is tricky. Update the stack pointer, live.
-	__asm__ volatile("mov %0, %%esp" :: "r" (STACK_TOP - stacksz));
+	uintptr_t ebp = 0;
+	__asm__ volatile("mov %%ebp, %0" : "=r" (ebp));
+	__asm__ volatile("mov %0, %%esp" :: "r" (STACK_TOP - stacksz) : "esp");
+
+	// Just moved the stack, a barrier is definitely necessary.
+	__barrier;
+
+	// And now we can knock out the big page mapping the first 4 MB of RAM,
+	// essentially completely unmapping the first 4 MB of RAM entirely.
+	// By now, things like KBoot tags should be used and ACPI stuff should be
+	// mapped in, or about to be mapped in.
+	/// \todo move kboot tags to high memory.
+	uint32_t *pdir = (uint32_t *) PDIR_VIRT;
+	pdir[0] = 0;
+
+	// Just completely flush the TLB.
+	__asm__ volatile("mov %%cr3, %%eax; mov %%eax, %%cr3" ::: "eax", "memory");
+
+	/// \todo massive hack
+	vmem_map(0xB8000, 0xB8000, VMEM_SUPERVISOR | VMEM_GLOBAL | VMEM_READWRITE);
+
+	dprintf("stack is now at %x ebp is %x\n", (STACK_TOP - stacksz), ebp);
 
 	// Set up the GDT now.
 	/// \todo Provide an API for adding new segments.
