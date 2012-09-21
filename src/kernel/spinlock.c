@@ -78,6 +78,8 @@ void spinlock_release(void *s) {
 
 	/// \todo Check for multiple processors.
 	struct spinlock *sl = (struct spinlock *) s;
+	assert(sl->locked);
+
 	wasints = sl->wasints;
 	atomic_compare_and_swap(&sl->locked, 0, void * _a __unused, 1, dprintf("deadlock in spinlock %p\n", s); panic("deadlock"));
 
