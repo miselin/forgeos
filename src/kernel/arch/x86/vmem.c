@@ -192,7 +192,7 @@ paddr_t arch_vmem_v2p(vaddr_t v) {
 
 	uint32_t *ptab = (uint32_t *) PTAB_FROM_VADDR(v);
 	if(ptab[PTAB_OFFSET(v)] & FLAGS_PRESENT) {
-		return ptab[PTAB_OFFSET(v)] & (paddr_t) ~0xFFF;
+		return (ptab[PTAB_OFFSET(v)] & (paddr_t) ~0xFFF) | (v & 0xFFF);
 	}
 
 	return 0;
