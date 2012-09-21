@@ -28,6 +28,7 @@
 #define __used            __attribute__((used))
 
 #define __noreturn        __attribute__((noreturn))
+#define __noinline        __attribute__((noinline))
 
 #ifdef ARM
 #define atomic_bool_compare_and_swap __arm_bool_compare_and_swap
