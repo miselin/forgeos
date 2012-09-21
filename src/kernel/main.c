@@ -70,6 +70,13 @@ void init2(void *p __unused) {
     dprintf("FORGE initialisation complete.\n");
     kprintf("FORGE initialisation complete.\n");
 
+    // Test S3
+    powerman_enter(POWERMAN_STATE_STANDBY);
+
+    // Test S4 (Hibernate) - not implemented, but I want to see the FADT data.
+    powerman_enter(POWERMAN_STATE_HIBERNATE);
+
+    // Test S5
     powerman_enter(POWERMAN_STATE_OFF);
 }
 
