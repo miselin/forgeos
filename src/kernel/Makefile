@@ -102,7 +102,9 @@ ifeq "$(USE_CLANG)" "yes"
   ifeq "$(ARCH_TARGET)" "arm"
     ASMOBJS := $(patsubst %.s,$(OBJDIR)/%.gcc.o,$(ASMFILES))
   else
-    ASMOBJS := $(patsubst %.s,$(OBJDIR)/%.clang.o,$(ASMFILES))
+    # 16-bit codegen is only available on GCC, not llvm-mc. Nice.
+    ASMOBJS := $(patsubst %.16bit.s,$(OBJDIR)/%.16bit.gcc.o,$(ASMFILES))
+    ASMOBJS := $(patsubst %.s,$(OBJDIR)/%.clang.o,$(ASMOBJS))
   endif
   OBJFILES := $(patsubst %.c,$(OBJDIR)/%.clang.o,$(SRCFILES))
   DEPFILES := $(abspath $(patsubst %.c,$(OBJDIR)/%.clang.d,$(SRCFILES)))

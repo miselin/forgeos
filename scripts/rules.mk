@@ -14,12 +14,12 @@ $(OBJDIR)/%.clang.o: %.c Makefile
 
 # Assemble code with LLVM/clang
 $(OBJDIR)/%.clang.o: %.s Makefile
-	@echo '  [AS] $<...'
+	@echo '  [LLVMAS] $<...'
 	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
 	$(LLVMAS) $(CLANG_ASFLAGS) -filetype=obj -assemble $< -o $@
 
 $(OBJDIR)/%.clang.o: %.S Makefile
-	@echo '  [AS] $<...'
+	@echo '  [LLVMAS] $<...'
 	@[ ! -d $(dir $@) ] && mkdir -p $(dir $@); \
 	$(CPP) $(ASFLAGS) $(CPPFLAGS) $< -o $@.s && \
 	$(LLVMAS) $(CLANG_ASFLAGS) -filetype=obj -assemble $@.s -o $@
