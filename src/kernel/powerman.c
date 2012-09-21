@@ -32,6 +32,10 @@ int powerman_earlyinit() {
         return -1;
     }
 
+    // Needed for kernel init to install callbacks.
+    powerman_spinlock = create_spinlock();
+    powerman_cblist = create_list();
+
     return 0;
 }
 
@@ -45,8 +49,6 @@ int powerman_init() {
     interrupts_disable();
 
     dprintf("powerman: init\n");
-    powerman_spinlock = create_spinlock();
-    powerman_cblist = create_list();
 
     current_state = POWERMAN_STATE_WORKING;
 
