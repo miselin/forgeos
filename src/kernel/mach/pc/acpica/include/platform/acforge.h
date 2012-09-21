@@ -143,6 +143,8 @@
 
 #define ACPI_UINTPTR_T              uintptr_t
 
+#define ACPI_FLUSH_CPU_CACHE() __asm__ __volatile__("wbinvd");
+
 #include "acgcc.h"
 
 #endif /* __ACFORGE_H__ */

@@ -324,13 +324,33 @@ ACPI_STATUS AcpiOsWriteMemory(ACPI_PHYSICAL_ADDRESS Address, UINT64 Value, UINT3
 }
 
 ACPI_STATUS AcpiOsReadPciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, UINT64 *Value, UINT32 Width) {
-    dprintf("acpi: read pci config\n");
-    return AE_NOT_IMPLEMENTED;
+    dprintf("acpi: read pci config reg %x\n", Register);
+
+    uint32_t addr = (PciId->Bus << 16) |
+                    (PciId->Device << 11) |
+                    (PciId->Function << 8) |
+                    (Register & 0xFC) |
+                    (0x80000000UL);
+
+    outl(0xCF8, addr);
+    *Value = (UINT64) inl(0xCFC);
+
+    return AE_OK;
 }
 
 ACPI_STATUS AcpiOsWritePciConfiguration(ACPI_PCI_ID *PciId, UINT32 Register, UINT64 Value, UINT32 Width) {
-    dprintf("acpi: write pci config\n");
-    return AE_NOT_IMPLEMENTED;
+    dprintf("acpi: write pci config reg %x\n", Register);
+
+    uint32_t addr = (PciId->Bus << 16) |
+                    (PciId->Device << 11) |
+                    (PciId->Function << 8) |
+                    (Register & 0xFC) |
+                    (0x80000000UL);
+
+    outl(0xCF8, addr);
+    outl(0xCFC, (UINT32) Value);
+
+    return AE_OK;
 }
 
 UINT64 AcpiOsGetTimer() {
