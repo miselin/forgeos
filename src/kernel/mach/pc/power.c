@@ -124,6 +124,66 @@ static void pc_remap_wakeup_data() {
     pc_reloc_acpi_wakeup = p + (wakeup_virt & (PAGE_SIZE - 1));
 }
 
+/// 10.1.5, ACPICA Programmer's Reference.
+static void *pc_acpi_device_dump(ACPI_HANDLE ObjHandle, UINT32 Level, void *Context) {
+    ACPI_STATUS Status;
+    ACPI_DEVICE_INFO Info;
+    ACPI_BUFFER Path;
+    char Buffer[256];
+
+    Path.Length = sizeof (Buffer);
+    Path.Pointer = Buffer;
+
+    /* Get the full path of this device and print it */
+    Status = AcpiGetName(ObjHandle, ACPI_FULL_PATHNAME, &Path);
+    if(ACPI_SUCCESS(Status)) {
+        dprintf("%s\n", Path.Pointer);
+    }
+
+    /* Get the device info for this device and print it */
+    Status = AcpiGetObjectInfo(ObjHandle, &Info);
+    if(ACPI_SUCCESS(Status)) {
+        dprintf(" HwID: %.8X, ADR: %.8X, Status: %x\n",
+        Info.HardwareId, Info.Address, Info.CurrentStatus);
+    }
+
+    return NULL;
+}
+
+// Handle events in the system.
+static UINT32 pc_acpi_handle_event(void *Context) {
+    ACPI_STATUS status;
+    ACPI_EVENT_STATUS event_status;
+
+    dprintf("pc: acpi fixed event!\n");
+
+    // Check for RTC event.
+    if(ACPI_FAILURE(status = AcpiGetEventStatus(ACPI_EVENT_RTC, &event_status))) {
+        dprintf("pc: couldn't get RTC event status\n");
+    } else if(event_status & ACPI_EVENT_FLAG_SET) {
+        powerman_event(POWERMAN_EVENT_RTC);
+        return 0;
+    }
+
+    // Check for power button event.
+    if(ACPI_FAILURE(status = AcpiGetEventStatus(ACPI_EVENT_POWER_BUTTON, &event_status))) {
+        dprintf("pc: couldn't get Power Button event status\n");
+    } else if(event_status & ACPI_EVENT_FLAG_SET) {
+        powerman_event(POWERMAN_EVENT_POWERBUTTON);
+        return 0;
+    }
+
+    // Check for sleep button event.
+    if(ACPI_FAILURE(status = AcpiGetEventStatus(ACPI_EVENT_SLEEP_BUTTON, &event_status))) {
+        dprintf("pc: couldn't get Sleep Button event status\n");
+    } else if(event_status & ACPI_EVENT_FLAG_SET) {
+        powerman_event(POWERMAN_EVENT_SLEEPBUTTON);
+        return 0;
+    }
+
+    return 0;
+}
+
 int platform_powerman_earlyinit() {
     // Can we find the ACPI root pointer at all?
     ACPI_SIZE tmp = 0;
@@ -188,6 +248,20 @@ int platform_powerman_init() {
     // Set up wakeup vectors and prepare state save block.
     dprintf("pc: moving wakeup vector to low memory... ");
     pc_remap_wakeup_data();
+    dprintf("ok!\n");
+
+    // Dump the ACPI namespace to the logs (spammmmmmm).
+    dprintf("pc: acpi namespace dump, limited to devices:\n");
+    ACPI_HANDLE SysBusHandle;
+    AcpiGetHandle(0, ACPI_NS_ROOT_PATH, &SysBusHandle);
+    AcpiWalkNamespace(ACPI_TYPE_DEVICE, SysBusHandle, ~0, pc_acpi_device_dump, NULL, NULL, NULL);
+    dprintf("ok!\n");
+
+    // Install event handlers.
+    dprintf("pc: installing event handlers... ");
+    AcpiInstallFixedEventHandler(ACPI_EVENT_RTC, pc_acpi_handle_event, 0);
+    AcpiInstallFixedEventHandler(ACPI_EVENT_POWER_BUTTON, pc_acpi_handle_event, 0);
+    AcpiInstallFixedEventHandler(ACPI_EVENT_SLEEP_BUTTON, pc_acpi_handle_event, 0);
     dprintf("ok!\n");
 
     return 0;
