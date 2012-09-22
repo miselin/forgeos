@@ -27,6 +27,10 @@
 #define POWERMAN_STATE_OFF          5
 #define POWERMAN_STATE_MAX          5
 
+#define POWERMAN_EVENT_RTC          0x1000
+#define POWERMAN_EVENT_POWERBUTTON  0x1001
+#define POWERMAN_EVENT_SLEEPBUTTON  0x1002
+
 typedef int (*powerman_callback_t)(int);
 
 /**
@@ -86,6 +90,15 @@ extern void powerman_removecallback(powerman_callback_t cb);
  * resumed during the function call.
  */
 extern int powerman_enter(int new_state);
+
+/**
+ * \brief Notify the power management subsystem of a particular event.
+ *
+ * There are various events that can take place during the runtime of the kernel
+ * including external inputs and internal requests. This provides a central
+ * place to request the power management system respond to a particular event.
+ */
+extern int powerman_event(int event);
 
 /**
  * Platform-specific early initialisation.

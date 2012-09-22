@@ -23,7 +23,7 @@
 #include <io.h>
 #include <powerman.h>
 
-#define VMEM_VERBOSE
+// #define VMEM_VERBOSE
 
 #ifndef VMEM_VERBOSE
 #undef dprintf

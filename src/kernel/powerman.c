@@ -177,3 +177,27 @@ int powerman_enter(int new_state) {
         interrupts_enable();
     return 0;
 }
+
+int powerman_event(int event) {
+    /// \todo Make configurable!
+    switch(event) {
+        case POWERMAN_EVENT_RTC:
+            // Nothing to do here.
+            break;
+
+        case POWERMAN_EVENT_POWERBUTTON:
+            // Bring down the system.
+            powerman_enter(POWERMAN_STATE_OFF);
+            break;
+
+        case POWERMAN_EVENT_SLEEPBUTTON:
+            // Put the system to sleep.
+            powerman_enter(POWERMAN_STATE_STANDBY);
+            break;
+
+        default:
+            dprintf("powerman: unknown event %x\n", event);
+    }
+
+    return 0;
+}
