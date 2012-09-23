@@ -48,15 +48,20 @@ void *mmiopool_alloc(size_t len, paddr_t tophys) {
 
     vaddr_t ret = 0;
 
+    // Handle offsets within the physical address.
+    if(tophys & (PAGE_SIZE - 1)) {
+        len += tophys & (PAGE_SIZE - 1);
+
+        // Now, page-align the physical address.
+        tophys &= ~(PAGE_SIZE - 1);
+    }
+
     if(len < PAGE_SIZE)
         len = PAGE_SIZE;
 
     // Round up to the next page size.
     if(len % PAGE_SIZE)
         len = (len + PAGE_SIZE) & ~(PAGE_SIZE - 1);
-
-    // Page-align the physical address.
-    tophys &= ~(PAGE_SIZE - 1);
 
     // Find an unallocated region big enough for us.
     size_t i = 0;
