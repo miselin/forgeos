@@ -127,7 +127,7 @@ static void pc_remap_wakeup_data() {
 /// 10.1.5, ACPICA Programmer's Reference.
 static void *pc_acpi_device_dump(ACPI_HANDLE ObjHandle, UINT32 Level, void *Context) {
     ACPI_STATUS Status;
-    ACPI_DEVICE_INFO Info;
+    ACPI_DEVICE_INFO *Info;
     ACPI_BUFFER Path;
     char Buffer[256];
 
@@ -143,8 +143,16 @@ static void *pc_acpi_device_dump(ACPI_HANDLE ObjHandle, UINT32 Level, void *Cont
     /* Get the device info for this device and print it */
     Status = AcpiGetObjectInfo(ObjHandle, &Info);
     if(ACPI_SUCCESS(Status)) {
-        dprintf(" HwID: %.8X, ADR: %.8X, Status: %x\n",
-        Info.HardwareId, Info.Address, Info.CurrentStatus);
+        char buf[512] = {0};
+        if(Info->Valid & ACPI_VALID_HID)
+            sprintf(buf, "%s hwid is %s", buf, Info->HardwareId.String);
+        if(Info->Valid & ACPI_VALID_STA)
+            sprintf(buf, "%s status is %x", buf, Info->CurrentStatus);
+        if(Info->Valid & ACPI_VALID_ADR)
+            sprintf(buf, "%s adr is %llx", buf, Info->Address);
+
+        if(buf[0])
+            dprintf(" %s\n", buf);
     }
 
     return NULL;
@@ -250,18 +258,31 @@ int platform_powerman_init() {
     pc_remap_wakeup_data();
     dprintf("ok!\n");
 
-    // Dump the ACPI namespace to the logs (spammmmmmm).
-    dprintf("pc: acpi namespace dump, limited to devices:\n");
+    // Dump the ACPI namespace.
+    dprintf("pc: acpi device dump:\n");
     ACPI_HANDLE SysBusHandle;
-    AcpiGetHandle(0, ACPI_NS_ROOT_PATH, &SysBusHandle);
-    AcpiWalkNamespace(ACPI_TYPE_DEVICE, SysBusHandle, ~0, pc_acpi_device_dump, NULL, NULL, NULL);
+    if(ACPI_SUCCESS(AcpiGetHandle(0, ACPI_NS_ROOT_PATH, &SysBusHandle))) {
+        AcpiWalkNamespace(ACPI_TYPE_DEVICE, SysBusHandle, ~0, pc_acpi_device_dump, NULL, NULL, NULL);
+    }
     dprintf("ok!\n");
 
     // Install event handlers.
-    dprintf("pc: installing event handlers... ");
-    AcpiInstallFixedEventHandler(ACPI_EVENT_RTC, pc_acpi_handle_event, 0);
-    AcpiInstallFixedEventHandler(ACPI_EVENT_POWER_BUTTON, pc_acpi_handle_event, 0);
-    AcpiInstallFixedEventHandler(ACPI_EVENT_SLEEP_BUTTON, pc_acpi_handle_event, 0);
+    dprintf("pc: acpi installing event handlers... ");
+    if((AcpiGbl_FADT.Flags & ACPI_FADT_POWER_BUTTON) == 0) {
+        AcpiInstallFixedEventHandler(ACPI_EVENT_POWER_BUTTON, pc_acpi_handle_event, 0);
+    }
+    if((AcpiGbl_FADT.Flags & ACPI_FADT_SLEEP_BUTTON) == 0) {
+        AcpiInstallFixedEventHandler(ACPI_EVENT_SLEEP_BUTTON, pc_acpi_handle_event, 0);
+    }
+    dprintf("ok!\n");
+
+    // Finish GPE init.
+    dprintf("pc: acpi updating all GPEs\n");
+    if(ACPI_FAILURE(AcpiUpdateAllGpes())) {
+        dprintf("fail!\n");
+        return -1;
+    }
+    AcpiEnableAllRuntimeGpes();
     dprintf("ok!\n");
 
     return 0;
