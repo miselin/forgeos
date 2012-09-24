@@ -244,7 +244,7 @@ void arch_vmem_init() {
 		n++;
 	}
 
-	kprintf("vmem: cleared %ld KB of RAM used by kernel init\n", (n * PAGE_SIZE) / 1024);
+	kprintf("vmem: cleared %d KB of RAM used by kernel init\n", (n * PAGE_SIZE) / 1024);
 
 	// We can also relocate the stack.
 	uintptr_t stack_phys = log2phys((uintptr_t) &tmpstack_base);
