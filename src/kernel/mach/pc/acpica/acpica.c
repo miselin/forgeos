@@ -226,7 +226,7 @@ void AcpiOsReleaseLock(ACPI_SPINLOCK Handle, ACPI_CPU_FLAGS Flags __unused) {
 
 static ACPI_OSD_HANDLER ServiceRoute = 0;
 
-int acpi_inthandler(struct intr_stack *p, void *d) {
+static int acpi_inthandler(struct intr_stack *p, void *d) {
     if(ServiceRoute)
         ServiceRoute(d);
     return 0;
@@ -237,12 +237,12 @@ ACPI_STATUS AcpiOsInstallInterruptHandler(UINT32 InterruptLevel, ACPI_OSD_HANDLE
 
     ServiceRoute = Handler;
 
-    interrupts_irq_reg(InterruptLevel, 0, acpi_inthandler, Context);
+    interrupts_irq_reg(InterruptLevel, 1, acpi_inthandler, Context);
     return AE_OK;
 }
 
 ACPI_STATUS AcpiOsRemoveInterruptHandler(UINT32 InterruptNumber, ACPI_OSD_HANDLER Handler __unused) {
-    dprintf("acpi: remove interrupt handler %d\n", InterruptNumber);
+    kprintf("acpi: remove interrupt handler %d\n", InterruptNumber);
     ServiceRoute = 0;
     return AE_OK;
 }
