@@ -17,6 +17,8 @@
 #ifndef _SYSTEM_H
 #define _SYSTEM_H
 
+#include <types.h>
+
 #define PHYS_ADDR		0x400000UL
 
 #define KERNEL_BASE		0xC0000000UL
@@ -35,5 +37,17 @@
 
 #define log2phys(x)		(((x) - KERNEL_BASE) + PHYS_ADDR)
 #define phys2log(x)		(((x) - PHYS_ADDR) + KERNEL_BASE)
+
+inline void x86_cpuid(int code, uint32_t *a, uint32_t *b, uint32_t * c, uint32_t *d) {
+    __asm__ volatile("cpuid" : "=a" (*a), "=b" (*b), "=c" (*c), "=d" (*d) : "a" (code));
+}
+
+inline void x86_get_msr(uint32_t msr, uint32_t *l, uint32_t *h) {
+    __asm__ volatile("rdmsr" : "=a" (*l), "=d" (*h) : "c" (msr));
+}
+
+inline void x86_set_msr(uint32_t msr, uint32_t l, uint32_t h) {
+    __asm__ volatile("wrmsr" :: "a" (l), "d" (h), "c" (msr));
+}
 
 #endif
