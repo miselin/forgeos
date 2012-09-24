@@ -161,32 +161,21 @@ static void *pc_acpi_device_dump(ACPI_HANDLE ObjHandle, UINT32 Level, void *Cont
 // Handle events in the system.
 static UINT32 pc_acpi_handle_event(void *Context) {
     ACPI_STATUS status;
-    ACPI_EVENT_STATUS event_status;
+    ACPI_EVENT_STATUS event_status = 0;
 
-    dprintf("pc: acpi fixed event!\n");
+    dprintf("pc: acpi fixed event %x!\n", Context);
 
-    // Check for RTC event.
-    if(ACPI_FAILURE(status = AcpiGetEventStatus(ACPI_EVENT_RTC, &event_status))) {
-        dprintf("pc: couldn't get RTC event status\n");
-    } else if(event_status & ACPI_EVENT_FLAG_SET) {
+    size_t event = (size_t) Context;
+
+    if(event == ACPI_EVENT_RTC) {
         powerman_event(POWERMAN_EVENT_RTC);
         return 0;
-    }
-
-    // Check for power button event.
-    if(ACPI_FAILURE(status = AcpiGetEventStatus(ACPI_EVENT_POWER_BUTTON, &event_status))) {
-        dprintf("pc: couldn't get Power Button event status\n");
-    } else if(event_status & ACPI_EVENT_FLAG_SET) {
+    } else if(event == ACPI_EVENT_POWER_BUTTON) {
+        dprintf("pc: power button pushed\n");
         powerman_event(POWERMAN_EVENT_POWERBUTTON);
-        return 0;
-    }
-
-    // Check for sleep button event.
-    if(ACPI_FAILURE(status = AcpiGetEventStatus(ACPI_EVENT_SLEEP_BUTTON, &event_status))) {
-        dprintf("pc: couldn't get Sleep Button event status\n");
-    } else if(event_status & ACPI_EVENT_FLAG_SET) {
+    } else if(event == ACPI_EVENT_SLEEP_BUTTON) {
+        dprintf("pc: sleep button pushed\n");
         powerman_event(POWERMAN_EVENT_SLEEPBUTTON);
-        return 0;
     }
 
     return 0;
@@ -211,6 +200,10 @@ int platform_powerman_earlyinit() {
 }
 
 int platform_powerman_init() {
+    ACPI_STATUS status;
+    ACPI_OBJECT_LIST params;
+    ACPI_OBJECT obj;
+
     dprintf("pc: acpi subsystem init... ");
     if(ACPI_FAILURE(AcpiInitializeSubsystem())) {
         dprintf("fail!\n");
@@ -238,7 +231,7 @@ int platform_powerman_init() {
         dprintf("fail!\n");
         return -1;
     }
-    dprintf("ok flags %x!\n", AcpiGbl_FACS->Flags);
+    dprintf("ok!\n");
 
     dprintf("pc: enabling acpi... ");
     if(ACPI_FAILURE(AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION))) {
@@ -251,6 +244,19 @@ int platform_powerman_init() {
     if(ACPI_FAILURE(AcpiInitializeObjects(ACPI_FULL_INITIALIZATION))) {
         dprintf("fail!\n");
         return -1;
+    }
+
+    // Switch to APIC mode if the control method is available.
+    dprintf("pc: acpi using APIC mode\n");
+    obj.Type = ACPI_TYPE_INTEGER;
+    obj.Integer.Value = 1; // APIC mode.
+    params.Count = 1;
+    params.Pointer = &obj;
+    status = AcpiEvaluateObject(NULL, "\\_PIC", &params, NULL);
+    if(ACPI_FAILURE(status) && (status != AE_NOT_FOUND)) {
+        dprintf("couldn't set PIC mode: %s\n", AcpiFormatException(status));
+    } else {
+        dprintf("ok %d!\n", status);
     }
 
     // Set up wakeup vectors and prepare state save block.
@@ -266,16 +272,6 @@ int platform_powerman_init() {
     }
     dprintf("ok!\n");
 
-    // Install event handlers.
-    dprintf("pc: acpi installing event handlers... ");
-    if((AcpiGbl_FADT.Flags & ACPI_FADT_POWER_BUTTON) == 0) {
-        AcpiInstallFixedEventHandler(ACPI_EVENT_POWER_BUTTON, pc_acpi_handle_event, 0);
-    }
-    if((AcpiGbl_FADT.Flags & ACPI_FADT_SLEEP_BUTTON) == 0) {
-        AcpiInstallFixedEventHandler(ACPI_EVENT_SLEEP_BUTTON, pc_acpi_handle_event, 0);
-    }
-    dprintf("ok!\n");
-
     // Finish GPE init.
     dprintf("pc: acpi updating all GPEs\n");
     if(ACPI_FAILURE(AcpiUpdateAllGpes())) {
@@ -283,6 +279,22 @@ int platform_powerman_init() {
         return -1;
     }
     AcpiEnableAllRuntimeGpes();
+    dprintf("ok!\n");
+
+    // Install event handlers.
+    dprintf("pc: acpi installing event handlers... ");
+    if((AcpiGbl_FADT.Flags & ACPI_FADT_POWER_BUTTON) == 0) {
+        AcpiInstallFixedEventHandler(ACPI_EVENT_POWER_BUTTON,
+                                        pc_acpi_handle_event,
+                                        (void *) ACPI_EVENT_POWER_BUTTON);
+        AcpiEnableEvent(ACPI_EVENT_POWER_BUTTON, 0);
+    }
+    if((AcpiGbl_FADT.Flags & ACPI_FADT_SLEEP_BUTTON) == 0) {
+        AcpiInstallFixedEventHandler(ACPI_EVENT_SLEEP_BUTTON,
+                                        pc_acpi_handle_event,
+                                        (void *) ACPI_EVENT_SLEEP_BUTTON);
+        AcpiEnableEvent(ACPI_EVENT_SLEEP_BUTTON, 0);
+    }
     dprintf("ok!\n");
 
     return 0;
