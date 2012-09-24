@@ -51,7 +51,6 @@ static void *interrupt_override = 0;
 struct irqhandler {
     inthandler_t    handler;
     void            *param;
-    void            *lapic; // Local APIC to which the IRQ is routed.
     size_t          actual; // Actual IRQ number (when routing is active).
 };
 
@@ -110,7 +109,6 @@ static void write_ioapic_reg(vaddr_t mmio, uint8_t reg, uint32_t val) {
 
 static int handle_ioapic_irq(struct intr_stack *s, void *p __unused) {
     uint32_t intnum = s->intnum - IOAPIC_INT_BASE;
-    dprintf("ioapic %d\n", intnum);
 
     // Find the I/O APIC for this particular IRQ.
     size_t n = 0;
@@ -128,18 +126,23 @@ static int handle_ioapic_irq(struct intr_stack *s, void *p __unused) {
     int ret = 0;
     if(meta->handlers[intnum].handler) {
         ret = meta->handlers[intnum].handler(s, meta->handlers[intnum].param);
-
-        // Send an EOI to the LAPIC
-        struct lapic *lapic = (struct lapic *) meta->handlers[intnum].lapic;
-        write_lapic_reg(lapic->mmioaddr, 0xB0, 0);
     }
+
+    // Send an EOI to the LAPIC
+    struct lapic *lapic = (struct lapic *) list_at(lapic_list, 0);
+    write_lapic_reg(lapic->mmioaddr, 0xB0, 0);
 
     return ret;
 }
 
-static int lapic_spurious(struct intr_stack *s, void *p __unused) {
-    dprintf("Local APIC: spurious interrupt\n");
-    return 0;
+static int lapic_localint(struct intr_stack *s, void *p __unused) {
+    if(s->intnum == LAPIC_SPURIOUS) {
+        dprintf("Local APIC: spurious interrupt\n");
+    } else {
+        dprintf("lapic: local interrupt\n");
+        struct lapic *lapic = (struct lapic *) list_at(lapic_list, 0);
+        write_lapic_reg(lapic->mmioaddr, 0xB0, 0);
+    }
 }
 
 int init_apic() {
@@ -198,10 +201,9 @@ int init_apic() {
                 svr &= ~(0x1FF);
                 svr |= (1 << 8); // Enable APIC.
                 svr |= LAPIC_SPURIOUS;
-                dprintf("new svr %x\n", svr);
                 write_lapic_reg(meta->mmioaddr, 0xF0, svr);
 
-                interrupts_trap_reg(LAPIC_SPURIOUS, lapic_spurious);
+                interrupts_trap_reg(LAPIC_SPURIOUS, lapic_localint);
 
                 // Save the Local APIC ID.
                 meta->lapic_id = read_lapic_reg(meta->mmioaddr, 0x20);
@@ -344,10 +346,6 @@ void apic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void *p) {
         return;
     }
 
-    /// \todo No good for SMP
-    struct lapic *lapic = list_at(lapic_list, 0);
-    assert(lapic);
-
     // Check for override.
     size_t override = (size_t) tree_search(interrupt_override, (void *) n);
     if(!override) {
@@ -362,7 +360,6 @@ void apic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void *p) {
     // Install the handler.
     meta->handlers[override].handler = handler;
     meta->handlers[override].param = p;
-    meta->handlers[override].lapic = lapic;
     meta->handlers[override].actual = n;
 
     dprintf("set up irq for %d -> %d\n", n, override);
