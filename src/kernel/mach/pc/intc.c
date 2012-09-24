@@ -14,14 +14,29 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _PIC_H
-#define _PIC_H
-
-#include <interrupts.h>
 #include <types.h>
+#include <interrupts.h>
+#include <apic.h>
+#include <pic.h>
+#include <io.h>
 
-extern void init_pic();
+static int apic_enable = 0;
 
-extern void pic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void *p);
+void init_intc() {
+    dprintf("pc: initialising interrupt controller(s)\n");
+    if(init_apic() == 0) {
+        dprintf("pc: using I/O APIC\n");
+        apic_enable = 1;
+    } else {
+        dprintf("pc: falling back to 8259 PIC\n");
+        init_pic();
+    }
+}
 
-#endif
+void mach_interrupts_reg(int n, int leveltrig, inthandler_t handler, void *p) {
+    if(apic_enable) {
+        apic_interrupt_reg(n, leveltrig, handler, p);
+    } else {
+        pic_interrupt_reg(n, leveltrig, handler, p);
+    }
+}

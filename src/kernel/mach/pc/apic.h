@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 Matthew Iselin, Rich Edelman
+ * Copyright (c) 2012 Matthew Iselin
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,14 +14,14 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _PIC_H
-#define _PIC_H
+#ifndef _IOAPIC_H
+#define _IOAPIC_H
 
 #include <interrupts.h>
 #include <types.h>
 
-extern void init_pic();
+extern int init_apic();
 
-extern void pic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void *p);
+extern void apic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void *p);
 
 #endif

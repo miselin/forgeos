@@ -128,7 +128,7 @@ void init_pic() {
 	}
 }
 
-void mach_interrupts_reg(int n, int leveltrig, inthandler_t handler, void *p) {
+void pic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void *p) {
 	handlers[n].handler = handler;
 	handlers[n].leveltrig = leveltrig;
 	handlers[n].param = p;
