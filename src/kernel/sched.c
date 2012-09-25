@@ -59,7 +59,7 @@ static void **get_prio_queues() {
         return NULL;
 
     void **arr = tree_search(prio_queues, (void *) multicpu_id());
-    if(!arr) {
+    if(arr == TREE_NOTFOUND) {
         return NULL;
     } else {
         return arr;
@@ -71,7 +71,7 @@ static void **get_prio_already_queues() {
         return NULL;
 
     void **arr = tree_search(prio_already_queues, (void *) multicpu_id());
-    if(!arr) {
+    if(arr == TREE_NOTFOUND) {
         return NULL;
     } else {
         return arr;
@@ -150,8 +150,11 @@ void sched_cpualive() {
     void **prio = (void **) malloc(sizeof(void *) * QUEUE_COUNT);
     void **prio_already = (void **) malloc(sizeof(void *) * QUEUE_COUNT);
 
-    memset(prio, 0, sizeof(sizeof(void *) * QUEUE_COUNT));
-    memset(prio_already, 0, sizeof(sizeof(void *) * QUEUE_COUNT));
+    size_t i;
+    for(i = 0; i < QUEUE_COUNT; i++) {
+        prio[i] = 0;
+        prio_already[i] = 0;
+    }
 
     tree_insert(prio_queues, (void *) multicpu_id(), prio);
     tree_insert(prio_already_queues, (void *) multicpu_id(), prio_already);
@@ -269,6 +272,7 @@ void thread_wake(struct thread *thr) {
     spinlock_acquire(sched_spinlock);
     void **queues = get_prio_queues();
     if(!queues[thr->priority]) {
+        dprintf("creating queue for level %d\n", thr->priority);
         queues[thr->priority] = create_queue();
     }
     queue_push(queues[thr->priority], thr);
@@ -335,8 +339,9 @@ void reschedule() {
     if(get_current_thread()->state == THREAD_STATE_RUNNING) {
         get_current_thread()->state = THREAD_STATE_READY;
 
-        if(!already_queues[get_current_thread()->priority])
+        if(!already_queues[get_current_thread()->priority]) {
             already_queues[get_current_thread()->priority] = create_queue();
+        }
         queue_push(already_queues[get_current_thread()->priority], get_current_thread());
     }
 
