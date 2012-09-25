@@ -37,6 +37,8 @@ static uint8_t ap_startup_vec = 0;
 
 extern void *pc_ap_pdir;
 
+#define WARM_RESET_VECTOR       0x0469
+
 /// Called by an AP after it completes initial startup.
 void ap_startup() {
     multicpu_cpuinit();
@@ -83,6 +85,15 @@ int multicpu_init() {
 
     // Initialisation is done!
     ap_lowmem_init = 1;
+
+    // Set shutdown code to 'warm reset', install AP startup function in the
+    // warm reset vector.
+    cmos_write(0x0F, 0x0A);
+
+    vmem_map((vaddr_t) 0, 0, VMEM_SUPERVISOR | VMEM_READWRITE);
+    *((uint16_t *) (WARM_RESET_VECTOR)) = ap_startup_vec;
+    *((uint16_t *) (WARM_RESET_VECTOR + 2)) = 0;
+    vmem_unmap((vaddr_t) 0);
 
     return 0;
 }
