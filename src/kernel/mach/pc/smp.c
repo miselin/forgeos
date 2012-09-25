@@ -88,8 +88,6 @@ int multicpu_init() {
 }
 
 int start_processor(uint8_t id) {
-    /// \todo Not really compatible with the Intel MP Spec.
-
     dprintf("x86 AP startup - id %d\n", id);
 
     // Don't start APs if init hasn't been done yet.
@@ -101,13 +99,28 @@ int start_processor(uint8_t id) {
     // Prepare to start the AP.
     spinlock_acquire(init_slock);
 
+    /// \todo This is very 'fire and forget' - would be nice to use the ICR
+    ///       delivery status bit to verify IPIs have been received.
+
     // Init IPI
     lapic_ipi(id, ap_startup_vec, 5 /* INIT */, 1, 1);
 
-    for(int z = 0; z < 0x10000; z++);
+    // 10 ms delay, without putting the thread to sleep.
+    sleep_micro(10000);
 
-    // Startup IPI
-    lapic_ipi(id, ap_startup_vec, 6 /* Startup */, 1, 0);
+    if(lapic_ver != LAPIC_VERSION_INTEGRATED) {
+        // Startup IPI
+        lapic_ipi(id, ap_startup_vec, 6 /* Startup */, 1, 0);
+
+        // Sleep 200 microseconds.
+        sleep_micro(200);
+
+        // Startup IPI
+        lapic_ipi(id, ap_startup_vec, 6 /* Startup */, 1, 0);
+
+        // Sleep 200 microseconds.
+        sleep_micro(200);
+    }
 
     // Wait until the other processor has started.
     spinlock_acquire(init_slock);

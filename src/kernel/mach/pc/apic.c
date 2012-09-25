@@ -26,6 +26,7 @@
 #include <io.h>
 
 #include <acpi.h>
+#include <apic.h>
 
 struct lapic;
 
@@ -200,6 +201,15 @@ static int lapic_localint(struct intr_stack *s, void *p __unused) {
     return ret;
 }
 
+uint32_t lapic_ver() {
+    uint32_t ver = read_lapic_reg(lapic->mmioaddr, 0x30) & 0xFF;
+    if(ver & 0x10) {
+        return LAPIC_VERSION_INTEGRATED;
+    } else {
+        return LAPIC_VERSION_82489DX;
+    }
+}
+
 void init_lapic() {
     // Set the spurious interrupt vector, and enable the APIC.
     uint32_t svr = read_lapic_reg(lapic->mmioaddr, 0xF0);
@@ -254,6 +264,8 @@ int init_apic() {
     init_lapic();
     size_t apicid = read_lapic_reg(lapic->mmioaddr, 0x20) >> 24;
     struct processor *bsp = 0;
+
+    dprintf("Local APIC is %s\n", lapic_ver() == LAPIC_VERSION_INTEGRATED ? "Pentium-style integrated" : "82489DX");
 
     // Initialise Local APIC interrupts. These are global across the system -
     // same IDT on all CPUs (I/O APIC decides which IRQs go where - usually the

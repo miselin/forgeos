@@ -20,6 +20,9 @@
 #include <interrupts.h>
 #include <types.h>
 
+#define LAPIC_VERSION_82489DX       0
+#define LAPIC_VERSION_INTEGRATED    1
+
 extern int init_apic();
 extern void init_lapic();
 
@@ -30,5 +33,7 @@ extern void lapic_ipi(uint8_t dest_proc, uint8_t vector, uint32_t delivery, uint
 
 /// Perform an broadcast Inter-Processor Interrupt
 void lapic_bipi(uint8_t vector, uint32_t delivery);
+
+extern uint32_t lapic_ver();
 
 #endif
