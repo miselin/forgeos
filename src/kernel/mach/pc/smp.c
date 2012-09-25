@@ -20,6 +20,7 @@
 #include <sched.h>
 #include <pmem.h>
 #include <vmem.h>
+#include <util.h>
 #include <io.h>
 
 #include <apic.h>
@@ -28,6 +29,8 @@ extern void *pc_ap_entry;
 
 static int ap_lowmem_init = 0;
 static uint8_t ap_startup_vec = 0;
+
+extern void *pc_ap_pdir;
 
 /// Called by an AP after it completes initial startup.
 void ap_startup() {
@@ -42,6 +45,12 @@ int start_processor(uint8_t id) {
 
     // Relocate the AP entry point to low memory, if it hasn't already been moved.
     if(!ap_lowmem_init) {
+        // Throw in the current page directory.
+        uint32_t cr3 = 0;
+        __asm__ volatile("mov %%cr3, %0" : "=r" (cr3));
+        *((uint32_t *) &pc_ap_pdir) = cr3;
+
+        // Map and copy.
         paddr_t p = pmem_alloc_special(PMEM_SPECIAL_FIRMWARE);
         vmem_map((vaddr_t) p, p, VMEM_SUPERVISOR | VMEM_READWRITE);
         memcpy((void *) p, (void *) &pc_ap_entry, PAGE_SIZE);
