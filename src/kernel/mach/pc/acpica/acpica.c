@@ -153,7 +153,7 @@ void AcpiOsSleep(UINT64 Milliseconds) {
 
 void AcpiOsStall(UINT32 Microseconds) {
     dprintf("acpi: stall %d microseconds\n", Microseconds);
-    /// \todo write me.
+    sleep_micro(Microseconds);
 }
 
 ACPI_STATUS AcpiOsCreateMutex(ACPI_MUTEX *OutHandle) {

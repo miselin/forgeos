@@ -22,4 +22,7 @@
 /// Sleep for the given number of milliseconds.
 extern void sleep_ms(uint32_t ms);
 
+/// Delay for the given number of microseconds. Machine layer implements this.
+extern void sleep_micro(uint32_t micro);
+
 #endif

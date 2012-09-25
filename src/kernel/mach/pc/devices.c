@@ -19,6 +19,7 @@
 #include <pit.h>
 #include <pic.h>
 #include <intc.h>
+#include <sleep.h>
 
 // arch/x86/vmem.c
 extern void vmem_powerman_init();
@@ -34,3 +35,13 @@ void mach_init_devices() {
     vmem_powerman_init();
     ints_powerman_init();
 }
+
+void sleep_micro(uint32_t micro) {
+    uint32_t i;
+
+    // Should delay for (approximately) 1 microsecond.
+    for(i = 0; i < micro; i++) {
+        inb(0x80);
+    }
+}
+
