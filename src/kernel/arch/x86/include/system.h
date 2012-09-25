@@ -22,6 +22,11 @@
 #define PHYS_ADDR		0x400000UL
 
 #define KERNEL_BASE		0xC0000000UL
+
+/// Mapping for the Local APIC in the address space. Each CPU can access this
+/// address which maps to its Local APIC.
+#define KERNEL_LAPIC    0xCFFFF000UL
+
 #define HEAP_BASE		0xD0000000UL
 #define POOL_BASE       0xE0000000UL
 #define MMIO_BASE       0xF0000000UL

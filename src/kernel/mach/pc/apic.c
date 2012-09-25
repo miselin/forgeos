@@ -21,12 +21,15 @@
 #include <malloc.h>
 #include <assert.h>
 #include <util.h>
+#include <vmem.h>
 #include <io.h>
 
 #include <acpi.h>
 
+struct lapic;
+
 static void *ioapic_list = 0;
-static void *lapic_list = 0;
+static struct lapic *lapic = 0;
 
 static void *interrupt_override = 0;
 
@@ -46,12 +49,34 @@ static void *interrupt_override = 0;
 #define IOAPIC_ACPIVER_MASK     0xFF
 
 #define IOAPIC_INT_BASE         0x30
-#define LAPIC_SPURIOUS          0x2F
+#define LAPIC_SPURIOUS          0xFF
+
+#define OVERRIDE_POLARITY_CONFORMS      0
+#define OVERRIDE_POLARITY_ACTIVEHIGH    1
+#define OVERRIDE_POLARITY_ACTIVELOW     3
+
+#define OVERRIDE_TRIGGER_CONFORMS       0
+#define OVERRIDE_TRIGGER_EDGE           1
+#define OVERRIDE_TRIGGER_LEVEL          3
 
 struct irqhandler {
     inthandler_t    handler;
     void            *param;
     size_t          actual; // Actual IRQ number (when routing is active).
+};
+
+struct override {
+    /// Original IRQ (ie, the ISA IRQ number)
+    size_t          origirq;
+
+    /// Connected I/O APIC IRQ.
+    size_t          newirq;
+
+    /// Polarity of the input signal.
+    uint8_t         polarity;
+
+    /// Trigger mode of the input signal.
+    uint8_t         trigger;
 };
 
 struct lapic {
@@ -107,6 +132,11 @@ static void write_ioapic_reg(vaddr_t mmio, uint8_t reg, uint32_t val) {
     *((volatile uint32_t *) (mmio + IOAPIC_IOWIN)) = val;
 }
 
+static void lapic_ack() {
+    // Send an EOI to the LAPIC
+    write_lapic_reg(lapic->mmioaddr, 0xB0, 0);
+}
+
 static int handle_ioapic_irq(struct intr_stack *s, void *p __unused) {
     uint32_t intnum = s->intnum - IOAPIC_INT_BASE;
 
@@ -119,8 +149,10 @@ static int handle_ioapic_irq(struct intr_stack *s, void *p __unused) {
         }
     }
 
-    if(!meta)
+    if(!meta) {
+        lapic_ack();
         return 0;
+    }
 
     // Handle the IRQ.
     int ret = 0;
@@ -128,9 +160,7 @@ static int handle_ioapic_irq(struct intr_stack *s, void *p __unused) {
         ret = meta->handlers[intnum].handler(s, meta->handlers[intnum].param);
     }
 
-    // Send an EOI to the LAPIC
-    struct lapic *lapic = (struct lapic *) list_at(lapic_list, 0);
-    write_lapic_reg(lapic->mmioaddr, 0xB0, 0);
+    lapic_ack();
 
     return ret;
 }
@@ -139,10 +169,30 @@ static int lapic_localint(struct intr_stack *s, void *p __unused) {
     if(s->intnum == LAPIC_SPURIOUS) {
         dprintf("Local APIC: spurious interrupt\n");
     } else {
-        dprintf("lapic: local interrupt\n");
-        struct lapic *lapic = (struct lapic *) list_at(lapic_list, 0);
-        write_lapic_reg(lapic->mmioaddr, 0xB0, 0);
+        dprintf("Local APIC: local interrupt\n");
+        lapic_ack();
     }
+
+    return 0;
+}
+
+void init_lapic() {
+    // Set the spurious interrupt vector, and enable the APIC.
+    uint32_t svr = read_lapic_reg(lapic->mmioaddr, 0xF0);
+    svr &= ~(0x1FF);
+    svr |= (1 << 8); // Enable APIC.
+    svr |= LAPIC_SPURIOUS;
+    write_lapic_reg(lapic->mmioaddr, 0xF0, svr);
+
+    interrupts_trap_reg(LAPIC_SPURIOUS, lapic_localint);
+
+    // Save the Local APIC ID.
+    lapic->lapic_id = (uint8_t) (read_lapic_reg(lapic->mmioaddr, 0x20) >> 24);
+
+    // Task priority = 0.
+    uint32_t taskprio = read_lapic_reg(lapic->mmioaddr, 0x80);
+    taskprio &= ~0xFF;
+    write_lapic_reg(lapic->mmioaddr, 0x80, taskprio);
 }
 
 int init_apic() {
@@ -166,13 +216,22 @@ int init_apic() {
 
     // Create the list of I/O APICs, ready for appending to.
     ioapic_list = create_list();
-    lapic_list = create_list();
     interrupt_override = create_tree();
 
     // Enable the LAPIC, if by chance one exists we'll want to use it.
     x86_get_msr(0x1B, &a, &b);
     a |= (1 << 11);
     x86_set_msr(0x1B, a, b);
+
+    // Map in the LAPIC as needed.
+    paddr_t lapic_paddr = (a & ~(PAGE_SIZE - 1)) | ((b & 0x3) << 29);
+    vmem_map(KERNEL_LAPIC, lapic_paddr, VMEM_SUPERVISOR | VMEM_GLOBAL | VMEM_READWRITE);
+    lapic = (struct lapic *) malloc(sizeof(struct lapic));
+    lapic->physaddr = lapic_paddr;
+    lapic->mmioaddr = KERNEL_LAPIC;
+
+    // Initialise our LAPIC.
+    init_lapic();
 
     // Parse all structures in the table.
     uintptr_t base = ((uintptr_t) madt) + sizeof(*madt);
@@ -181,39 +240,18 @@ int init_apic() {
         ACPI_SUBTABLE_HEADER *hdr = (ACPI_SUBTABLE_HEADER *) base;
 
         if(hdr->Type == ACPI_MADT_TYPE_LOCAL_APIC) {
-            ACPI_MADT_LOCAL_APIC *lapic = (ACPI_MADT_LOCAL_APIC *) base;
-            dprintf("Local APIC ID=%x, ProcessorId=%x, Flags=%x\n", lapic->Id, lapic->ProcessorId, lapic->LapicFlags);
+            ACPI_MADT_LOCAL_APIC *lapic_meta = (ACPI_MADT_LOCAL_APIC *) base;
+            dprintf("Local APIC ID=%x, ProcessorId=%x, Flags=%x\n", lapic_meta->Id, lapic_meta->ProcessorId, lapic_meta->LapicFlags);
 
-            if(lapic->LapicFlags & ACPI_MADT_ENABLED) {
+            if(lapic_meta->LapicFlags & ACPI_MADT_ENABLED) {
                 dprintf("Processor is usable!\n");
 
-                /// \todo Will need to move the LAPIC for SMP.
-                struct lapic *meta = (struct lapic *) malloc(sizeof(struct lapic));
-                meta->acpi_id = lapic->Id;
-                meta->proc_id = lapic->ProcessorId;
-                meta->physaddr = 0xfee00000;
+                /// \todo Store information so we can startup APs.
 
-                // Initialise this Local APIC.
-                meta->mmioaddr = mmiopool_alloc(0x1000, meta->physaddr);
-
-                // Set the spurious interrupt vector, and enable the APIC.
-                uint32_t svr = read_lapic_reg(meta->mmioaddr, 0xF0);
-                svr &= ~(0x1FF);
-                svr |= (1 << 8); // Enable APIC.
-                svr |= LAPIC_SPURIOUS;
-                write_lapic_reg(meta->mmioaddr, 0xF0, svr);
-
-                interrupts_trap_reg(LAPIC_SPURIOUS, lapic_localint);
-
-                // Save the Local APIC ID.
-                meta->lapic_id = read_lapic_reg(meta->mmioaddr, 0x20);
-
-                // Task priority = 0.
-                uint32_t taskprio = read_lapic_reg(meta->mmioaddr, 0x80);
-                taskprio &= ~0xFF;
-                write_lapic_reg(meta->mmioaddr, 0x80, taskprio);
-
-                list_insert(lapic_list, meta, 0);
+                // Is this a match for the BSP?
+                if(lapic_meta->Id == lapic->lapic_id) {
+                    lapic->proc_id = lapic_meta->ProcessorId;
+                }
             }
         } else if(hdr->Type == ACPI_MADT_TYPE_IO_APIC) {
             ACPI_MADT_IO_APIC *ioapic = (ACPI_MADT_IO_APIC *) base;
@@ -232,7 +270,37 @@ int init_apic() {
 
             dprintf("Interrupt Source Override: %d -> %d [%x]\n", override->GlobalIrq, override->SourceIrq, override->IntiFlags);
 
-            tree_insert(interrupt_override, (void *) override->SourceIrq, (void *) override->GlobalIrq);
+            struct override *o = (struct override *) malloc(sizeof(struct override));
+            o->origirq = override->SourceIrq;
+            o->newirq = override->GlobalIrq;
+
+            uint8_t p = override->IntiFlags & 0x3;
+            uint8_t t = (override->IntiFlags >> 2) & 0x3;
+
+            // Use the flags to determine the right polarity and trigger mode.
+            if(p == OVERRIDE_POLARITY_CONFORMS) {
+                if((t == OVERRIDE_TRIGGER_CONFORMS) || (t == OVERRIDE_TRIGGER_EDGE)) {
+                    o->trigger = 0;
+                    o->polarity = 0;
+                } else if(t == OVERRIDE_TRIGGER_LEVEL) {
+                    o->polarity = 1;
+                    o->trigger = 1;
+                }
+            } else {
+                // Polarity doesn't conform to the bus.
+                if(p == OVERRIDE_POLARITY_ACTIVELOW)
+                    o->polarity = 1;
+                else if(p == OVERRIDE_POLARITY_ACTIVEHIGH)
+                    o->polarity = 0;
+
+                if((t == OVERRIDE_TRIGGER_CONFORMS) || (t == OVERRIDE_TRIGGER_EDGE)) {
+                    o->trigger = 0;
+                } else if(t == OVERRIDE_TRIGGER_LEVEL) {
+                    o->trigger = 1;
+                }
+            }
+
+            tree_insert(interrupt_override, (void *) override->SourceIrq, (void *) o);
         }
 
         if(hdr->Length > sz) {
@@ -247,10 +315,8 @@ int init_apic() {
     if(list_len(ioapic_list) == 0) {
         dprintf("ioapic: no I/O APIC found!\n");
         delete_list(ioapic_list);
-        delete_list(lapic_list);
         delete_tree(interrupt_override);
         ioapic_list = 0;
-        lapic_list = 0;
         interrupt_override = 0;
         return -1;
     }
@@ -260,10 +326,6 @@ int init_apic() {
     struct ioapic *meta = 0;
     size_t intnum = IOAPIC_INT_BASE;
     while((meta = (struct ioapic *) list_at(ioapic_list, n++))) {
-        /// \todo No good for SMP
-        struct lapic *lapic = list_at(lapic_list, 0);
-        assert(lapic);
-
         // Map in the physical address so we can work with the I/O APIC.
         meta->mmioaddr = mmiopool_alloc(IOAPIC_MMIOSIZE, meta->physaddr);
 
@@ -291,6 +353,9 @@ int init_apic() {
             ///       make this work for low-priority interrupts etc...
             data_low &= ~(0x7 << 8);
             data_low |= 0 << 8; // Fixed mode.
+
+            /// \todo Logical CPU destination
+            data_low &= ~(0x1 << 11);
 
             // Mask the IRQ.
             data_low &= ~(0x1 << 16);
@@ -347,11 +412,11 @@ void apic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void *p) {
     }
 
     // Check for override.
-    size_t override = (size_t) tree_search(interrupt_override, (void *) n);
-    if(!override) {
-        override = n;
-    } else {
+    size_t override = n;
+    struct override *oride = (struct override *) tree_search(interrupt_override, (void *) n);
+    if(oride) {
         dprintf("override: IRQ %d -> %d\n", n, override);
+        override = oride->newirq;
     }
 
     // Localise the IRQ number
@@ -362,13 +427,17 @@ void apic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void *p) {
     meta->handlers[override].param = p;
     meta->handlers[override].actual = n;
 
-    dprintf("set up irq for %d -> %d\n", n, override);
-
     // Level/edge trigger, and unmask the interrupt.
     leveltrig &= 0x1;
     uint32_t data_low = read_ioapic_reg(meta->mmioaddr, IOAPIC_REG_REDIRBASE + (override * 2));
     data_low &= ~(3 << 15);
-    data_low |= leveltrig << 15;
+    if(!oride) {
+        data_low |= leveltrig << 15;
+    } else {
+        data_low &= ~(1 << 13);
+        data_low |= oride->polarity << 13;
+        data_low |= oride->trigger << 15;
+    }
     write_ioapic_reg(meta->mmioaddr, IOAPIC_REG_REDIRBASE + (override * 2), data_low);
 
     return;
