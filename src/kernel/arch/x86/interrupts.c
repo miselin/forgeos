@@ -156,6 +156,11 @@ void arch_interrupts_reg(int n, inthandler_t handler) {
 	interrupts[n] = handler;
 }
 
+void ints_multicpu_init() {
+	// Install the IDT on the CPU.
+	__asm__ volatile("lidt %0" :: "m" (idtr));
+}
+
 int ints_powerstate_change(int new_state) {
 	// Handle return to working state by reloading IDTR.
 	if(new_state == POWERMAN_STATE_WORKING) {

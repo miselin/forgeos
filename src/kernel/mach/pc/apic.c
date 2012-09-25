@@ -196,8 +196,6 @@ void init_lapic() {
     svr |= LAPIC_SPURIOUS;
     write_lapic_reg(lapic->mmioaddr, 0xF0, svr);
 
-    interrupts_trap_reg(LAPIC_SPURIOUS, lapic_localint);
-
     // Task priority = 0.
     uint32_t taskprio = read_lapic_reg(lapic->mmioaddr, 0x80);
     taskprio &= ~0xFF;
@@ -244,6 +242,11 @@ int init_apic() {
     init_lapic();
     size_t apicid = read_lapic_reg(lapic->mmioaddr, 0x20) >> 24;
     struct processor *bsp = 0;
+
+    // Initialise Local APIC interrupts. These are global across the system -
+    // same IDT on all CPUs (I/O APIC decides which IRQs go where - usually the
+    // BSP takes the full IRQ load).
+    interrupts_trap_reg(LAPIC_SPURIOUS, lapic_localint);
 
     // Parse all structures in the table.
     uintptr_t base = ((uintptr_t) madt) + sizeof(*madt);

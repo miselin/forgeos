@@ -44,12 +44,24 @@ void ap_startup() {
 }
 
 void multicpu_cpuinit() {
+    extern void vmem_multicpu_init();
+    extern void ints_multicpu_init();
+
     // Configure our Local APIC.
     init_lapic();
+
+    // Switch to the correct GDT (now that paging is on and such).
+    vmem_multicpu_init();
+
+    // Enable interrupts for this CPU.
+    ints_multicpu_init();
 
     // Initialisation complete - release the lock to let the system continue.
     dprintf("AP %d has started\n", multicpu_id());
     spinlock_release(init_slock);
+
+    // Start processing!
+    interrupts_enable();
 }
 
 int multicpu_init() {

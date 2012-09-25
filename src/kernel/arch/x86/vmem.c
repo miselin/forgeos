@@ -319,6 +319,11 @@ void arch_vmem_init() {
 	dprintf("gdtr limit: %x, base: %x\n", gdtr.limit, gdtr.base);
 }
 
+void vmem_multicpu_init() {
+	// Same GDT for all CPUs.
+	reload_gdt();
+}
+
 extern void *pc_acpi_gdt;
 
 int vmem_powerstate_change(int new_state) {
