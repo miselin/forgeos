@@ -53,6 +53,7 @@ static void *interrupt_override = 0;
 
 #define IOAPIC_INT_BASE         0x30
 #define LAPIC_SPURIOUS          0xFF
+#define LAPIC_RESCHED           0x20
 
 #define OVERRIDE_POLARITY_CONFORMS      0
 #define OVERRIDE_POLARITY_ACTIVEHIGH    1
@@ -149,6 +150,12 @@ void lapic_ipi(uint8_t dest_proc, uint8_t vector, uint32_t delivery, uint8_t bas
                                             (bassert << 14) | (level << 15));
 }
 
+void lapic_bipi(uint8_t vector, uint32_t delivery) {
+    while((read_lapic_reg(lapic->mmioaddr, 0x300) & 0x1000) != 0);
+    write_lapic_reg(lapic->mmioaddr, 0x300, vector | (delivery << 8) |
+                                            (1 << 14) | (0x3 << 18));
+}
+
 static int handle_ioapic_irq(struct intr_stack *s, void *p __unused) {
     uint32_t intnum = s->intnum - IOAPIC_INT_BASE;
 
@@ -178,14 +185,19 @@ static int handle_ioapic_irq(struct intr_stack *s, void *p __unused) {
 }
 
 static int lapic_localint(struct intr_stack *s, void *p __unused) {
+    int ret = 0;
     if(s->intnum == LAPIC_SPURIOUS) {
         dprintf("Local APIC: spurious interrupt\n");
     } else {
-        dprintf("Local APIC: local interrupt\n");
+        // Request to reschedule.
+        if(s->intnum == LAPIC_RESCHED)
+            ret = 1;
+
+        // ACK the interrupt.
         lapic_ack();
     }
 
-    return 0;
+    return ret;
 }
 
 void init_lapic() {
@@ -247,6 +259,7 @@ int init_apic() {
     // same IDT on all CPUs (I/O APIC decides which IRQs go where - usually the
     // BSP takes the full IRQ load).
     interrupts_trap_reg(LAPIC_SPURIOUS, lapic_localint);
+    interrupts_trap_reg(LAPIC_RESCHED, lapic_localint);
 
     // Parse all structures in the table.
     uintptr_t base = ((uintptr_t) madt) + sizeof(*madt);
@@ -438,7 +451,7 @@ void apic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void *p) {
     // Check for override.
     size_t override = n;
     struct override *oride = (struct override *) tree_search(interrupt_override, (void *) n);
-    if(oride) {
+    if(oride != TREE_NOTFOUND) {
         dprintf("override: IRQ %d -> %d\n", n, override);
         override = oride->newirq;
     }
@@ -506,3 +519,6 @@ uint32_t multicpu_count() {
     return list_len(proc_list);
 }
 
+void multicpu_doresched() {
+    lapic_bipi(LAPIC_RESCHED, 0);
+}

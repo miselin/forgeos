@@ -42,6 +42,9 @@ KBOOT_IMAGE(0);
 void idle(void *p __unused) {
     dprintf("idle thread has started on cpu %d...\n", multicpu_id());
     while(1) {
+        // Always confirm interrupts are enabled.
+        if(!interrupts_get())
+            interrupts_enable();
         __halt;
     }
 }
@@ -67,6 +70,11 @@ void init2(void *p __unused) {
 
     kprintf("Initialising power management...\n");
     powerman_init();
+
+    kprintf("Starting additional processors...\n");
+    for(size_t i = 0; i < multicpu_count(); i++) {
+        multicpu_start(i);
+    }
 
     dprintf("FORGE initialisation complete.\n");
     kprintf("FORGE initialisation complete.\n");
@@ -150,11 +158,6 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
     // Leave the bottom line of the screen for a memory and information display.
     scrextents(80, 24);
-
-    kprintf("Starting additional processors...\n");
-    for(size_t i = 0; i < multicpu_count(); i++) {
-        multicpu_start(i);
-    }
 
     kprintf("Startup complete.\n");
 

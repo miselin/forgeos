@@ -48,7 +48,7 @@ void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_
         stack_ptr = (void *) stack;
         ctx->stackispool = 0;
     } else {
-        stack_ptr = (void *) pool_alloc(stackpool);
+        stack_ptr = pool_alloc(stackpool);
         ctx->stackispool = 1;
     }
 
@@ -69,6 +69,24 @@ void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_
     ctx->esp = (uint32_t) stackp;
 
     dprintf("new x86 context %p: eip=%x, esp=%p-%x\n", ctx, ctx->eip, stack_ptr, stack_top + sizeof(unative_t));
+}
+
+void clone_context(context_t *old, context_t *new) {
+    memcpy(new, old, sizeof(*old));
+    assert(old->stackispool);
+
+    void *stack = pool_alloc(stackpool);
+    memcpy(stack, (void *) old->stackbase, POOL_STACK_SZ);
+
+    new->stackbase = (uint32_t) stack;
+
+    unative_t ebp_diff = old->esp - old->stackbase;
+    unative_t esp_diff = old->esp - old->stackbase;
+
+    new->ebp = new->stackbase + ebp_diff;
+    new->esp = new->stackbase + esp_diff;
+
+    dprintf("cloned x86 context %p -> %p: eip=%x, esp=%x\n", old, new, new->eip, new->esp);
 }
 
 void destroy_context(context_t *ctx) {

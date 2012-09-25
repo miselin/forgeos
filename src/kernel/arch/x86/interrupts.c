@@ -20,6 +20,7 @@
 #include <util.h>
 #include <io.h>
 #include <powerman.h>
+#include <multicpu.h>
 
 extern int interrupt_handlers;
 
@@ -87,7 +88,7 @@ int cpu_trap(struct intr_stack *stack) {
 		kprintf("CPU trap #%d", n);
 		if(n < 32) {
 			uint32_t crn = 0;
-			kprintf(": %s [code %x]\n", trapnames[n], stack->ecode);
+			kprintf(": %s [code %x, cpu %d]\n", trapnames[n], stack->ecode, multicpu_id());
 			kprintf("EAX: 0x%8x EBX: 0x%8x ECX: 0x%8x EDX: 0x%8x\n", stack->eax, stack->ebx, stack->ecx, stack->edx);
 			kprintf("ESI: 0x%8x EDI: 0x%8x ESP: 0x%8x EBP: 0x%8x\n", stack->esi, stack->edi, stack->esp, stack->ebp);
 			kprintf("EIP: 0x%8x EFLAGS: 0x%8x\n", stack->eip, stack->eflags);

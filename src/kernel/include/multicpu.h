@@ -59,6 +59,17 @@ extern int multicpu_halt(uint32_t cpu);
 extern void multicpu_cpuinit();
 
 /**
+ * \brief Request all other CPUs to reschedule immediately.
+ *
+ * In FORGE, when one CPU reschedules, all other CPUs must reschedule at the
+ * same time. This allows the BSP to continue being the primary destination for
+ * IRQs and system events, while APs can handle the user load.
+ *
+ * The mechanics of how other CPUs are notified are machine-specific.
+ */
+extern void multicpu_doresched();
+
+/**
  * Get the machine-specific ID of the currently executing processor.
  */
 extern uint32_t multicpu_id();

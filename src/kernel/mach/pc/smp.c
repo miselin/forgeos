@@ -56,15 +56,12 @@ void multicpu_cpuinit() {
     // Enable interrupts for this CPU.
     ints_multicpu_init();
 
-    // Set up this CPU for scheduling.
-    sched_cpualive();
-
     // Initialisation complete - release the lock to let the system continue.
     dprintf("AP %d has started\n", multicpu_id());
     spinlock_release(init_slock);
 
-    // Start processing!
-    interrupts_enable();
+    // Set up this CPU for scheduling (will not return).
+    sched_cpualive();
 }
 
 int multicpu_init() {

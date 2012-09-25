@@ -101,6 +101,9 @@ extern void switch_threads(struct thread *old, struct thread *new);
 /** Creates a new context (archictecture-specific). */
 extern void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_t stacksz, void *param);
 
+/** Clones the given old context into the new context. */
+void clone_context(context_t *old, context_t *new);
+
 /** Destroys the given context (architecture-specific). */
 extern void destroy_context(context_t *ctx);
 
