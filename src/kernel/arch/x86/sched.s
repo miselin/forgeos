@@ -67,7 +67,7 @@ switch_context:
 	je .nolock
 
 	# ECX contains pointer to a spinlock - unlock it.
-	movl $0, (%ecx)
+	lock decl (%ecx)
 
 .nolock:
 
