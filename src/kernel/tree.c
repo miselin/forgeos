@@ -173,7 +173,7 @@ void *tree_iterator(void *t) {
 
 void *tree_key(void *n) {
 	if(!n)
-		return 0;
+		return TREE_NOTFOUND;
 
 	struct node *p = (struct node *) n;
 	return p->key;
@@ -181,7 +181,7 @@ void *tree_key(void *n) {
 
 void *tree_val(void *n) {
 	if(!n)
-		return 0;
+		return TREE_NOTFOUND;
 
 	struct node *p = (struct node *) n;
 	return p->val;
@@ -317,7 +317,7 @@ void tree_insert(void *t, void *key, void *val) {
     struct tree *meta = (struct tree *) t;
 
     // Avoid insertion if the key is already in the tree.
-    if(tree_search(t, key) != 0)
+    if(tree_search(t, key) != TREE_NOTFOUND)
         return;
 
     struct node *new_node = (struct node *) malloc(sizeof(struct node));
@@ -368,7 +368,7 @@ void tree_delete(void *t, void *key) {
     if(!meta->len)
         return;
 
-    if(tree_search(t, key) == 0)
+    if(tree_search(t, key) == TREE_NOTFOUND)
         return;
 
     struct node *n = meta->root;
@@ -394,11 +394,11 @@ void tree_delete(void *t, void *key) {
 
 void *tree_search(void *t, void *search_key) {
     if(!t)
-        return 0;
+        return TREE_NOTFOUND;
 
     struct tree *meta = (struct tree *) t;
     if(!meta->len)
-        return 0;
+        return TREE_NOTFOUND;
 
     struct node *n = meta->root;
     while(n) {
@@ -413,7 +413,7 @@ void *tree_search(void *t, void *search_key) {
             n = n->right;
     }
 
-    return 0;
+    return TREE_NOTFOUND;
 }
 
 void rotate_left(struct tree *meta, struct node *n) {

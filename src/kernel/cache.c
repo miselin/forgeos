@@ -118,7 +118,7 @@ void *cache_startblock(void *cache, unative_t offset) {
     struct block *blockdata = (struct block *) tree_search(meta->blockdata, (void *) offset);
 
     // Allocate a block if one doesn't exist.
-    if(!blockdata) {
+    if(blockdata == TREE_NOTFOUND) {
         blockdata = (struct block *) malloc(sizeof(struct block));
         memset(blockdata, 0, sizeof(*blockdata));
 
@@ -183,7 +183,7 @@ int cache_iscached(void *cache, unative_t offset) {
 
     struct cache *meta = (struct cache *) cache;
     struct block *blockdata = (struct block *) tree_search(meta->blockdata, (void *) offset);
-    if(blockdata)
+    if(blockdata != TREE_NOTFOUND)
         return 1;
     else
         return 0;

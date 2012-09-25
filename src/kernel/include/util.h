@@ -21,6 +21,8 @@
 
 #define STACK_FLAGS_NOMEMLOCK       1
 
+#define TREE_NOTFOUND       ((void *) ~0)
+
 typedef int (*tree_comparer)(void *, void *);
 
 #ifndef NO_BUILTIN_MEMFUNCS
