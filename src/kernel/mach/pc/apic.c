@@ -22,6 +22,7 @@
 #include <util.h>
 #include <vmem.h>
 #include <sched.h>
+#include <multicpu.h>
 #include <io.h>
 
 #include <acpi.h>
@@ -85,15 +86,10 @@ struct processor {
     uint8_t id;
     uint8_t apic_id;
     uint8_t bsp;
+    uint8_t started;
 };
 
 struct lapic {
-    uint8_t acpi_id;
-
-    uint8_t lapic_id;
-
-    uint8_t proc_id;
-
     paddr_t physaddr;
     vaddr_t mmioaddr;
 };
@@ -202,9 +198,6 @@ void init_lapic() {
 
     interrupts_trap_reg(LAPIC_SPURIOUS, lapic_localint);
 
-    // Save the Local APIC ID.
-    lapic->lapic_id = (uint8_t) (read_lapic_reg(lapic->mmioaddr, 0x20) >> 24);
-
     // Task priority = 0.
     uint32_t taskprio = read_lapic_reg(lapic->mmioaddr, 0x80);
     taskprio &= ~0xFF;
@@ -249,6 +242,8 @@ int init_apic() {
 
     // Initialise our LAPIC.
     init_lapic();
+    size_t apicid = read_lapic_reg(lapic->mmioaddr, 0x20) >> 24;
+    struct processor *bsp = 0;
 
     // Parse all structures in the table.
     uintptr_t base = ((uintptr_t) madt) + sizeof(*madt);
@@ -269,12 +264,12 @@ int init_apic() {
                 proc->apic_id = lapic_meta->Id;
 
                 // Is this a match for the BSP (ie, the CPU executing right now)
-                if(lapic_meta->Id == lapic->lapic_id) {
+                if(lapic_meta->Id == apicid) {
                     dprintf(" (this Local APIC is for the BSP)\n");
-                    lapic->proc_id = lapic_meta->ProcessorId;
-                    proc->bsp = 1;
+                    proc->bsp = proc->started = 1;
+                    bsp = proc;
                 } else {
-                    proc->bsp = 0;
+                    proc->bsp = proc->started = 0;
                 }
 
                 list_insert(proc_list, proc, 0);
@@ -381,13 +376,14 @@ int init_apic() {
 
             /// \todo Logical CPU destination
             data_low &= ~(0x1 << 11);
+            // data_low |= 1 << 11;
 
             // Mask the IRQ.
             data_low &= ~(0x1 << 16);
 
             // Set the destination.
             data_high &= ~(0xFF << 24);
-            data_high |= (lapic->proc_id << 24);
+            data_high |= ((bsp != NULL ? bsp->id : 0) << 24);
 
             // Write back to the registers.
             write_ioapic_reg(meta->mmioaddr, IOAPIC_REG_REDIRBASE + (irq * 2), data_low);
@@ -405,17 +401,6 @@ int init_apic() {
         intnum += meta->intcount;
 
         dprintf(" I/O APIC ACPI_ID=%d APIC_ID=%x, vaddr=%x, maxint=%d\n", meta->acpi_id, meta->ioapic_id, meta->mmioaddr, meta->intcount);
-    }
-
-    // Initialise all APs.
-    /// \todo Move into another function, add generic API so we can init multiple
-    ///       CPUs on various architectures!
-    n = 0;
-    struct processor *proc_meta = 0;
-    while((proc_meta = (struct processor *) list_at(proc_list, n++))) {
-        if(!proc_meta->bsp) {
-            start_processor(proc_meta->apic_id);
-        }
     }
 
     // I/O APIC found, disable the 8259 PICs.
@@ -478,3 +463,43 @@ void apic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void *p) {
 
     return;
 }
+
+int multicpu_start(uint32_t cpu) {
+    struct processor *proc = (struct processor *) list_at(proc_list, cpu);
+    if(!proc)
+        return -1;
+
+    // Already started?
+    if(proc->bsp || proc->started)
+        return 0;
+
+    int ret = start_processor(proc->apic_id);
+    if(ret == 0)
+        proc->started = 1;
+
+    return ret;
+}
+
+int multicpu_halt(uint32_t cpu __unused) {
+    dprintf("todo: multicpu halt IPI\n");
+    return -1;
+}
+
+uint32_t multicpu_id() {
+    size_t apicid = read_lapic_reg(lapic->mmioaddr, 0x20) >> 24;
+
+    size_t n = 0;
+    struct processor *proc_meta = 0;
+    while((proc_meta = (struct processor *) list_at(proc_list, n++))) {
+        if(apicid == proc_meta->apic_id) {
+            return proc_meta->id;
+        }
+    }
+
+    return (uint32_t) ~0;
+}
+
+uint32_t multicpu_count() {
+    return list_len(proc_list);
+}
+

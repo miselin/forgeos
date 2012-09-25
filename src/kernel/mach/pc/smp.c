@@ -16,6 +16,9 @@
 
 #include <system.h>
 #include <compiler.h>
+#include <spinlock.h>
+#include <multicpu.h>
+#include <assert.h>
 #include <types.h>
 #include <sched.h>
 #include <pmem.h>
@@ -24,6 +27,8 @@
 #include <io.h>
 
 #include <apic.h>
+
+static void *init_slock = 0;
 
 extern void *pc_ap_entry;
 
@@ -34,8 +39,40 @@ extern void *pc_ap_pdir;
 
 /// Called by an AP after it completes initial startup.
 void ap_startup() {
-    dprintf("AP has started up\n");
+    multicpu_cpuinit();
     while(1) __halt;
+}
+
+void multicpu_cpuinit() {
+    // Configure our Local APIC.
+    init_lapic();
+
+    // Initialisation complete - release the lock to let the system continue.
+    dprintf("AP %d has started\n", multicpu_id());
+    spinlock_release(init_slock);
+}
+
+int multicpu_init() {
+    // Most init done by init_apic, but we do want our spinlock to be live.
+    init_slock = create_spinlock();
+
+    // Store the current page directory so APs can pick it up.
+    uint32_t cr3 = 0;
+    __asm__ volatile("mov %%cr3, %0" : "=r" (cr3));
+    *((uint32_t *) &pc_ap_pdir) = cr3;
+
+    // Map and copy the low memory region APs boot at.
+    paddr_t p = pmem_alloc_special(PMEM_SPECIAL_FIRMWARE);
+    vmem_map((vaddr_t) p, p, VMEM_SUPERVISOR | VMEM_READWRITE);
+    memcpy((void *) p, (void *) &pc_ap_entry, PAGE_SIZE);
+
+    // Copied - set the vector so APs are ready to go.
+    ap_startup_vec = p >> 12;
+
+    // Initialisation is done!
+    ap_lowmem_init = 1;
+
+    return 0;
 }
 
 int start_processor(uint8_t id) {
@@ -43,24 +80,14 @@ int start_processor(uint8_t id) {
 
     dprintf("x86 AP startup - id %d\n", id);
 
-    // Relocate the AP entry point to low memory, if it hasn't already been moved.
+    // Don't start APs if init hasn't been done yet.
     if(!ap_lowmem_init) {
-        // Throw in the current page directory.
-        uint32_t cr3 = 0;
-        __asm__ volatile("mov %%cr3, %0" : "=r" (cr3));
-        *((uint32_t *) &pc_ap_pdir) = cr3;
-
-        // Map and copy.
-        paddr_t p = pmem_alloc_special(PMEM_SPECIAL_FIRMWARE);
-        vmem_map((vaddr_t) p, p, VMEM_SUPERVISOR | VMEM_READWRITE);
-        memcpy((void *) p, (void *) &pc_ap_entry, PAGE_SIZE);
-
-        // Copied - set the vector.
-        ap_startup_vec = p >> 12;
-
-        // Initialisation is done!
-        ap_lowmem_init = 1;
+        return -1;
     }
+    assert(init_slock != NULL);
+
+    // Prepare to start the AP.
+    spinlock_acquire(init_slock);
 
     // Init IPI
     lapic_ipi(id, ap_startup_vec, 5 /* INIT */, 1, 1);
@@ -69,6 +96,10 @@ int start_processor(uint8_t id) {
 
     // Startup IPI
     lapic_ipi(id, ap_startup_vec, 6 /* Startup */, 1, 0);
+
+    // Wait until the other processor has started.
+    spinlock_acquire(init_slock);
+    spinlock_release(init_slock);
 
     return 0;
 }

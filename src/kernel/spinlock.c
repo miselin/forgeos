@@ -19,6 +19,7 @@
 #include <system.h>
 #include <interrupts.h>
 #include <spinlock.h>
+#include <multicpu.h>
 #include <assert.h>
 #include <panic.h>
 #include <util.h>
@@ -58,10 +59,9 @@ void spinlock_acquire(void *s) {
 
 	struct spinlock *sl = (struct spinlock *) s;
 
-	/// \todo Check for multiple processors.
 	uint8_t wasints = interrupts_get();
 	interrupts_disable();
-	atomic_compare_and_swap(&sl->locked, 1, void * _a __unused, 0, dprintf("deadlock in spinlock %p\n", s); panic("deadlock"));
+	atomic_compare_and_swap(&sl->locked, 1, void * _a __unused, 0, if(multicpu_count() == 1) { dprintf("deadlock in spinlock %p\n", s); panic("deadlock"); });
 
 	sl->wasints = wasints;
 
@@ -76,12 +76,11 @@ void spinlock_release(void *s) {
 	if(wasints)
 		panic("spinlock released with interrupts enabled!");
 
-	/// \todo Check for multiple processors.
 	struct spinlock *sl = (struct spinlock *) s;
 	assert(sl->locked);
 
 	wasints = sl->wasints;
-	atomic_compare_and_swap(&sl->locked, 0, void * _a __unused, 1, dprintf("deadlock in spinlock %p\n", s); panic("deadlock"));
+	atomic_compare_and_swap(&sl->locked, 0, void * _a __unused, 1, if(multicpu_count() == 1) { dprintf("deadlock in spinlock %p\n", s); panic("deadlock"); });
 
 	if(wasints)
 		interrupts_enable();

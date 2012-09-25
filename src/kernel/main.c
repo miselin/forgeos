@@ -24,6 +24,7 @@
 #include <mmiopool.h>
 #include <dlmalloc.h>
 #include <powerman.h>
+#include <multicpu.h>
 #include <system.h>
 #include <timer.h>
 #include <assert.h>
@@ -52,7 +53,7 @@ void banner(void *p __unused) {
         sprintf(idlebuf, "%-79s", "");
         puts_at(idlebuf, 0, 24);
 
-        sprintf(idlebuf, "FORGE Operating System: mem %d/%d KiB used, heap ends at %x", (uintptr_t) (pmem_size() - pmem_freek()), (uintptr_t) pmem_size(), dlmalloc_sbrk(0));
+        sprintf(idlebuf, "FORGE Operating System: %d cpus, mem %d/%d KiB used, heap ends at %x", multicpu_count(), (uintptr_t) (pmem_size() - pmem_freek()), (uintptr_t) pmem_size(), dlmalloc_sbrk(0));
         puts_at(idlebuf, 0, 24);
         interrupts_enable();
 
@@ -129,6 +130,9 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 	kprintf("Initialising machine devices...\n");
 	init_devices();
 
+    kprintf("Initialising multi-CPU layer...\n");
+    multicpu_init();
+
 	kprintf("Initialising timers...\n");
 	timers_init();
 
@@ -146,6 +150,11 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
     // Leave the bottom line of the screen for a memory and information display.
     scrextents(80, 24);
+
+    kprintf("Starting additional processors...\n");
+    for(size_t i = 0; i < multicpu_count(); i++) {
+        multicpu_start(i);
+    }
 
     kprintf("Startup complete.\n");
 

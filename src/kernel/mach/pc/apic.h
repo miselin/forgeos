@@ -21,6 +21,7 @@
 #include <types.h>
 
 extern int init_apic();
+extern void init_lapic();
 
 extern void apic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void *p);
 
