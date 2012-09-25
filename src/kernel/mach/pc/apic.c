@@ -16,12 +16,12 @@
 
 #include <types.h>
 #include <interrupts.h>
-#include <mmiopool.h>
 #include <system.h>
 #include <malloc.h>
 #include <assert.h>
 #include <util.h>
 #include <vmem.h>
+#include <sched.h>
 #include <io.h>
 
 #include <acpi.h>
@@ -29,6 +29,8 @@
 struct lapic;
 
 static void *ioapic_list = 0;
+static void *proc_list = 0;
+
 static struct lapic *lapic = 0;
 
 static void *interrupt_override = 0;
@@ -77,6 +79,12 @@ struct override {
 
     /// Trigger mode of the input signal.
     uint8_t         trigger;
+};
+
+struct processor {
+    uint8_t id;
+    uint8_t apic_id;
+    uint8_t bsp;
 };
 
 struct lapic {
@@ -135,6 +143,14 @@ static void write_ioapic_reg(vaddr_t mmio, uint8_t reg, uint32_t val) {
 static void lapic_ack() {
     // Send an EOI to the LAPIC
     write_lapic_reg(lapic->mmioaddr, 0xB0, 0);
+}
+
+void lapic_ipi(uint8_t dest_proc, uint8_t vector, uint32_t delivery, uint8_t bassert, uint8_t level) {
+    while((read_lapic_reg(lapic->mmioaddr, 0x300) & 0x1000) != 0);
+
+    write_lapic_reg(lapic->mmioaddr, 0x310, dest_proc << 24);
+    write_lapic_reg(lapic->mmioaddr, 0x300, vector | (delivery << 8) |
+                                            (bassert << 14) | (level << 15));
 }
 
 static int handle_ioapic_irq(struct intr_stack *s, void *p __unused) {
@@ -214,8 +230,9 @@ int init_apic() {
     }
     status = AcpiGetTableHeader((ACPI_STRING) ACPI_SIG_MADT, 0, (ACPI_TABLE_HEADER *) madt);
 
-    // Create the list of I/O APICs, ready for appending to.
+    // Housekeeping for the various data we're about to pull.
     ioapic_list = create_list();
+    proc_list = create_list();
     interrupt_override = create_tree();
 
     // Enable the LAPIC, if by chance one exists we'll want to use it.
@@ -247,11 +264,20 @@ int init_apic() {
                 dprintf("Processor is usable!\n");
 
                 /// \todo Store information so we can startup APs.
+                struct processor *proc = (struct processor *) malloc(sizeof(struct processor));
+                proc->id = lapic_meta->ProcessorId;
+                proc->apic_id = lapic_meta->Id;
 
-                // Is this a match for the BSP?
+                // Is this a match for the BSP (ie, the CPU executing right now)
                 if(lapic_meta->Id == lapic->lapic_id) {
+                    dprintf(" (this Local APIC is for the BSP)\n");
                     lapic->proc_id = lapic_meta->ProcessorId;
+                    proc->bsp = 1;
+                } else {
+                    proc->bsp = 0;
                 }
+
+                list_insert(proc_list, proc, 0);
             }
         } else if(hdr->Type == ACPI_MADT_TYPE_IO_APIC) {
             ACPI_MADT_IO_APIC *ioapic = (ACPI_MADT_IO_APIC *) base;
@@ -315,8 +341,10 @@ int init_apic() {
     if(list_len(ioapic_list) == 0) {
         dprintf("ioapic: no I/O APIC found!\n");
         delete_list(ioapic_list);
+        delete_list(proc_list);
         delete_tree(interrupt_override);
         ioapic_list = 0;
+        proc_list= 0;
         interrupt_override = 0;
         return -1;
     }
@@ -338,9 +366,6 @@ int init_apic() {
         // Configure the I/O APIC for all IRQ supported on this sytem.
         size_t irq = 0;
         for(; irq < meta->intcount; irq++) {
-
-            dprintf(" configuring irq #%d\n", irq);
-
             uint32_t data_low = read_ioapic_reg(meta->mmioaddr, IOAPIC_REG_REDIRBASE + (irq * 2));
             uint32_t data_high = read_ioapic_reg(meta->mmioaddr, IOAPIC_REG_REDIRBASE + (irq * 2) + 1);
 
@@ -379,7 +404,18 @@ int init_apic() {
         // Next batch of interrupts...
         intnum += meta->intcount;
 
-        dprintf(" I/O APIC id=%x, vaddr=%x, maxint=%d\n", meta->ioapic_id, meta->mmioaddr, meta->intcount);
+        dprintf(" I/O APIC ACPI_ID=%d APIC_ID=%x, vaddr=%x, maxint=%d\n", meta->acpi_id, meta->ioapic_id, meta->mmioaddr, meta->intcount);
+    }
+
+    // Initialise all APs.
+    /// \todo Move into another function, add generic API so we can init multiple
+    ///       CPUs on various architectures!
+    n = 0;
+    struct processor *proc_meta = 0;
+    while((proc_meta = (struct processor *) list_at(proc_list, n++))) {
+        if(!proc_meta->bsp) {
+            start_processor(proc_meta->apic_id);
+        }
     }
 
     // I/O APIC found, disable the 8259 PICs.

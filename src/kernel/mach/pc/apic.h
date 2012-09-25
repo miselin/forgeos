@@ -14,8 +14,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _IOAPIC_H
-#define _IOAPIC_H
+#ifndef _APIC_H
+#define _APIC_H
 
 #include <interrupts.h>
 #include <types.h>
@@ -23,5 +23,7 @@
 extern int init_apic();
 
 extern void apic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void *p);
+
+extern void lapic_ipi(uint8_t dest_proc, uint8_t vector, uint32_t delivery, uint8_t bassert, uint8_t level);
 
 #endif
