@@ -12,10 +12,12 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-.global pc_acpi_wakeup, pc_acpi_save_state
+.global pc_acpi_wakeup, pc_acpi_save_state, pc_acpi_end
 .global pc_acpi_saveblock_addr, pc_acpi_gdt
 
 .section .lowmem
+
+.align 4096
 
 .code16
 
@@ -239,3 +241,5 @@ pc_acpi_gdtr:
 .align 4
 pc_acpi_gdt:
     .fill 3, 8, 0
+
+pc_acpi_end:

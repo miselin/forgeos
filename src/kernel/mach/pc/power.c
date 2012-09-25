@@ -32,7 +32,7 @@ static ACPI_TABLE_DESC InitTables[ACPI_MAX_INIT_TABLES];
 static ACPI_TABLE_FACS *AcpiGbl_FACS;
 
 /// Architecture-specific code, called whenever the system returns from sleep.
-extern void pc_acpi_wakeup();
+extern void *pc_acpi_wakeup, *pc_acpi_end;
 
 /// Saves the CPU state before sleeping. After the system wakes up, this function
 /// will return '1' - otherwise, it will return '0'.
@@ -101,9 +101,9 @@ static void pc_remap_wakeup_data() {
     dprintf("save block is at %llx, %x\n", sblk_p, sblk_v);
 
     // Wakeup function(s) and variables.
-    vaddr_t wakeup_virt = (vaddr_t) pc_acpi_wakeup;
-    vaddr_t begin_lowmem = (vaddr_t) &__begin_lowmem;
-    vaddr_t end_lowmem = (vaddr_t) &__end_lowmem;
+    vaddr_t wakeup_virt = (vaddr_t) &pc_acpi_wakeup;
+    vaddr_t begin_lowmem = (vaddr_t) &pc_acpi_wakeup;
+    vaddr_t end_lowmem = (vaddr_t) &pc_acpi_end;
     size_t wakeup_region_size = end_lowmem - begin_lowmem;
 
     // The section should never be bigger than one page!
