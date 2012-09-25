@@ -75,6 +75,11 @@ extern void multicpu_doresched();
 extern uint32_t multicpu_id();
 
 /**
+ * Get the machine-specific ID of a processor based on an index.
+ */
+extern uint32_t multicpu_idxtoid(uint32_t idx);
+
+/**
  * Get the number of CPUs in the system (logical + physical).
  */
 extern uint32_t multicpu_count();

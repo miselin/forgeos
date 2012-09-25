@@ -27,6 +27,7 @@
 
 #include <acpi.h>
 #include <apic.h>
+#include <smp.h>
 
 struct lapic;
 
@@ -522,6 +523,15 @@ uint32_t multicpu_id() {
         if(apicid == proc_meta->apic_id) {
             return proc_meta->id;
         }
+    }
+
+    return (uint32_t) ~0;
+}
+
+extern uint32_t multicpu_idxtoid(uint32_t idx) {
+    struct processor *proc_meta = list_at(proc_list, idx);
+    if(proc_meta) {
+        return proc_meta->id;
     }
 
     return (uint32_t) ~0;
