@@ -17,9 +17,9 @@
 
 .section .lowmem
 
-.align 4096
-
 .code16
+
+.align 4096
 
 # ACPI firmware wakeup code - should handle coming back from a sleep state, and
 # restoring the system to functioning state. All 16-bit code, as we'll be in
@@ -40,7 +40,14 @@ pc_acpi_wakeup:
     movw %cs, %dx
     shl $4, %edx
 
-    # Enable the A20 line, assuming it isn't already.
+    # Try for the BIOS A20 enable.
+    mov $0x2401, %ax
+    int $0x15
+
+    # Success?
+    jnc .a20good
+
+    # Enable the A20 line via the KBC
     call wait_a20
     mov $0xad, %al
     outb %al, $0x64
@@ -67,6 +74,8 @@ pc_acpi_wakeup:
     out %al, $0x64
 
     call wait_a20
+
+.a20good:
 
     # Set up the GDT early.
     mov $pc_acpi_gdt, %edi
@@ -108,7 +117,7 @@ pc_acpi_wakeup:
     # Restore old code segment.
     movl %ds:20(%esi), %ebx
 
-    # blah blah blah
+    # Load the 32-bit entry point.
     mov $pc_acpi_wakeup_32, %ecx
     andl $0xFFF, %ecx
     add %edx, %ecx
