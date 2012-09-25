@@ -134,6 +134,12 @@ extern struct thread *sched_current_thread();
 /** Yields the current timeslice immediately. */
 extern void sched_yield();
 
+/** Defines the thread which is the 'idle' thread in the system. */
+extern void sched_setidle(struct thread *t);
+
+/** Notifies the scheduler of a new CPU being active. */
+extern void sched_cpualive();
+
 /** Function to be called when a thread returns from its entry point. */
 extern void thread_return() __attribute__((naked));
 

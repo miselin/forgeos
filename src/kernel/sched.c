@@ -23,6 +23,7 @@
 #include <vmem.h>
 #include <io.h>
 #include <spinlock.h>
+#include <multicpu.h>
 
 // #define VERBOSE_LOGGING
 
@@ -36,10 +37,10 @@ static size_t current_priolevel = 0;
 
 /// Run queues for each priority level.
 /// \todo Group threads with a common parent process.
-static void *prio_queues[THREAD_PRIORITY_LOW + 1] = {0};
+static void *prio_queues = 0;
 
 /// Already queues for the above.
-static void *prio_already_queues[THREAD_PRIORITY_LOW + 1] = {0};
+static void *prio_already_queues = 0;
 
 /// Zombie thread queue.
 static void *zombie_queue = 0;
@@ -47,8 +48,35 @@ static void *zombie_queue = 0;
 /// Global scheduler lock - to ensure queue operations are done atomically.
 static void *sched_spinlock = 0;
 
+/// Idle thread in the system that we can clone onto new CPUs as they come up.
+static struct thread *idle_thread = 0;
+
 /** Initialises the architecture-specific context layer (for create_context). */
 extern void init_context();
+
+static void *get_prio_queues() {
+    if(!prio_queues)
+        return NULL;
+
+    void **arr = tree_search(prio_queues, (void *) multicpu_id());
+    if(!arr) {
+        return NULL;
+    } else {
+        return arr;
+    }
+}
+
+static void *get_prio_already_queues() {
+    if(!prio_queues)
+        return NULL;
+
+    void **arr = tree_search(prio_already_queues, (void *) multicpu_id());
+    if(!arr) {
+        return NULL;
+    } else {
+        return arr;
+    }
+}
 
 static int sched_timer(uint64_t ticks) {
     if(ticks > current_thread->timeslice)
@@ -78,6 +106,24 @@ static int zombie_reaper(uint64_t ticks) {
 
 struct thread *sched_current_thread() {
     return current_thread;
+}
+
+void sched_setidle(struct thread *t) {
+    idle_thread = t;
+    thread_wake(t);
+}
+
+void sched_cpualive() {
+    dprintf("scheduler: new cpu (%d) to be registered!\n", multicpu_id());
+
+    void **prio = (void **) malloc(sizeof(void *) * QUEUE_COUNT);
+    void **prio_already = (void **) malloc(sizeof(void *) * QUEUE_COUNT);
+
+    memset(prio, 0, sizeof(sizeof(void *) * QUEUE_COUNT));
+    memset(prio_already, 0, sizeof(sizeof(void *) * QUEUE_COUNT));
+
+    tree_insert(prio_queues, (void *) multicpu_id(), prio);
+    tree_insert(prio_already_queues, (void *) multicpu_id(), prio_already);
 }
 
 struct process *create_process(const char *name, struct process *parent) {
@@ -167,9 +213,10 @@ void thread_wake(struct thread *thr) {
     thr->state = THREAD_STATE_READY;
 
     spinlock_acquire(sched_spinlock);
-    if(!prio_queues[thr->priority])
-        prio_queues[thr->priority] = create_queue();
-    queue_push(prio_queues[thr->priority], thr);
+    void **queues = get_prio_queues();
+    if(!queues[thr->priority])
+        queues[thr->priority] = create_queue();
+    queue_push(queues[thr->priority], thr);
     spinlock_release(sched_spinlock);
 }
 
@@ -182,9 +229,10 @@ uint32_t thread_priority(struct thread *prio) {
 }
 
 static void go_next_priolevel() {
+    void **queues = get_prio_queues();
     while((current_priolevel < QUEUE_COUNT)) {
-        if(prio_queues[current_priolevel]) {
-            if(!queue_empty(prio_queues[current_priolevel])) {
+        if(queues[current_priolevel]) {
+            if(!queue_empty(queues[current_priolevel])) {
                 break;
             }
         }
@@ -199,6 +247,8 @@ void sched_yield() {
 
 void reschedule() {
     spinlock_acquire(sched_spinlock);
+    void **queues = get_prio_queues();
+    void **already_queues = get_prio_already_queues();
 
     if(current_thread->timeslice > 0) {
 #ifdef VERBOSE_LOGGING
@@ -222,9 +272,9 @@ void reschedule() {
     if(current_thread->state == THREAD_STATE_RUNNING) {
         current_thread->state = THREAD_STATE_READY;
 
-        if(!prio_already_queues[current_thread->priority])
-            prio_already_queues[current_thread->priority] = create_queue();
-        queue_push(prio_already_queues[current_thread->priority], current_thread);
+        if(!already_queues[current_thread->priority])
+            already_queues[current_thread->priority] = create_queue();
+        queue_push(already_queues[current_thread->priority], current_thread);
     }
 
     // Find the next priority level with items in it.
@@ -232,19 +282,19 @@ void reschedule() {
 
     if(current_priolevel >= QUEUE_COUNT) {
         for(size_t i = 0; i < QUEUE_COUNT; i++) {
-            void *tmp = prio_queues[i];
-            prio_queues[i] = prio_already_queues[i];
-            prio_already_queues[i] = tmp;
+            void *tmp = queues[i];
+            queues[i] = already_queues[i];
+            already_queues[i] = tmp;
         }
 
         current_priolevel = 0;
         go_next_priolevel();
     }
 
-    assert(!queue_empty(prio_queues[current_priolevel]));
+    assert(!queue_empty(queues[current_priolevel]));
 
     // Pop a thread off the run queue.
-    struct thread *thr = (struct thread *) queue_pop(prio_queues[current_priolevel]);
+    struct thread *thr = (struct thread *) queue_pop(queues[current_priolevel]);
     assert(thr != 0);
 
     // Thread not actually alive?
@@ -269,12 +319,12 @@ void reschedule() {
     thr->state = THREAD_STATE_RUNNING;
 
     // Empty run queue?
-    if(queue_empty(prio_queues[current_priolevel])) {
+    if(queue_empty(queues[current_priolevel])) {
         current_priolevel++;
     }
 
 #ifdef VERBOSE_LOGGING
-    dprintf("reschedule: queues now run: %sempty / already: %sempty\n", queue_empty(prio_queues[current_priolevel]) ? "" : "not ", queue_empty(prio_already_queues[current_priolevel]) ? "" : "not ");
+    dprintf("reschedule: queues now run: %sempty / already: %sempty\n", queue_empty(queues[current_priolevel]) ? "" : "not ", queue_empty(already_queues[current_priolevel]) ? "" : "not ");
 #endif
 
     // Perform the context switch if this isn't the already-running thread.
@@ -288,15 +338,20 @@ void reschedule() {
         current_thread = thr;
         switch_threads(tmp, thr);
     } else {
+        if(thr == idle_thread) {
+            // System is idle (switched from idle thread to idle thread).
+        }
         spinlock_release(sched_spinlock);
     }
 }
 
 void init_scheduler() {
-    for(size_t i = 0; i < QUEUE_COUNT; i++) {
-        prio_queues[i] = 0;
-        prio_already_queues[i] = 0;
-    }
+    // Set up the per-CPU queue.
+    prio_queues = create_tree();
+    prio_already_queues = create_tree();
+
+    // Set up the current CPU (other CPUs will be enabled as they come alive)
+    sched_cpualive();
 
     init_context();
 
@@ -309,7 +364,6 @@ void init_scheduler() {
     // Timer handler for the zombie reaper.
     install_timer(zombie_reaper, ((1 << TIMERRES_SHIFT) | TIMERRES_SECONDS), TIMERFEAT_PERIODIC);
 }
-
 
 void start_scheduler() {
     // Can't start the scheduler without a thread running!
