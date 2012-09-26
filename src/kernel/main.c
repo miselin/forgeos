@@ -42,7 +42,9 @@ KBOOT_IMAGE(0);
 void idle(void *p __unused) {
     dprintf("idle thread has started on cpu %d...\n", multicpu_id());
     while(1) {
-        // Always confirm interrupts are enabled.
+        sched_yield();
+
+        // Always confirm interrupts are enabled before halting.
         if(!interrupts_get())
             interrupts_enable();
         __halt;

@@ -130,7 +130,8 @@ pc_ap_entry_32:
     mov %ax, %gs
     mov %ax, %ss
 
-    # TODO: proper stack.
+    # Setup the AP startup stack. Once the AP has started up, it will switch
+    # to a different kernel stack and won't need this one anymore.
     mov $end_stack - 4, %ebp
     mov $end_stack - 4, %esp
 
