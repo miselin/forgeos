@@ -93,7 +93,7 @@ extern struct process *create_process(const char *name, struct process *parent);
 extern struct thread *create_thread(struct process *parent, uint32_t prio, thread_entry_t start, uintptr_t stack, size_t stacksz, void *param);
 
 /** Performs a context switch to a new context. */
-extern void switch_context(context_t *oldctx, context_t *newctx, void *lock);
+extern void switch_context(context_t *oldctx, context_t *newctx, void *lock, unative_t wasints);
 
 /** Performs a context switch between two threads. */
 extern void switch_threads(struct thread *old, struct thread *new);

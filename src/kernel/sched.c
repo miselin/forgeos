@@ -24,6 +24,7 @@
 #include <io.h>
 #include <spinlock.h>
 #include <multicpu.h>
+#include <interrupts.h>
 
 // #define VERBOSE_LOGGING
 
@@ -234,11 +235,11 @@ void switch_threads(struct thread *old, struct thread *new) {
             set_current_thread(new);
         new->state = THREAD_STATE_RUNNING;
 
-        switch_context(0, new->ctx, 0);
+        switch_context(0, new->ctx, 0, interrupts_get());
     }
     else {
         dprintf("old ctx %p -> new ctx %p\n", old->ctx, new->ctx);
-        switch_context(old->ctx, new->ctx, spinlock_getatom(sched_spinlock));
+        switch_context(old->ctx, new->ctx, spinlock_getatom(sched_spinlock), spinlock_intstate(sched_spinlock));
     }
 }
 
