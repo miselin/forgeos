@@ -23,6 +23,7 @@
 #include <vmem.h>
 #include <sched.h>
 #include <multicpu.h>
+#include <spinlock.h>
 #include <io.h>
 
 #include <acpi.h>
@@ -30,6 +31,11 @@
 #include <smp.h>
 
 struct lapic;
+
+static void *crosscpu_lock = 0;
+
+static crosscpu_func_t crosscpu_func = 0;
+static void *crosscpu_param = 0;
 
 static void *ioapic_list = 0;
 static void *proc_list = 0;
@@ -55,7 +61,7 @@ static void *interrupt_override = 0;
 
 #define IOAPIC_INT_BASE         0x30
 #define LAPIC_SPURIOUS          0xFF
-#define LAPIC_RESCHED           0x20
+#define LAPIC_CROSSCPU          0x20
 
 #define OVERRIDE_POLARITY_CONFORMS      0
 #define OVERRIDE_POLARITY_ACTIVEHIGH    1
@@ -192,8 +198,14 @@ static int lapic_localint(struct intr_stack *s, void *p __unused) {
         dprintf("Local APIC: spurious interrupt\n");
     } else {
         // Request to reschedule.
-        if(s->intnum == LAPIC_RESCHED)
-            ret = 1;
+        if(s->intnum == LAPIC_CROSSCPU) {
+            if(crosscpu_func) {
+                crosscpu_func(crosscpu_param);
+                crosscpu_func = 0;
+
+                spinlock_release(crosscpu_lock);
+            }
+        }
 
         // ACK the interrupt.
         lapic_ack();
@@ -272,7 +284,7 @@ int init_apic() {
     // same IDT on all CPUs (I/O APIC decides which IRQs go where - usually the
     // BSP takes the full IRQ load).
     interrupts_trap_reg(LAPIC_SPURIOUS, lapic_localint);
-    interrupts_trap_reg(LAPIC_RESCHED, lapic_localint);
+    interrupts_trap_reg(LAPIC_CROSSCPU, lapic_localint);
 
     // Parse all structures in the table.
     uintptr_t base = ((uintptr_t) madt) + sizeof(*madt);
@@ -502,6 +514,11 @@ int multicpu_start(uint32_t cpu) {
     if(proc->bsp || proc->started)
         return 0;
 
+    // Is there a cross-CPU lock set up already?
+    if(!crosscpu_lock) {
+        crosscpu_lock = create_spinlock();
+    }
+
     int ret = start_processor(proc->apic_id);
     if(ret == 0)
         proc->started = 1;
@@ -541,6 +558,26 @@ uint32_t multicpu_count() {
     return list_len(proc_list);
 }
 
-void multicpu_doresched() {
-    lapic_bipi(LAPIC_RESCHED, 0);
+void multicpu_call(uint32_t cpu, crosscpu_func_t func, void *param) {
+    if((multicpu_count() == 1) || (crosscpu_lock == 0)) {
+        dprintf("multicpu_call: uniprocessor system, or no additional processors started\n");
+        func(param);
+        return;
+    }
+
+    if(multicpu_id() == cpu) {
+        dprintf("multicpu-call: request to run a procedure on the current cpu\n");
+        func(param);
+        return;
+    }
+
+    spinlock_acquire(crosscpu_lock);
+
+    crosscpu_func = func;
+    crosscpu_param = param;
+
+    lapic_ipi(cpu, LAPIC_CROSSCPU, 0, 1, 0);
+
+    spinlock_acquire(crosscpu_lock);
+    spinlock_release(crosscpu_lock);
 }

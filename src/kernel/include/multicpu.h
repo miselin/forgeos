@@ -19,6 +19,8 @@
 
 #include <types.h>
 
+typedef void (*crosscpu_func_t)(void *p);
+
 /**
  * \brief Initialise multi-CPU support in the system.
  *
@@ -57,6 +59,20 @@ extern int multicpu_halt(uint32_t cpu);
  * is up to the machine layer to perform this initialisation.
  */
 extern void multicpu_cpuinit();
+
+/**
+ * \brief Run a function call on another CPU.
+ *
+ * Sometimes it may be necessary for a function call to be run in a context that
+ * is not on the current CPU. For example, a timer handler may need to run, but
+ * it was installed on a different core to the currently executing CPU.
+ *
+ * This function will block until the receiving CPU begins executing the given
+ * code.
+ *
+ * \param cpu Machine-specific CPU ID.
+ */
+extern void multicpu_call(uint32_t cpu, crosscpu_func_t func, void *param);
 
 /**
  * \brief Request all other CPUs to reschedule immediately.
