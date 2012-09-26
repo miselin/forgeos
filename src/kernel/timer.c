@@ -21,6 +21,8 @@
 #include <malloc.h>
 #include <io.h>
 
+#include <multicpu.h>
+
 // #define SPAM_THE_LOGS
 
 extern int __begin_timer_table, __end_timer_table;
@@ -33,6 +35,13 @@ struct timer_handler_meta {
 	uint64_t ticks;
 	uint64_t orig_ticks;
 	uint32_t feat;
+
+	uint32_t cpu;
+};
+
+struct crosscpu_th {
+	timer_handler th;
+	uint64_t ticks;
 };
 
 #define GET_HW_TIMER(n) ((struct timer_table_entry *) &__begin_timer_table)[(n)]
@@ -124,6 +133,23 @@ static uint64_t conv_ticks(uint32_t ticks) {
 	return ret;
 }
 
+static void timer_crosscpu_stub(struct crosscpu_th *meta) {
+	meta->th(meta->ticks);
+	free(meta);
+}
+
+static int do_th(struct timer_handler_meta *p, uint64_t ticks) {
+	if(p->cpu == multicpu_id())
+		return p->th(ticks);
+	else {
+		struct crosscpu_th *crossmeta = (struct crosscpu_th *) malloc(sizeof(struct crosscpu_th));
+		crossmeta->th = p->th;
+		crossmeta->ticks = ticks;
+		multicpu_call(p->cpu, (crosscpu_func_t) timer_crosscpu_stub, (void *) crossmeta);
+	}
+	return 0;
+}
+
 int timer_ticked(struct timer *tim, uint32_t in_ticks) {
 #ifdef SPAM_THE_LOGS
 	dprintf("timer %s tick: %x\n", tim->name, in_ticks);
@@ -148,7 +174,7 @@ int timer_ticked(struct timer *tim, uint32_t in_ticks) {
 		// Expire one-shot timers, if possible.
 		if((tim->timer_feat & TIMERFEAT_ONESHOT) != 0) {
 			if(((p->feat & TIMERFEAT_ONESHOT) != 0) && (p->ticks == ticks)) {
-				ret += p->th(ticks);
+				ret += do_th(p, ticks);
 				list_remove(timer_list, --index);
 			}
 		}
@@ -162,7 +188,7 @@ int timer_ticked(struct timer *tim, uint32_t in_ticks) {
 					p->ticks -= ticks;
 
 				if(!p->ticks) {
-					ret += p->th(ticks > p->orig_ticks ? ticks : p->orig_ticks);
+					ret += do_th(p, ticks > p->orig_ticks ? ticks : p->orig_ticks);
 					p->ticks = p->orig_ticks; // Reload the timer.
 				}
 			}
@@ -177,7 +203,7 @@ int timer_ticked(struct timer *tim, uint32_t in_ticks) {
 					p->ticks -= ticks;
 
 				if(!p->ticks) {
-					ret += p->th(ticks > p->orig_ticks ? ticks : p->orig_ticks);
+					ret += do_th(p, ticks > p->orig_ticks ? ticks : p->orig_ticks);
 					list_remove(timer_list, --index);
 				}
 			}
@@ -248,6 +274,7 @@ int install_timer(timer_handler th, uint32_t ticks, uint32_t feat) {
 	p->th = th;
 	p->ticks = p->orig_ticks = conv_ticks(ticks);
 	p->feat = feat;
+	p->cpu = multicpu_id();
 
 	// Insert in order - lowest ticks first, highest last. This allows us to always
 	// handle the closest timer to completion first.
