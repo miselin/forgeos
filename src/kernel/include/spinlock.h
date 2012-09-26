@@ -33,6 +33,11 @@ extern void delete_spinlock(void *s);
 extern void *spinlock_getatom(void *s);
 
 /**
+ * Get the interrupt state before the spinlock was acquired.
+ */
+uint8_t spinlock_intstate(void *s);
+
+/**
  * Acquire the lock. Blocks if the lock is already attained.
  * On single-processor systems, if the lock is already attained and interrupts are not
  * enabled, a kernel panic will occur due to a probable deadlock.

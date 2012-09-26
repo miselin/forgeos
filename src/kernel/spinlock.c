@@ -53,6 +53,14 @@ void *spinlock_getatom(void *s) {
 	return (void *) &sl->locked;
 }
 
+uint8_t spinlock_intstate(void *s) {
+	if(!s)
+		return NULL;
+
+	struct spinlock *sl = (struct spinlock *) s;
+	return sl->wasints;
+}
+
 void spinlock_acquire(void *s) {
 	if(!s)
 		return;
