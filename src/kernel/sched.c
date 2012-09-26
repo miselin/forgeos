@@ -110,11 +110,7 @@ static int sched_timer(uint64_t ticks) {
         ticks = get_current_thread()->timeslice;
     get_current_thread()->timeslice -= ticks;
 
-    int do_resched = get_current_thread()->timeslice ? 0 : 1;
-    if(do_resched) {
-        multicpu_doresched();
-    }
-    return do_resched;
+    return get_current_thread()->timeslice ? 0 : 1;
 }
 
 static int zombie_reaper(uint64_t ticks) {
@@ -142,6 +138,14 @@ struct thread *sched_current_thread() {
 void sched_setidle(struct thread *t) {
     idle_thread = t;
     thread_wake(t);
+}
+
+static void install_sched_timer() {
+    // Tick for timeslice completion.
+    if(install_timer(sched_timer, ((THREAD_DEFAULT_TIMESLICE_MS << TIMERRES_SHIFT) | TIMERRES_MILLI), TIMERFEAT_PERIODIC) < 0) {
+        dprintf("scheduler install failed - no useful timer available\n");
+        kprintf("scheduler install failed - system will have its usability greatly reduced\n");
+    }
 }
 
 void sched_cpualive() {
@@ -178,6 +182,8 @@ void sched_cpualive() {
         clone_context(idle_thread->ctx, t->ctx);
 
         list_insert(idle_thread->parent->thread_list, t, 0);
+
+        install_sched_timer();
 
         thread_wake(t);
         switch_threads(0, t);
@@ -443,11 +449,7 @@ void start_scheduler() {
 
     spinlock_acquire(sched_spinlock);
 
-    // Install a timer handler - tick for timeslice completion.
-    if(install_timer(sched_timer, ((THREAD_DEFAULT_TIMESLICE_MS << TIMERRES_SHIFT) | TIMERRES_MILLI), TIMERFEAT_PERIODIC) < 0) {
-        dprintf("scheduler install failed - no useful timer available\n");
-        kprintf("scheduler install failed - system will have its usability greatly reduced\n");
-    }
+    install_sched_timer();
 
     spinlock_release(sched_spinlock);
 }
