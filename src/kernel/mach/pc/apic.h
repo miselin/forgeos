@@ -31,7 +31,7 @@ extern void apic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void 
 /// Perform an Inter-Processor Interrupt
 extern void lapic_ipi(uint8_t dest_proc, uint8_t vector, uint32_t delivery, uint8_t bassert, uint8_t level);
 
-/// Perform an broadcast Inter-Processor Interrupt
+/// Perform a broadcast Inter-Processor Interrupt
 void lapic_bipi(uint8_t vector, uint32_t delivery);
 
 extern uint32_t lapic_ver();

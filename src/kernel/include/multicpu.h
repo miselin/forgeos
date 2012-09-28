@@ -21,6 +21,10 @@
 
 typedef void (*crosscpu_func_t)(void *p);
 
+#define MULTICPU_PERCPU_CURRTHREAD      0
+#define MULTICPU_PERCPU_IDLETHREAD      1
+#define MULTICPU_PERCPU_PRIOLEVEL       2
+
 /**
  * \brief Initialise multi-CPU support in the system.
  *
@@ -99,6 +103,22 @@ extern uint32_t multicpu_idxtoid(uint32_t idx);
  * Get the number of CPUs in the system (logical + physical).
  */
 extern uint32_t multicpu_count();
+
+/**
+ * \brief Gets a pointer into the per-CPU data area at the given index.
+ *
+ * There are a lot of data structures in the kernel that rely on data that can't
+ * be shared across the entire system. For example, in the scheduler, data about
+ * the threads running on the core is not relevant to any other core.
+ *
+ * This API provides a means for modules such as the scheduler to set aside
+ * per-CPU variables without having to use, for example, a tree with the CPU ID
+ * as a key.
+ *
+ * \param n index in the data area to use (< PAGE_SIZE / sizeof unative_t)
+ * \return pointer to the data area indexed
+ */
+extern void *multicpu_percpu_at(size_t n);
 
 #endif
 

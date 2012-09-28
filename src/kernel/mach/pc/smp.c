@@ -28,6 +28,18 @@
 
 #include <apic.h>
 
+#define PERCPU_NUM_ENTRIES          (PAGE_SIZE / sizeof(unative_t))
+
+struct percpu_data {
+    unative_t data[PERCPU_NUM_ENTRIES];
+};
+
+struct percpu_data_handle {
+    unative_t addr;
+    size_t block;
+    size_t bit;
+};
+
 static void *init_slock = 0;
 
 extern void *pc_ap_entry;
@@ -51,6 +63,11 @@ void multicpu_cpuinit() {
 
     // Configure our Local APIC.
     init_lapic();
+
+    // Configure per-CPU data storage.
+    struct percpu_data *percpu = (struct percpu_data *) malloc(sizeof(struct percpu_data));
+    memset(percpu, 0, sizeof(struct percpu_data));
+    __asm__ volatile("mov %0, %%dr3" :: "r" ((unative_t) percpu));
 
     // Switch to the correct GDT (now that paging is on and such).
     vmem_multicpu_init();
@@ -95,6 +112,11 @@ int multicpu_init() {
     *((uint16_t *) (WARM_RESET_VECTOR + 2)) = 0;
     vmem_unmap((vaddr_t) 0);
 
+    // Setup per-CPU data for the BSP.
+    struct percpu_data *percpu = (struct percpu_data *) malloc(sizeof(struct percpu_data));
+    memset(percpu, 0, sizeof(struct percpu_data));
+    __asm__ volatile("mov %0, %%dr3" :: "r" ((unative_t) percpu));
+
     return 0;
 }
 
@@ -138,4 +160,22 @@ int start_processor(uint8_t id) {
     spinlock_release(init_slock);
 
     return 0;
+}
+
+void *multicpu_percpu_at(size_t n) {
+    unative_t dr3 = 0;
+    __asm__ volatile("mov %%dr3, %0" : "=r" (dr3));
+
+    // Not set up yet?
+    if(!dr3) {
+        return 0;
+    }
+
+    if(n >= PERCPU_NUM_ENTRIES) {
+        dprintf("percpu_alloc: index out of range\n");
+        return 0;
+    }
+
+    struct percpu_data *data = (struct percpu_data *) dr3;
+    return (void *) &data->data[n];
 }
