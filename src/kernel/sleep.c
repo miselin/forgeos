@@ -69,7 +69,7 @@ void sleep_ms(uint32_t ms) {
     struct thread *c = sched_current_thread();
     struct sleepinfo *s = (struct sleepinfo *) malloc(sizeof(struct sleepinfo));
     s->t = c;
-    s->tc = ms * 1000000;
+    s->tc = ms * MS_TO_TICKS;
 
     list_insert(tlist, s, 0);
 
