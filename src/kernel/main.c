@@ -40,25 +40,28 @@ extern void _start();
 KBOOT_IMAGE(0);
 
 void idle(void *p __unused) {
-    dprintf("idle thread has started on cpu %d...\n", multicpu_id());
     while(1) {
-        sched_yield();
-
         // Always confirm interrupts are enabled before halting.
+        // The halt should put the CPU into a low power state until an IRQ or
+        // something comes through.
         if(!interrupts_get())
             interrupts_enable();
         __halt;
+
+        // sched_yield won't reschedule unless there is a thread to switch to.
+        sched_yield();
     }
 }
 
 void banner(void *p __unused) {
     char idlebuf[81];
+    size_t n = 0;
     while(1) {
         interrupts_disable();
         sprintf(idlebuf, "%-79s", "");
         puts_at(idlebuf, 0, 24);
 
-        sprintf(idlebuf, "FORGE Operating System: %d cpus, mem %d/%d KiB used, heap ends at %x", multicpu_count(), (uintptr_t) (pmem_size() - pmem_freek()), (uintptr_t) pmem_size(), dlmalloc_sbrk(0));
+        sprintf(idlebuf, "FORGE: %d cpus [curr %d], mem %d/%d KiB used, heap ends at %x // %d", multicpu_count(), multicpu_id(), (uintptr_t) (pmem_size() - pmem_freek()), (uintptr_t) pmem_size(), dlmalloc_sbrk(0), n++);
         puts_at(idlebuf, 0, 24);
         interrupts_enable();
 
@@ -73,9 +76,11 @@ void init2(void *p __unused) {
     kprintf("Initialising power management...\n");
     powerman_init();
 
-    kprintf("Starting additional processors...\n");
-    for(size_t i = 0; i < multicpu_count(); i++) {
-        multicpu_start(i);
+    if(multicpu_count() > 1) {
+        kprintf("Starting %d additional processors...\n", multicpu_count() - 1);
+        for(size_t i = 0; i < multicpu_count(); i++) {
+            multicpu_start(i);
+        }
     }
 
     dprintf("FORGE initialisation complete.\n");
@@ -170,7 +175,7 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
     sched_setidle(idle_thread);
     thread_wake(banner_thread);
-    switch_threads(0, init_thread);
+    switch_threads(0, init_thread, 0);
 
     while(1)
         __halt;

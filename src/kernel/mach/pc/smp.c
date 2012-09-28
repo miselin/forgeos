@@ -77,10 +77,9 @@ void multicpu_cpuinit() {
 
     // Initialisation complete - release the lock to let the system continue.
     dprintf("AP %d has started\n", multicpu_id());
-    spinlock_release(init_slock);
 
     // Set up this CPU for scheduling (will not return).
-    sched_cpualive();
+    sched_cpualive(init_slock);
 }
 
 int multicpu_init() {

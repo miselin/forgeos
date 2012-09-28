@@ -67,6 +67,13 @@ struct thread {
     /// Actual, current, priority of the thread.
     uint32_t priority;
 
+    /// Number of times during the last timeslice that this thread was switched
+    /// to without switching to another thread.
+    uint32_t noswitchcount;
+
+    /// Is this the idle thread?
+    uint8_t isidle;
+
     struct process *parent;
 };
 
@@ -96,7 +103,7 @@ extern struct thread *create_thread(struct process *parent, uint32_t prio, threa
 extern void switch_context(context_t *oldctx, context_t *newctx, void *lock, unative_t wasints);
 
 /** Performs a context switch between two threads. */
-extern void switch_threads(struct thread *old, struct thread *new);
+extern void switch_threads(struct thread *old, struct thread *new, void *lock);
 
 /** Creates a new context (archictecture-specific). */
 extern void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_t stacksz, void *param);
@@ -141,7 +148,7 @@ extern void sched_yield();
 extern void sched_setidle(struct thread *t);
 
 /** Notifies the scheduler of a new CPU being active. */
-extern void sched_cpualive();
+extern void sched_cpualive(void *lock);
 
 /** Function to be called when a thread returns from its entry point. */
 extern void thread_return() __attribute__((naked));
