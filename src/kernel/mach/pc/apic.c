@@ -62,6 +62,7 @@ static void *interrupt_override = 0;
 #define IOAPIC_INT_BASE         0x30
 #define LAPIC_SPURIOUS          0xFF
 #define LAPIC_CROSSCPU          0x20
+#define LAPIC_ETC               0x21
 
 #define OVERRIDE_POLARITY_CONFORMS      0
 #define OVERRIDE_POLARITY_ACTIVEHIGH    1
@@ -230,6 +231,14 @@ void init_lapic() {
     svr |= (1 << 8); // Enable APIC.
     svr |= LAPIC_SPURIOUS;
     write_lapic_reg(lapic->mmioaddr, 0xF0, svr);
+
+    // Mask other interrupts.
+    write_lapic_reg(lapic->mmioaddr, 0x320, (1 << 16) | LAPIC_ETC); // Timer
+    write_lapic_reg(lapic->mmioaddr, 0x350, (1 << 17) | LAPIC_ETC); // LINT0
+    write_lapic_reg(lapic->mmioaddr, 0x360, (1 << 17) | LAPIC_ETC); // LINT1
+    write_lapic_reg(lapic->mmioaddr, 0x370, (1 << 17) | LAPIC_ETC); // Error
+    write_lapic_reg(lapic->mmioaddr, 0x340, (1 << 17) | LAPIC_ETC); // Perf. Counters
+    write_lapic_reg(lapic->mmioaddr, 0x330, (1 << 17) | LAPIC_ETC); // Thermal Sensor
 
     // Task priority = 0.
     uint32_t taskprio = read_lapic_reg(lapic->mmioaddr, 0x80);
