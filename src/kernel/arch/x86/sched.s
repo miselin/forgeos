@@ -42,7 +42,7 @@ switch_context:
 
 	# Safe flags (with IF=1 if interrupts were enabled before lock was acquired)
 	movl -4(%esp), %edi
-	shl $10, %edx
+	shl $9, %edx
 	or %edx, %edi
 	mov %edi, 24(%eax)
 
@@ -62,10 +62,6 @@ switch_context:
 	mov 16(%eax), %esp
 	addl $4, %esp
 
-	# EFLAGS.
-	push 24(%eax)
-	popf
-
 	cmpl $0, %ecx
 	je .nolock
 
@@ -73,6 +69,11 @@ switch_context:
 	lock decl (%ecx)
 
 .nolock:
+
+	# EFLAGS.
+	mov 24(%eax), %ecx
+	push %ecx
+	popfl
 
 	mov 20(%eax), %ecx
 	jmp *%ecx
