@@ -493,7 +493,7 @@ void apic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void *p) {
     leveltrig &= 0x1;
     uint32_t data_low = read_ioapic_reg(meta->mmioaddr, IOAPIC_REG_REDIRBASE + (override * 2));
     data_low &= ~(3 << 15);
-    if(!oride) {
+    if(oride == TREE_NOTFOUND) {
         data_low |= leveltrig << 15;
     } else {
         data_low &= ~(1 << 13);
@@ -501,8 +501,6 @@ void apic_interrupt_reg(int n, int leveltrig, inthandler_t handler, void *p) {
         data_low |= oride->trigger << 15;
     }
     write_ioapic_reg(meta->mmioaddr, IOAPIC_REG_REDIRBASE + (override * 2), data_low);
-
-    return;
 }
 
 int multicpu_start(uint32_t cpu) {

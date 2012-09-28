@@ -24,12 +24,16 @@ static int apic_enable = 0;
 
 void init_intc() {
     dprintf("pc: initialising interrupt controller(s)\n");
+
+    // Configure and mask the PIC(s)
+    init_pic();
+
+    // Attempt to initialise the APIC
     if(init_apic() == 0) {
         dprintf("pc: using I/O APIC\n");
         apic_enable = 1;
     } else {
         dprintf("pc: falling back to 8259 PIC\n");
-        init_pic();
     }
 }
 
