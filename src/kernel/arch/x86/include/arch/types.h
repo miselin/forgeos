@@ -91,4 +91,10 @@ typedef __forge_uint64_t      __forge_uintmax_t;
 #define PRIuMAX     "ju"
 #define PRIxMAX     "jx"
 
+/*
+ * X86 Atomics
+ */
+#define atomic_inc(m) __asm__ volatile("lock incl %0" : "+m" ((m)))
+#define atomic_dec(m) __asm__ volatile("lock decl %0" : "+m" ((m)))
+
 #endif /* __ARCH_TYPES_H__ */

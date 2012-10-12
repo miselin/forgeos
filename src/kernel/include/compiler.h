@@ -32,9 +32,12 @@
 
 #ifdef ARM
 #define atomic_bool_compare_and_swap __arm_bool_compare_and_swap
+#define atomic_val_compare_and_swap __arm_val_compare_and_swap
 extern int __arm_bool_compare_and_swap(void **d, void *o, void *n);
+extern void * __arm_val_compare_and_swap(void **d, void *o, void *n);
 #else
 #define atomic_bool_compare_and_swap __sync_bool_compare_and_swap
+#define atomic_val_compare_and_swap __sync_val_compare_and_swap
 #endif
 
 #define atomic_compare_and_swap(old_val, new_val, out_val, cmp_val, stmt) while(!atomic_bool_compare_and_swap((old_val), (cmp_val), (new_val))) { stmt; }
