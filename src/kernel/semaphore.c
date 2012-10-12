@@ -56,8 +56,8 @@ void delete_semaphore(void *sem) {
     spinlock_acquire(s->spinlock);
 
     int was_empty = queue_empty(s->tqueue);
-    while(!queue_empty(s->tqueue)) {
-        struct thread *t = queue_pop(s->tqueue);
+    struct thread *t = 0;
+    while((t = (struct thread *) queue_pop(s->tqueue)) != NULL) {
         thread_wake(t);
     }
 
@@ -166,8 +166,8 @@ void semaphore_release(void *sem, size_t count) {
 
     // Wake up threads, they will each check to see if they can now complete
     // their acquire.
-    while(!queue_empty(s->tqueue)) {
-        struct thread *t = queue_pop(s->tqueue);
+    struct thread *t = 0;
+    while((t = (struct thread *) queue_pop(s->tqueue)) != NULL) {
         thread_wake(t);
     }
 
