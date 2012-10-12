@@ -16,23 +16,36 @@
 
 #include <compiler.h>
 #include <malloc.h>
+#include <sched.h>
 #include <util.h>
 #include <io.h>
 
+#define QUEUE_MAGIC		0xDEADBEEF
+
 struct node {
 	void *p;
-	struct node *next, *prev;
+	struct node *next;
 };
 
 struct queue {
 	struct node *head;
 	struct node *tail;
+	struct node *base;
+	size_t len __aligned(4);
 };
 
 void *create_queue() {
 	void *ret = malloc(sizeof(struct queue));
 	struct queue *q = (struct queue *) ret;
-	q->head = q->tail = 0;
+
+	struct node *base = (struct node *) malloc(sizeof(struct node));
+	base->p = (void *) QUEUE_MAGIC;
+	base->next = NULL;
+
+	q->base = base;
+	q->head = q->tail = base;
+
+	q->len = 0;
 	return ret;
 }
 
@@ -46,7 +59,15 @@ void delete_queue(void *queue) {
 		tmp = n;
 		n = n->next;
 		free(tmp);
+
+		if(tmp == q->base)
+			q->base = NULL;
 	}
+
+	if(q->base != NULL)
+		free(q->base);
+
+	free(q);
 }
 
 void queue_push(void *queue, void *data) {
@@ -56,15 +77,25 @@ void queue_push(void *queue, void *data) {
 	struct queue *q = (struct queue *) queue;
 	struct node *n = (struct node *) malloc(sizeof(struct node));
 	n->p = data;
-	n->prev = 0;
+	n->next = 0;
 
-	n->next = q->head;
-	if(q->head)
-		q->head->prev = n;
-	q->head = n;
+	struct node *tail, *next;
+	while(1) {
+		tail = q->tail;
+		next = tail->next;
+		if(tail == q->tail) {
+			if(next == NULL) {
+				if(atomic_bool_compare_and_swap(&tail->next, next, n)) {
+					break;
+				}
+			} else {
+				(void) atomic_val_compare_and_swap(&q->tail, tail, next);
+			}
+		}
+	}
 
-	if(q->tail == 0)
-		q->tail = q->head;
+	(void) atomic_val_compare_and_swap(&q->tail, tail, n);
+	atomic_inc(q->len);
 }
 
 void *queue_pop(void *queue) {
@@ -72,22 +103,33 @@ void *queue_pop(void *queue) {
 		return 0;
 
 	struct queue *q = (struct queue *) queue;
-	struct node *n;
 
-	if(!q->tail)
-		return 0;
+	void *ret = 0;
+	struct node *head, *tail, *next;
+	while(1) {
+		head = q->head;
+		tail = q->tail;
+		next = head->next;
 
-	n = q->tail;
-	q->tail = n->prev;
-	if(q->tail)
-		q->tail->next = 0;
-	if(n == q->head) { // Popped the front of the queue.
-		q->head = q->tail = 0;
+		if(head == q->head) {
+			if(head == tail) {
+				if(next == NULL) {
+					return 0;
+				} else {
+					(void) atomic_val_compare_and_swap(&q->tail, tail, next);
+				}
+			} else {
+				ret = next->p;
+				if(atomic_bool_compare_and_swap(&q->head, head, next)) {
+					break;
+				}
+			}
+		}
 	}
 
-	void *ret = n->p;
-	free(n);
+	free(head);
 
+	atomic_dec(q->len);
 	return ret;
 }
 
@@ -96,9 +138,9 @@ int queue_empty(void *queue) {
 		return 0;
 
 	struct queue *q = (struct queue *) queue;
-    if(q->tail)
-        return 0;
-    else
-        return 1;
+	if((q->head == q->tail) && (q->head->next == NULL)) {
+		return 1;
+	} else {
+		return 0;
+	}
 }
-
