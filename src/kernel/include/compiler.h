@@ -20,7 +20,7 @@
 #define __packed          __attribute__((packed))
 #define __aligned(n)      __attribute__((aligned(n)))
 
-#define __barrier         __asm__ volatile("" ::: "memory")
+#define __barrier         __sync_synchronize()
 
 #define __section(s)      __attribute__((section(s)))
 
