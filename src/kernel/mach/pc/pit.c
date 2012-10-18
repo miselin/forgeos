@@ -54,6 +54,7 @@ int init_pit() {
 static struct timer t = {
 	((10 << TIMERRES_SHIFT) | TIMERRES_MILLI),
 	TIMERFEAT_PERIODIC,
+	0,
 	"Programmable Interval Timer",
 	init_pit,
 	0,
