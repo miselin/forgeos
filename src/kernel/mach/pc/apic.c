@@ -205,16 +205,15 @@ static int lapic_localint(struct intr_stack *s, void *p __unused) {
     if(s->intnum == LAPIC_SPURIOUS) {
         dprintf("Local APIC: spurious interrupt\n");
     } else {
-        // Request to reschedule.
         if(s->intnum == LAPIC_CROSSCPU) {
             if(crosscpu_func) {
-                crosscpu_func(crosscpu_param);
+                ret = crosscpu_func(crosscpu_param);
                 crosscpu_func = 0;
 
                 spinlock_release(crosscpu_lock);
             }
         } else if(s->intnum == LAPIC_TIMER) {
-            struct timer *tim = (struct timer *) multicpu_percpu_at(MULTICPU_PERCPU_CPUTIMER);
+            struct timer *tim = *((struct timer **) multicpu_percpu_at(MULTICPU_PERCPU_CPUTIMER));
             if(tim) {
                 timer_ticked(tim, ((LAPIC_TIMER_MS << TIMERRES_SHIFT) | TIMERRES_MILLI));
             }
@@ -302,11 +301,17 @@ void init_lapic() {
 
     // Register as a timer.
     struct timer *tmr = (struct timer *) malloc(sizeof(struct timer));
-    tmr->name = (const char *) malloc(strlen("Local APIC Timer for CPUnnnnnn"));
+
+    size_t namelen = strlen("Local APIC Timer for CPU") + 16;
+    char *timer_name = (char *) malloc(namelen);
+    memset(timer_name, 0, namelen);
+
     tmr->timer_init = lapic_timer_init;
-    tmr->timer_res = (1 << TIMERRES_SHIFT) | TIMERRES_MILLI;
+    tmr->timer_res = (LAPIC_TIMER_MS << TIMERRES_SHIFT) | TIMERRES_MILLI;
     tmr->timer_feat = TIMERFEAT_PERIODIC | TIMERFEAT_PERCPU;
-    sprintf(tmr->name, "Local APIC Timer for CPU%d", multicpu_id());
+    sprintf(timer_name, "Local APIC Timer for CPU%d", multicpu_id());
+
+    tmr->name = (const char *) timer_name;
 
     *((struct timer **) multicpu_percpu_at(MULTICPU_PERCPU_CPUTIMER)) = tmr;
     timer_register(tmr);
@@ -608,7 +613,8 @@ int multicpu_halt(uint32_t cpu __unused) {
 }
 
 uint32_t multicpu_id() {
-    if(!proc_list) {
+    // Not started yet (or not available?) - BSP.
+    if((!lapic) || (!proc_list)) {
         return 0;
     }
 
@@ -629,7 +635,7 @@ extern uint32_t multicpu_idxtoid(uint32_t idx) {
     if(!proc_list) {
         return 0;
     }
-    
+
     struct processor *proc_meta = list_at(proc_list, idx);
     if(proc_meta) {
         return proc_meta->id;
@@ -642,7 +648,7 @@ uint32_t multicpu_count() {
     if(!proc_list) {
         return 1;
     }
-    
+
     return list_len(proc_list);
 }
 
@@ -665,7 +671,4 @@ void multicpu_call(uint32_t cpu, crosscpu_func_t func, void *param) {
     crosscpu_param = param;
 
     lapic_ipi(cpu, LAPIC_CROSSCPU, 0, 1, 0);
-
-    spinlock_acquire(crosscpu_lock);
-    spinlock_release(crosscpu_lock);
 }
