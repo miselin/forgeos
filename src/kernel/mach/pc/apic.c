@@ -24,6 +24,7 @@
 #include <sched.h>
 #include <multicpu.h>
 #include <spinlock.h>
+#include <timer.h>
 #include <io.h>
 
 #include <acpi.h>
@@ -41,6 +42,8 @@ static void *ioapic_list = 0;
 static void *proc_list = 0;
 
 static struct lapic *lapic = 0;
+
+static uint32_t system_bus_freq = 0;
 
 static void *interrupt_override = 0;
 
@@ -61,8 +64,12 @@ static void *interrupt_override = 0;
 
 #define IOAPIC_INT_BASE         0x30
 #define LAPIC_SPURIOUS          0xFF
-#define LAPIC_CROSSCPU          0x20
-#define LAPIC_ETC               0x21
+#define LAPIC_TIMER             0x20
+#define LAPIC_CROSSCPU          0x21
+#define LAPIC_ETC               0x22
+
+/// Number of milliseconds between ticks of the LAPIC timer.
+#define LAPIC_TIMER_MS          1
 
 #define OVERRIDE_POLARITY_CONFORMS      0
 #define OVERRIDE_POLARITY_ACTIVEHIGH    1
@@ -206,6 +213,11 @@ static int lapic_localint(struct intr_stack *s, void *p __unused) {
 
                 spinlock_release(crosscpu_lock);
             }
+        } else if(s->intnum == LAPIC_TIMER) {
+            struct timer *tim = (struct timer *) multicpu_percpu_at(MULTICPU_PERCPU_CPUTIMER);
+            if(tim) {
+                timer_ticked(tim, ((LAPIC_TIMER_MS << TIMERRES_SHIFT) | TIMERRES_MILLI));
+            }
         }
 
         // ACK the interrupt.
@@ -224,6 +236,10 @@ uint32_t lapic_ver() {
     }
 }
 
+static int lapic_timer_init() {
+    return 0;
+}
+
 void init_lapic() {
     // Set the spurious interrupt vector, and enable the APIC.
     uint32_t svr = read_lapic_reg(lapic->mmioaddr, 0xF0);
@@ -233,7 +249,7 @@ void init_lapic() {
     write_lapic_reg(lapic->mmioaddr, 0xF0, svr);
 
     // Mask other interrupts.
-    write_lapic_reg(lapic->mmioaddr, 0x320, (1 << 16) | LAPIC_ETC); // Timer
+    write_lapic_reg(lapic->mmioaddr, 0x320, LAPIC_TIMER); // Timer
     write_lapic_reg(lapic->mmioaddr, 0x350, (1 << 17) | LAPIC_ETC); // LINT0
     write_lapic_reg(lapic->mmioaddr, 0x360, (1 << 17) | LAPIC_ETC); // LINT1
     write_lapic_reg(lapic->mmioaddr, 0x370, (1 << 17) | LAPIC_ETC); // Error
@@ -244,6 +260,56 @@ void init_lapic() {
     uint32_t taskprio = read_lapic_reg(lapic->mmioaddr, 0x80);
     taskprio &= ~0xFF;
     write_lapic_reg(lapic->mmioaddr, 0x80, taskprio);
+
+    // Configure the LAPIC Timer.
+    write_lapic_reg(lapic->mmioaddr, 0x3E0, 0x3); // Divide clock by 16.
+
+    // We need to estimate the bus frequency of the system, as the LAPIC timer
+    // is clocked to this (and we can't configure counts without knowing the
+    // frequency). This is done using the PIT, which works fine for our use.
+    if(!system_bus_freq) {
+        outb(0x61, (inb(0x61) & 0xFD) | 1);
+        outb(0x43, 0xb2);
+
+        // 1/100th of a second.
+        outb(0x42, 0x9B);
+        inb(0x60);
+        outb(0x42, 0x2E);
+
+        uint8_t c = inb(0x61) & 0xFE;
+        outb(0x61, c);
+        outb(0x61, c | 1);
+
+        // Set the APIC counter to -1, to reset it.
+        write_lapic_reg(lapic->mmioaddr, 0x380, 0xFFFFFFFFUL);
+
+        // Wait for the PIT counter to hit zero.
+        while(!(inb(0x61) & 0x20));
+
+        // Disable the LAPIC timer so our counts are usable.
+        write_lapic_reg(lapic->mmioaddr, 0x320, (1 << 16) | LAPIC_TIMER);
+
+        // Okay, this is the fun part. We now calculate the bus frequency.
+        system_bus_freq = ((0xFFFFFFFFUL - read_lapic_reg(lapic->mmioaddr, 0x390)) + 1) * 16 * 100;
+        dprintf("bus frequency is %d Hz\n", system_bus_freq);
+    }
+
+    // Configure the timer now.
+    uint32_t ticks = system_bus_freq / (1000 / LAPIC_TIMER_MS) / 16;
+    write_lapic_reg(lapic->mmioaddr, 0x380, ticks < 16 ? 16 : ticks);
+    write_lapic_reg(lapic->mmioaddr, 0x320, (1 << 17) | LAPIC_TIMER); // Periodic.
+    write_lapic_reg(lapic->mmioaddr, 0x3E0, 0x3); // Divide clock by 16.
+
+    // Register as a timer.
+    struct timer *tmr = (struct timer *) malloc(sizeof(struct timer));
+    tmr->name = (const char *) malloc(strlen("Local APIC Timer for CPUnnnnnn"));
+    tmr->timer_init = lapic_timer_init;
+    tmr->timer_res = (1 << TIMERRES_SHIFT) | TIMERRES_MILLI;
+    tmr->timer_feat = TIMERFEAT_PERIODIC | TIMERFEAT_PERCPU;
+    sprintf(tmr->name, "Local APIC Timer for CPU%d", multicpu_id());
+
+    *((struct timer **) multicpu_percpu_at(MULTICPU_PERCPU_CPUTIMER)) = tmr;
+    timer_register(tmr);
 }
 
 int init_apic() {
@@ -267,7 +333,6 @@ int init_apic() {
 
     // Housekeeping for the various data we're about to pull.
     ioapic_list = create_list();
-    proc_list = create_list();
     interrupt_override = create_tree();
 
     // Enable the LAPIC, if by chance one exists we'll want to use it.
@@ -293,7 +358,11 @@ int init_apic() {
     // same IDT on all CPUs (I/O APIC decides which IRQs go where - usually the
     // BSP takes the full IRQ load).
     interrupts_trap_reg(LAPIC_SPURIOUS, lapic_localint);
+    interrupts_trap_reg(LAPIC_TIMER, lapic_localint);
     interrupts_trap_reg(LAPIC_CROSSCPU, lapic_localint);
+
+    // Prepare to create the processor list when we enumerate processors soon.
+    proc_list = create_list();
 
     // Parse all structures in the table.
     uintptr_t base = ((uintptr_t) madt) + sizeof(*madt);
@@ -539,6 +608,10 @@ int multicpu_halt(uint32_t cpu __unused) {
 }
 
 uint32_t multicpu_id() {
+    if(!proc_list) {
+        return 0;
+    }
+
     size_t apicid = read_lapic_reg(lapic->mmioaddr, 0x20) >> 24;
 
     size_t n = 0;
@@ -553,6 +626,10 @@ uint32_t multicpu_id() {
 }
 
 extern uint32_t multicpu_idxtoid(uint32_t idx) {
+    if(!proc_list) {
+        return 0;
+    }
+    
     struct processor *proc_meta = list_at(proc_list, idx);
     if(proc_meta) {
         return proc_meta->id;
@@ -562,6 +639,10 @@ extern uint32_t multicpu_idxtoid(uint32_t idx) {
 }
 
 uint32_t multicpu_count() {
+    if(!proc_list) {
+        return 1;
+    }
+    
     return list_len(proc_list);
 }
 
