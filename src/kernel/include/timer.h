@@ -50,11 +50,13 @@ struct timer_table_entry {
 #define TIMERFEAT_PERIODIC		0x2
 #define TIMERFEAT_UNIXTS		0x4 // can give a UNIX timestamp, shiny!
 #define TIMERFEAT_COUNTS		0x8 // counts ticks
+#define TIMERFEAT_PERCPU		0x10
 
 // Defines a timer.
 struct timer {
 	uint32_t timer_res;
 	uint32_t timer_feat;
+	uint32_t cpu; /// Set by the API automatically.
 
 	const char *name;
 
@@ -93,6 +95,17 @@ extern int timer_ticked(struct timer *tim, uint32_t ticks);
 
 /// Initialises the timer framework and initialises timer hardware.
 extern void timers_init();
+
+/**
+ * \brief Register a new timer with the system, without using EXPORT_TIMER.
+ *
+ * This is particularly useful for dynamic timers that aren't necessarily always
+ * available to the system at compile time, and/or have semantics that have to
+ * be configured manually. For example, timers that only work on a per-CPU basis
+ * may not be usable at compile-time (and there may be an unknown count of them)
+ * but can be installed with this function.
+ */
+extern void timer_register(struct timer *tim);
 
 /**
  * \brief Installs a new timer with the given semantics.

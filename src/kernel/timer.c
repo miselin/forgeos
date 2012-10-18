@@ -29,6 +29,8 @@ extern int __begin_timer_table, __end_timer_table;
 
 static void * volatile timer_list = 0;
 
+static void * hwtimer_list = 0;
+
 struct timer_handler_meta {
 	struct timer *tim;
 	timer_handler th;
@@ -44,72 +46,43 @@ struct crosscpu_th {
 	uint64_t ticks;
 };
 
-#define GET_HW_TIMER(n) ((struct timer_table_entry *) &__begin_timer_table)[(n)]
-#define GET_TIMER_RES(n) (GET_HW_TIMER(n).tmr->timer_res & TIMERRES_MASK)
-#define HW_TIMER_COUNT	((((uintptr_t) &__end_timer_table) - ((uintptr_t) &__begin_timer_table)) / sizeof(struct timer_table_entry))
+#define HW_TIMER_COUNT		(list_len(hwtimer_list))
+#define GET_HW_TIMER(n)		((struct timer *) list_at(hwtimer_list, (n)))
+#define GET_TIMER_RES(n)	(GET_HW_TIMER(n)->timer_res & TIMERRES_MASK)
 
-static void _tmr_swap(size_t a, size_t b) {
-	struct timer_table_entry tmp = GET_HW_TIMER(a);
-	GET_HW_TIMER(a) = GET_HW_TIMER(b);
-	GET_HW_TIMER(b) = tmp;
-}
-
-static void _tmr_siftdown(size_t start, size_t end) {
-	size_t root = start, child, swap;
-	while(((root << 1) + 1) <= end) {
-		child = (root << 1) + 1;
-		swap = root;
-		if(GET_TIMER_RES(swap) < GET_TIMER_RES(child))
-			swap = child;
-		if(((child + 1) <= end) && (GET_TIMER_RES(swap) < GET_TIMER_RES(child + 1)))
-			swap = child + 1;
-		if(swap != root) {
-			_tmr_swap(root, swap);
-			root = child;
-		} else {
-			return;
-		}
-	}
-}
-
-static void _tmr_heapify() {
-	size_t start = (HW_TIMER_COUNT >> 1) - 1;
-	while(start < HW_TIMER_COUNT)
-		_tmr_siftdown(start--, HW_TIMER_COUNT - 1);
-
-}
+#define GET_STATIC_TIMER(n) ((struct timer_table_entry *) &__begin_timer_table)[(n)]
+#define STATIC_TIMER_COUNT	((((uintptr_t) &__end_timer_table) - ((uintptr_t) &__begin_timer_table)) / sizeof(struct timer_table_entry))
 
 void timers_init() {
-	// Sort the timer list so the higher resolution timers are always first.
-	// Heapsort because it can be done in-place.
-	kprintf("sorting available timer list... ");
-	if(HW_TIMER_COUNT) {
-		_tmr_heapify();
-		size_t end = HW_TIMER_COUNT - 1;
-		while(end) {
-			_tmr_swap(end--, 0);
-			_tmr_siftdown(0, end);
-		}
-		kprintf("OK\n");
-	} else {
-		kprintf("none present!\n");
-	}
-
 	// Initialise all timers now.
 	size_t i;
-	for(i = 0; i < HW_TIMER_COUNT; i++) {
-		struct timer_table_entry ent = GET_HW_TIMER(i);
-		if(ent.tmr && (ent.tmr->timer_init != 0)) {
-			kprintf("init timer %s: ", ent.tmr->name);
-			int rc = ent.tmr->timer_init();
-			if(!rc) {
-				kprintf("OK\n");
-			} else {
-				kprintf("FAIL\n");
+	dprintf("timers_init: %d static timers\n", STATIC_TIMER_COUNT);
+	for(i = 0; i < STATIC_TIMER_COUNT; i++) {
+		struct timer_table_entry ent = GET_STATIC_TIMER(i);
+		dprintf("registering %s!?\n", ent.tmr->name);
+		timer_register(ent.tmr);
+	}
+}
 
-				// Failed - timer can't offer anything.
-				ent.tmr->timer_feat = 0;
-			}
+void timer_register(struct timer *tim) {
+	if(!hwtimer_list) {
+		hwtimer_list = create_list();
+	}
+
+	if(tim && (tim->timer_init != 0)) {
+		kprintf("init timer %s: ", tim->name);
+		int rc = tim->timer_init();
+		if(!rc) {
+			kprintf("OK\n");
+
+			tim->cpu = multicpu_id();
+
+			list_insert(hwtimer_list, tim, 0);
+		} else {
+			kprintf("FAIL\n");
+
+			// Failed - timer can't offer anything.
+			tim->timer_feat = 0;
 		}
 	}
 }
@@ -228,19 +201,31 @@ int install_timer(timer_handler th, uint32_t ticks, uint32_t feat) {
 	// Find a timer that is most effective for these features.
 	// Also, try and match the resolution if at all possible.
 	for(size_t i = 0; i < HW_TIMER_COUNT; i++) {
-		struct timer_table_entry ent = GET_HW_TIMER(i);
+		struct timer *ent = GET_HW_TIMER(i);
+
+		// Ignore per-CPU timers that aren't for this CPU.
+		if((ent->timer_feat & TIMERFEAT_PERCPU) && (ent->cpu != multicpu_id())) {
+			continue;
+		}
+
+		// If this is a per-CPU timer and that is not being requested, skip this
+		// timer. This ensures that global timers are used with preference to
+		// local timers.
+		if((ent->timer_feat & TIMERFEAT_PERCPU) && (!(feat & TIMERFEAT_PERCPU))) {
+			continue;
+		}
 
 		// Match features.
-		if((ent.tmr->timer_feat & feat) != 0) {
+		if((ent->timer_feat & feat) != 0) {
 			// Ensure that the timer has a higher resolution than we require here.
 			// A lower-resolution timer may be acceptable as a last resort, but we
 			// want the best possible option!
-			if((ent.tmr->timer_res & TIMERRES_MASK) <= (ticks & TIMERRES_MASK)) {
-				dprintf("timer %s is acceptable for this timer handler\n", ent.tmr->name);
-				p->tim = ent.tmr;
+			if((ent->timer_res & TIMERRES_MASK) <= (ticks & TIMERRES_MASK)) {
+				dprintf("timer %s is acceptable for this timer handler\n", ent->name);
+				p->tim = ent;
 				break;
 			} else {
-				dprintf("timer %s matches requested features, but does not have an acceptable resolution.\n", ent.tmr->name);
+				dprintf("timer %s matches requested features, but does not have an acceptable resolution.\n", ent->name);
 			}
 		}
 	}
@@ -250,17 +235,20 @@ int install_timer(timer_handler th, uint32_t ticks, uint32_t feat) {
 	// b) Convert the resolution.
 	if(p->tim == 0) {
 		for(size_t i = 0; (i < HW_TIMER_COUNT) && (p->tim == 0); i++) {
-			struct timer_table_entry ent = GET_HW_TIMER(i);
+			struct timer *ent = GET_HW_TIMER(i);
 
-			dprintf("timer %s with feat %x\n", ent.tmr->name, ent.tmr->timer_feat);
+			// Ignore per-CPU timers that aren't for this CPU.
+			if((ent->timer_feat & TIMERFEAT_PERCPU) && (ent->cpu != multicpu_id())) {
+				continue;
+			}
 
 			// Feature match?
-			if((ent.tmr->timer_feat & feat) != 0) {
-				dprintf("accepting timer %s because it's features match, but the resolution may cause unexpected behaviour.\n", ent.tmr->name);
-				p->tim = ent.tmr;
-			} else if(((feat & TIMERFEAT_ONESHOT) != 0) && ((ent.tmr->timer_feat & TIMERFEAT_PERIODIC) != 0)) {
-				dprintf("accepting timer %s as it can be used for one-shot emulation.\n", ent.tmr->name);
-				p->tim = ent.tmr; // One-shot emulation.
+			if((ent->timer_feat & feat) != 0) {
+				dprintf("accepting timer %s because its features match, but the resolution may cause unexpected behaviour.\n", ent->name);
+				p->tim = ent;
+			} else if(((feat & TIMERFEAT_ONESHOT) != 0) && ((ent->timer_feat & TIMERFEAT_PERIODIC) != 0)) {
+				dprintf("accepting timer %s as it can be used for one-shot emulation.\n", ent->name);
+				p->tim = ent; // One-shot emulation.
 			}
 		}
 	}
