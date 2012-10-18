@@ -142,11 +142,11 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 	kprintf("Configuring software and hardware interrupts...\n");
 	interrupts_init();
 
-	kprintf("Initialising machine devices...\n");
-	init_devices();
-
     kprintf("Initialising multi-CPU layer...\n");
     multicpu_init();
+
+	kprintf("Initialising machine devices...\n");
+	init_devices();
 
 	kprintf("Initialising timers...\n");
 	timers_init();
