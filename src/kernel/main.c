@@ -70,18 +70,18 @@ void banner(void *p __unused) {
 }
 
 void init2(void *p __unused) {
-    dprintf("Starting the scheduler...\n");
-    start_scheduler();
-
-    kprintf("Initialising power management...\n");
-    powerman_init();
-
     if(multicpu_count() > 1) {
         kprintf("Starting %d additional processors...\n", multicpu_count() - 1);
         for(size_t i = 0; i < multicpu_count(); i++) {
             multicpu_start(i);
         }
     }
+
+    dprintf("Starting the scheduler...\n");
+    start_scheduler();
+
+    kprintf("Initialising power management...\n");
+    powerman_init();
 
     dprintf("FORGE initialisation complete.\n");
     kprintf("FORGE initialisation complete.\n");
@@ -173,9 +173,11 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
     struct thread *idle_thread = create_thread(initproc, THREAD_PRIORITY_LOW, idle, 0, 0, 0);
     struct thread *banner_thread = create_thread(initproc, THREAD_PRIORITY_LOW, banner, 0, 0, 0);
 
+    dprintf("banner thread is %x\n", banner_thread);
+
     sched_setidle(idle_thread);
     thread_wake(banner_thread);
-    switch_threads(0, init_thread, 0);
+    switch_threads(0, init_thread, 0, 0);
 
     while(1)
         __halt;

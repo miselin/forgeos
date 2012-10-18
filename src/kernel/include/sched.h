@@ -67,10 +67,6 @@ struct thread {
     /// Actual, current, priority of the thread.
     uint32_t priority;
 
-    /// Number of times during the last timeslice that this thread was switched
-    /// to without switching to another thread.
-    uint32_t noswitchcount;
-
     /// Is this the idle thread?
     uint8_t isidle;
 
@@ -100,10 +96,10 @@ extern struct process *create_process(const char *name, struct process *parent);
 extern struct thread *create_thread(struct process *parent, uint32_t prio, thread_entry_t start, uintptr_t stack, size_t stacksz, void *param);
 
 /** Performs a context switch to a new context. */
-extern void switch_context(context_t *oldctx, context_t *newctx, void *lock, unative_t wasints);
+extern void switch_context(context_t *oldctx, context_t *newctx, unative_t wasints, void *lock);
 
 /** Performs a context switch between two threads. */
-extern void switch_threads(struct thread *old, struct thread *new, void *lock);
+extern void switch_threads(struct thread *old, struct thread *new, unative_t intstate, void *lock);
 
 /** Creates a new context (archictecture-specific). */
 extern void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_t stacksz, void *param);

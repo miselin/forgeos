@@ -21,8 +21,8 @@ switch_context:
 	pushf
 	add $4, %esp
 
-	mov 12(%esp), %ecx
-	mov 16(%esp), %edx
+	mov 12(%esp), %edx
+	mov 16(%esp), %ecx
 
 	# Old context - don't save current if it's null.
 	mov 4(%esp), %eax
@@ -40,7 +40,7 @@ switch_context:
 	# ESP
 	mov %esp, 16(%eax)
 
-	# Safe flags (with IF=1 if interrupts were enabled before lock was acquired)
+	# Safe flags (with IF=1 if interrupts were enabled before scheduler)
 	movl -4(%esp), %edi
 	shl $9, %edx
 	or %edx, %edi
@@ -51,7 +51,6 @@ switch_context:
 	mov %edx, 20(%eax)
 
 .onlyload:
-
 
 	mov 8(%esp), %eax
 	mov (%eax), %edi
@@ -65,7 +64,6 @@ switch_context:
 	test %ecx, %ecx
 	je .nolock
 
-	# ECX contains pointer to a spinlock - unlock it.
 	lock decl (%ecx)
 
 .nolock:

@@ -35,6 +35,8 @@ static size_t nextpid = 0;
 
 #define QUEUE_COUNT (THREAD_PRIORITY_LOW + 1)
 
+void *ready_queue = 0;
+
 /// Primary priority queues.
 void *prio_queues[QUEUE_COUNT] = {0};
 
@@ -49,6 +51,12 @@ static void *sched_spinlock = 0;
 
 /// Idle thread in the system that we can clone onto new CPUs as they come up.
 static struct thread *g_idle_thread = 0;
+
+/// Number of threads currently ready to run (excluding idle thread).
+static atomic_t numready = 0;
+
+/// Global priority level.
+static atomic_t priolevel = 0;
 
 /** Initialises the architecture-specific context layer (for create_context). */
 extern void init_context();
@@ -84,11 +92,20 @@ static void set_idle_thread(struct thread *t) {
 }
 
 static size_t get_current_priolevel() {
-    return *((size_t *) multicpu_percpu_at(MULTICPU_PERCPU_PRIOLEVEL));
+    return priolevel;
 }
 
 static void set_current_priolevel(size_t new) {
-    *((size_t *) multicpu_percpu_at(MULTICPU_PERCPU_PRIOLEVEL)) = new;
+    priolevel = new;
+}
+
+/// Sets the current priority level, but only if it matches a previous value.
+static void set_current_priolevel_if(size_t new, size_t old) {
+    atomic_val_compare_and_swap(&priolevel, old, new);
+}
+
+static void increment_priolevel() {
+    atomic_inc(priolevel);
 }
 
 static int sched_timer(uint64_t ticks) {
@@ -96,11 +113,8 @@ static int sched_timer(uint64_t ticks) {
         ticks = get_current_thread()->timeslice;
     get_current_thread()->timeslice -= ticks;
 
-    // Don't pre-empt the idle thread (it will do that itself).
-    int doresched = 0;
-    if(!get_current_thread()->isidle) {
-        doresched = get_current_thread()->timeslice ? 0 : 1;
-    }
+    int doresched = get_current_thread()->timeslice ? 0 : 1;
+    dprintf("sched timer: %d\n", doresched);
     return doresched;
 }
 
@@ -143,10 +157,6 @@ static void install_sched_timer() {
 void sched_cpualive(void *lock) {
     dprintf("scheduler: new cpu (%d) to be registered!\n", multicpu_id());
 
-    spinlock_acquire(sched_spinlock);
-    set_current_priolevel(THREAD_PRIORITY_REALTIME);
-    spinlock_release(sched_spinlock);
-
     // If an idle thread has been installed, start up the scheduler on this core
     if(g_idle_thread) {
         struct thread *t = (struct thread *) malloc(sizeof(struct thread));
@@ -155,6 +165,7 @@ void sched_cpualive(void *lock) {
         t->state = THREAD_STATE_READY;
         t->timeslice = THREAD_DEFAULT_TIMESLICE;
         t->parent = g_idle_thread->parent;
+        t->isidle = 1;
 
         t->base_priority = g_idle_thread->base_priority;
         t->priority = g_idle_thread->priority;
@@ -164,9 +175,10 @@ void sched_cpualive(void *lock) {
         list_insert(t->parent->thread_list, t, 0);
 
         set_idle_thread(t);
+        set_current_thread(t);
 
         install_sched_timer();
-        switch_threads(0, get_idle_thread(), lock);
+        switch_threads(0, t, 1, lock);
     }
 }
 
@@ -212,7 +224,7 @@ struct thread *create_thread(struct process *parent, uint32_t prio, thread_entry
     return t;
 }
 
-void switch_threads(struct thread *old, struct thread *new, void *lock) {
+void switch_threads(struct thread *old, struct thread *new, unative_t intstate, void *lock) {
 #ifdef VERBOSE_LOGGING
     dprintf("switch_threads: %x -> %x\n", old, new);
 #endif
@@ -221,11 +233,11 @@ void switch_threads(struct thread *old, struct thread *new, void *lock) {
             set_current_thread(new);
         new->state = THREAD_STATE_RUNNING;
 
-        switch_context(0, new->ctx, spinlock_getatom(lock), interrupts_get());
+        switch_context(0, new->ctx, intstate, lock ? spinlock_getatom(lock) : lock);
     }
     else {
         dprintf("cpu %d old ctx %p -> new ctx %p\n", multicpu_id(), old->ctx, new->ctx);
-        switch_context(old->ctx, new->ctx, spinlock_getatom(lock), spinlock_intstate(lock));
+        switch_context(old->ctx, new->ctx, intstate, lock ? spinlock_getatom(lock) : lock);
     }
 }
 
@@ -236,6 +248,8 @@ void thread_kill() {
     get_current_thread()->state = THREAD_STATE_ZOMBIE;
     queue_push(zombie_queue, get_current_thread());
     reschedule();
+
+    while(1) panic("thread_kill trying to return\n");
 }
 
 void thread_return() {
@@ -246,7 +260,6 @@ void thread_return() {
 void thread_sleep() {
     assert(get_current_thread() != 0);
 
-    /// TODO: extra parameter for reschedule to make this atomic? Maybe.
     get_current_thread()->state = THREAD_STATE_SLEEPING;
     reschedule();
 }
@@ -254,15 +267,27 @@ void thread_sleep() {
 void thread_wake(struct thread *thr) {
     assert(thr != 0);
 
-    thr->state = THREAD_STATE_READY;
+    dprintf("waking thread %x\n", thr);
+
+    queue_push(ready_queue, thr);
+
+#if 0
+
+    void **queues = get_prio_queues();
 
     spinlock_acquire(sched_spinlock);
-    void **queues = get_prio_queues();
     if(!queues[thr->priority]) {
         queues[thr->priority] = create_queue();
     }
+
     queue_push(queues[thr->priority], thr);
     spinlock_release(sched_spinlock);
+
+    atomic_inc(numready);
+
+#endif
+
+    thr->state = THREAD_STATE_READY;
 }
 
 uint32_t thread_priority(struct thread *prio) {
@@ -275,104 +300,151 @@ uint32_t thread_priority(struct thread *prio) {
 
 static void go_next_priolevel() {
     void **queues = get_prio_queues();
-    while((get_current_priolevel() < QUEUE_COUNT)) {
-        if(queues[get_current_priolevel()]) {
-            if(!queue_empty(queues[get_current_priolevel()])) {
+    void **already = get_prio_already_queues();
+    void **q = 0;
+
+    size_t level = 0, real = 0;
+    while(((level = get_current_priolevel()) < (QUEUE_COUNT * 2))) {
+        if(level >= QUEUE_COUNT) {
+            real = level % QUEUE_COUNT;
+            q = already;
+        } else {
+            q = queues;
+        }
+
+        if(q[real]) {
+            int empty = queue_empty(q[real]);
+            if(!empty) {
                 break;
             }
         }
 
-        set_current_priolevel(get_current_priolevel() + 1);
+        // Make sure the priority level is only incremented if another core
+        // didn't increment it already!
+        set_current_priolevel_if(level + 1, level);
     }
 }
 
+static int is_idle(size_t action_on_idle, unative_t intstate) {
+    int empty = queue_empty(ready_queue);
+
+    // Handle idle.
+    if((empty) && ((get_current_thread() == get_idle_thread()) || (action_on_idle == RESCHED_IDLE_RETURN))) {
+        return 1;
+    } else if(empty) {
+        if(action_on_idle == RESCHED_IDLE_RUNTHREAD) {
+            dprintf("cpu %d became idle\n", multicpu_id());
+            get_idle_thread()->state = THREAD_STATE_RUNNING;
+            get_idle_thread()->timeslice = THREAD_DEFAULT_TIMESLICE;
+
+            if(get_current_thread() != get_idle_thread()) {
+                struct thread *tmp = get_current_thread();
+                set_current_thread(get_idle_thread());
+                switch_threads(tmp, get_idle_thread(), intstate, 0);
+            }
+
+            return 1;
+        }
+
+        dprintf("action: %d\n", action_on_idle);
+        panic("bad action on idle to scheduler");
+    }
+
+    return 0;
+
+#if 0
+    size_t nr_tmp = numready;
+
+    // Handle idle.
+    if((!nr_tmp) && ((get_current_thread() == get_idle_thread()) || (action_on_idle == RESCHED_IDLE_RETURN))) {
+        return 1;
+    } else if(!nr_tmp) {
+        if(action_on_idle == RESCHED_IDLE_RUNTHREAD) {
+            dprintf("cpu %d became idle\n", multicpu_id());
+            get_idle_thread()->state = THREAD_STATE_RUNNING;
+
+            if(get_current_thread() != get_idle_thread()) {
+                struct thread *tmp = get_current_thread();
+                set_current_thread(get_idle_thread());
+                switch_threads(tmp, get_idle_thread(), intstate, 0);
+            }
+
+            return 1;
+        }
+
+        dprintf("action: %d\n", action_on_idle);
+        panic("bad action on idle to scheduler");
+    }
+
+    return 0;
+#endif
+}
+
 static void reschedule_internal(size_t action_on_idle) {
-    spinlock_acquire(sched_spinlock);
+    /// \note Scheduling is performed on each core and refers to the global
+    ///       queues to receive threads to execute. Therefore, if the system
+    ///       has four cores, and four threads in the ready queue, each core
+    ///       will run a thread each.
+    ///       Because queues do not require locking to access, we can simply
+    ///       disable interrupts to avoid pre-emption and access core-specific
+    ///       data as needed. Atomic operations are used on thread state where
+    ///       possible.
 
     // Handle the case where the current thread is NULL (probably on a CPU which
     // isn't yet fully configured).
     if(!get_current_thread()) {
-        spinlock_release(sched_spinlock);
         return;
     }
 
-    void **queues = get_prio_queues();
-    void **already_queues = get_prio_already_queues();
+    // Preserve interrupt state.
+    unative_t intstate = interrupts_get();
 
+    // Must run without interruption for the time being...
+    interrupts_disable();
+
+#if 0
     if(get_current_thread()->timeslice > 0) {
 #ifdef VERBOSE_LOGGING
         dprintf("reschedule before timeslice completes\n");
 #endif
         if(get_current_thread()->priority > get_current_thread()->base_priority)
-            get_current_thread()->priority--;
+            atomic_dec(get_current_thread()->priority);
     } else {
 #ifdef VERBOSE_LOGGING
         dprintf("reschedule due to completed timeslice\n");
 #endif
-        get_current_thread()->priority++;
+        atomic_inc(get_current_thread()->priority);
 
         if(get_current_thread()->priority > THREAD_PRIORITY_LOW)
             get_current_thread()->priority = THREAD_PRIORITY_LOW;
     }
-
-    // Create an already queue for this priority level, if one doesn't exist yet.
-    if(!already_queues[get_current_thread()->priority]) {
-        already_queues[get_current_thread()->priority] = create_queue();
-    }
+#endif
 
     // RUNNING -> READY transition for the current thread. State could be
     // SLEEPING, in which case this reschedule is to pick a new thread to run,
     // leaving the current thread off the queue.
     // Also, the idle thread is handled specially.
-    if((get_current_thread()->state == THREAD_STATE_RUNNING) &&
-        (get_current_thread() != get_idle_thread())) {
-        get_current_thread()->state = THREAD_STATE_READY;
+    if(get_current_thread() != get_idle_thread()) {
+        if(get_current_thread()->state == THREAD_STATE_RUNNING) {
+            get_current_thread()->state = THREAD_STATE_READY;
 
-        queue_push(already_queues[get_current_thread()->priority], get_current_thread());
-    }
-
-    // Find the next priority level with items in it.
-    go_next_priolevel();
-
-    if(get_current_priolevel() >= QUEUE_COUNT) {
-        for(size_t i = 0; i < QUEUE_COUNT; i++) {
-            void *tmp = queues[i];
-            queues[i] = already_queues[i];
-            already_queues[i] = tmp;
-        }
-
-        set_current_priolevel(0);
-        go_next_priolevel();
-    }
-
-    // Detect idle.
-    if(get_current_priolevel() >= QUEUE_COUNT) {
-        // Reset priority level.
-        set_current_priolevel(0);
-
-        if(action_on_idle == RESCHED_IDLE_RETURN) {
-            spinlock_release(sched_spinlock);
-            return;
-        } else if(action_on_idle == RESCHED_IDLE_RUNTHREAD) {
-            dprintf("cpu %d: idle\n", multicpu_id());
-
-            get_idle_thread()->timeslice = THREAD_DEFAULT_TIMESLICE;
-            get_idle_thread()->state = THREAD_STATE_RUNNING;
-
-            struct thread *tmp = get_current_thread();
-            set_current_thread(get_idle_thread());
-            switch_threads(tmp, get_idle_thread(), sched_spinlock);
-            return;
-        } else {
-            dprintf("unsupported internal reschedule action on idle\n");
-            spinlock_release(sched_spinlock);
-            return;
+            queue_push(ready_queue, get_current_thread());
         }
     }
 
-    // Pop a thread off the run queue.
-    struct thread *thr = (struct thread *) queue_pop(queues[get_current_priolevel()]);
+    // Gone to idle state (ie, no threads ready).
+    if(is_idle(action_on_idle, intstate)) {
+        if(intstate) {
+            interrupts_enable();
+        }
+
+        return;
+    }
+
+    struct thread *thr = (struct thread *) queue_pop(ready_queue);
     assert(thr != 0);
+
+    dprintf("new thread %x current %x\n", thr, get_current_thread());
 
     // Thread not actually alive?
     if(thr->state != THREAD_STATE_READY) {
@@ -385,7 +457,10 @@ static void reschedule_internal(size_t action_on_idle) {
             queue_push(zombie_queue, thr);
         }
 
-        spinlock_release(sched_spinlock);
+        if(intstate) {
+            interrupts_enable();
+        }
+
         reschedule();
 
         return;
@@ -395,13 +470,8 @@ static void reschedule_internal(size_t action_on_idle) {
     thr->timeslice = THREAD_DEFAULT_TIMESLICE;
     thr->state = THREAD_STATE_RUNNING;
 
-    // Empty run queue?
-    if(queue_empty(queues[get_current_priolevel()])) {
-        set_current_priolevel(get_current_priolevel() + 1);
-    }
-
 #ifdef VERBOSE_LOGGING
-    dprintf("reschedule: queues now run: %sempty / already: %sempty\n", queue_empty(queues[current_priolevel]) ? "" : "not ", queue_empty(already_queues[current_priolevel]) ? "" : "not ");
+    dprintf("reschedule: queues now run: %sempty / already: %sempty\n", queue_empty(queues[get_current_priolevel()]) ? "" : "not ", queue_empty(already_queues[get_current_priolevel()]) ? "" : "not ");
 #endif
 
     // Perform the context switch if this isn't the already-running thread.
@@ -413,10 +483,156 @@ static void reschedule_internal(size_t action_on_idle) {
 
         struct thread *tmp = get_current_thread();
         set_current_thread(thr);
-        switch_threads(tmp, thr, sched_spinlock);
-    } else {
-        spinlock_release(sched_spinlock);
+        switch_threads(tmp, thr, intstate, 0);
+    } else if(intstate) {
+        interrupts_enable();
     }
+
+#if 0
+
+    // RUNNING -> READY transition for the current thread. State could be
+    // SLEEPING, in which case this reschedule is to pick a new thread to run,
+    // leaving the current thread off the queue.
+    // Also, the idle thread is handled specially.
+    if(get_current_thread() != get_idle_thread()) {
+        dprintf("old state %d vs %d\n", get_current_thread()->state, THREAD_STATE_RUNNING);
+        if(get_current_thread()->state == THREAD_STATE_RUNNING) {
+            get_current_thread()->state = THREAD_STATE_READY;
+
+            dprintf("running -> ready transition\n");
+
+            // Create an already queue for this priority level, if one doesn't exist yet.
+            if(!already_queues[get_current_thread()->priority]) {
+                spinlock_acquire(sched_spinlock);
+                // Check to see if the already queue got created during the lock acquire.
+                if(!already_queues[get_current_thread()->priority]) {
+                    already_queues[get_current_thread()->priority] = create_queue();
+                }
+                spinlock_release(sched_spinlock);
+            }
+
+            // Push onto the already queue.
+            queue_push(already_queues[get_current_thread()->priority], get_current_thread());
+
+            // This thread is now ready.
+            atomic_inc(numready);
+        }
+    }
+
+    // Gone to idle state?
+    if(is_idle(action_on_idle, intstate)) {
+        if(intstate) {
+            interrupts_enable();
+        }
+
+        return;
+    }
+
+    // We switch back to the first priority level if we were running the idle
+    // thread, as if we don't we won't find any threads to run (we'll switch to
+    // the already queue, and the thread to run is in the already queue!)
+    if(get_current_thread() == get_idle_thread()) {
+        set_current_priolevel(0);
+    }
+
+    // Find the next priority level with items in it.
+    go_next_priolevel();
+
+    if(get_current_priolevel() >= QUEUE_COUNT) {
+        // Swap the already queues to be the ready queues (and vice versa).
+        swap_queues();
+
+        set_current_priolevel(0);
+        go_next_priolevel();
+    }
+
+    // Current priority level, saved until we are ready to continue.
+    size_t level = get_current_priolevel();
+    dprintf("level: %d/%d [%d]\n", level, QUEUE_COUNT, numready);
+
+    assert(level < QUEUE_COUNT);
+
+    // Pop a thread off the run queue.
+    struct thread *thr = (struct thread *) queue_pop(queues[level]);
+    if(thr == 0) {
+        dprintf("queue emptied after selecting priority level!\n");
+
+        // Did we become idle as a result?
+        if(is_idle(action_on_idle, intstate)) {
+            if(intstate) {
+                interrupts_enable();
+            }
+
+            return;
+        }
+
+        // Try the next level, otherwise.
+        level = get_current_priolevel();
+        thr = (struct thread *) queue_pop(queues[level]);
+        if(thr == 0) {
+            // Okay, this is hopeless! Return to the original thread.
+            if(intstate) {
+                interrupts_enable();
+            }
+
+            return;
+        }
+    }
+
+    // Thread not actually alive?
+    if(thr->state != THREAD_STATE_READY) {
+        dprintf("reschedule: thread %p in queue wasn't really ready\n", thr);
+
+        // Threads in the zombie state need to be added to the zombie queue here.
+        // They cannot be added to the zombie queue if they are 'remotely' killed
+        // by another process (as they are already in the queue).
+        if(thr->state == THREAD_STATE_ZOMBIE) {
+            queue_push(zombie_queue, thr);
+        }
+
+        if(intstate) {
+            interrupts_enable();
+        }
+
+        reschedule();
+
+        return;
+    }
+
+    // Reset the timeslice and prepare for context switch.
+    thr->timeslice = THREAD_DEFAULT_TIMESLICE;
+    thr->state = THREAD_STATE_RUNNING;
+
+    // Thread no longer ready - being switched to.
+    atomic_dec(numready);
+
+    // Empty run queue?
+    if(queue_empty(queues[level])) {
+        // Only increment the priority level if it wasn't already.
+        set_current_priolevel_if(level + 1, level);
+    }
+
+#ifdef VERBOSE_LOGGING
+    dprintf("reschedule: queues now run: %sempty / already: %sempty\n", queue_empty(queues[get_current_priolevel()]) ? "" : "not ", queue_empty(already_queues[get_current_priolevel()]) ? "" : "not ");
+#endif
+
+    // Perform the context switch if this isn't the already-running thread.
+    if(thr != get_current_thread()) {
+        if(get_current_thread()->parent != thr->parent) {
+            /// \todo Process switch - address space and such.
+            dprintf("TODO: process switch - address space etc %x %x\n", get_current_thread()->parent, thr->parent);
+        }
+
+        struct thread *tmp = get_current_thread();
+        set_current_thread(thr);
+        switch_threads(tmp, thr, intstate, 0);
+    }
+
+    if(intstate) {
+        interrupts_enable();
+    }
+
+#endif
 }
 
 void sched_yield() {
@@ -432,10 +648,14 @@ void init_scheduler() {
 
     sched_spinlock = create_spinlock();
 
+    ready_queue = create_queue();
+
     // Set up the current CPU (other CPUs will be enabled as they come alive)
     sched_cpualive(0);
 
     init_context();
+
+    numready = 0;
 
     dprintf("scheduler spinlock is %p\n", sched_spinlock);
 
