@@ -134,7 +134,7 @@ void sched_setidle(struct thread *t) {
 
 static void install_sched_timer() {
     // Tick for timeslice completion.
-    if(install_timer(sched_timer, ((THREAD_DEFAULT_TIMESLICE_MS << TIMERRES_SHIFT) | TIMERRES_MILLI), TIMERFEAT_PERIODIC) < 0) {
+    if(install_timer(sched_timer, ((THREAD_DEFAULT_TIMESLICE_MS << TIMERRES_SHIFT) | TIMERRES_MILLI), TIMERFEAT_PERIODIC | TIMERFEAT_PERCPU) < 0) {
         dprintf("scheduler install failed - no useful timer available\n");
         kprintf("scheduler install failed - system will have its usability greatly reduced\n");
     }
