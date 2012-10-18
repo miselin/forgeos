@@ -56,7 +56,7 @@ void *spinlock_getatom(void *s) {
 
 uint8_t spinlock_intstate(void *s) {
 	if(!s)
-		return NULL;
+		return 0;
 
 	struct spinlock *sl = (struct spinlock *) s;
 	return sl->wasints;
@@ -82,7 +82,10 @@ void spinlock_release(void *s) {
 		return;
 
 	uint8_t wasints = interrupts_get();
-	if(wasints)
+
+	// If uniprocessor and interrupts were enabled, then it is an error condition.
+	// Multiprocessors systems can acquire on one CPU and release on another.
+	if(wasints && (multicpu_count() == 1))
 		panic("spinlock released with interrupts enabled!");
 
 	struct spinlock *sl = (struct spinlock *) s;
