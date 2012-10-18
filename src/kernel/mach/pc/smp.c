@@ -61,13 +61,13 @@ void multicpu_cpuinit() {
     extern void vmem_multicpu_init();
     extern void ints_multicpu_init();
 
-    // Configure our Local APIC.
-    init_lapic();
-
     // Configure per-CPU data storage.
     struct percpu_data *percpu = (struct percpu_data *) malloc(sizeof(struct percpu_data));
     memset(percpu, 0, sizeof(struct percpu_data));
     __asm__ volatile("mov %0, %%dr3" :: "r" ((unative_t) percpu));
+
+    // Configure our Local APIC.
+    init_lapic();
 
     // Switch to the correct GDT (now that paging is on and such).
     vmem_multicpu_init();
