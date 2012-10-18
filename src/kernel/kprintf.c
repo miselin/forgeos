@@ -26,7 +26,7 @@ extern int vsprintf(char *buf, const char *fmt, va_list args);
 ///       from in big logs.
 
 #if defined(DEBUG) || defined(_TESTING)
-int dprintf(const char *fmt, ...) {
+int _dprintf(const char *fmt, ...) {
 	int len = 0;
 	char buf[512];
 	va_list args;

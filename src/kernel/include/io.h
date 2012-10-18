@@ -49,8 +49,11 @@ extern void puts_at(const char *s, int x, int y);
 extern void serial_puts(const char *s);
 
 #if defined(DEBUG) || defined(_TESTING)
+#include <multicpu.h>
+
 extern int dputs(const char *s);
-extern int dprintf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+extern int _dprintf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+#define dprintf(a, ...) _dprintf("[" __FILE__ ":%d CPU%d] " a, __LINE__, multicpu_id(), ##__VA_ARGS__)
 #else
 #define dputs(a)
 #define dprintf(a, ...)
