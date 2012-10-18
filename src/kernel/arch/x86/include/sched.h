@@ -19,6 +19,7 @@ typedef struct _x86_ctx {
 } __packed context_t;
 
 #define __halt __asm__ __volatile__ ("hlt")
+#define __spin __asm__ __volatile__ ("pause")
 
 #define _CONTEXT_T_DEFINED
 

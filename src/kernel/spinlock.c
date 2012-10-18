@@ -23,6 +23,7 @@
 #include <assert.h>
 #include <panic.h>
 #include <util.h>
+#include <sched.h>
 #include <io.h>
 
 struct spinlock {
@@ -69,7 +70,7 @@ void spinlock_acquire(void *s) {
 
 	uint8_t wasints = interrupts_get();
 	interrupts_disable();
-	atomic_compare_and_swap(&sl->locked, 1, void * _a __unused, 0, if(multicpu_count() == 1) { dprintf("deadlock in spinlock %p\n", s); panic("deadlock"); });
+	atomic_compare_and_swap(&sl->locked, 1, void * _a __unused, 0, if(multicpu_count() == 1) { dprintf("deadlock in spinlock %p\n", s); panic("deadlock"); } __spin;);
 
 	sl->wasints = wasints;
 
@@ -88,7 +89,7 @@ void spinlock_release(void *s) {
 	assert(sl->locked);
 
 	wasints = sl->wasints;
-	atomic_compare_and_swap(&sl->locked, 0, void * _a __unused, 1, if(multicpu_count() == 1) { dprintf("deadlock in spinlock %p\n", s); panic("deadlock"); });
+	atomic_compare_and_swap(&sl->locked, 0, void * _a __unused, 1, if(multicpu_count() == 1) { dprintf("deadlock in spinlock %p\n", s); panic("deadlock"); } __spin;);
 
 	if(wasints)
 		interrupts_enable();
