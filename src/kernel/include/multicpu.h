@@ -19,12 +19,11 @@
 
 #include <types.h>
 
-typedef void (*crosscpu_func_t)(void *p);
+typedef int (*crosscpu_func_t)(void *p);
 
 #define MULTICPU_PERCPU_CURRTHREAD      0
 #define MULTICPU_PERCPU_IDLETHREAD      1
-#define MULTICPU_PERCPU_PRIOLEVEL       2
-#define MULTICPU_PERCPU_CPUTIMER        3
+#define MULTICPU_PERCPU_CPUTIMER        2
 
 /**
  * \brief Initialise multi-CPU support in the system.

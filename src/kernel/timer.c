@@ -106,12 +106,17 @@ static uint64_t conv_ticks(uint32_t ticks) {
 	return ret;
 }
 
-static void timer_crosscpu_stub(struct crosscpu_th *meta) {
-	meta->th(meta->ticks);
+static int timer_crosscpu_stub(struct crosscpu_th *meta) {
+	int ret = meta->th(meta->ticks);
 	free(meta);
+	return ret;
 }
 
 static int do_th(struct timer_handler_meta *p, uint64_t ticks) {
+#ifdef SPAM_THE_LOGS
+	dprintf("timer tick on cpu %d calling handler on cpu %d\n", multicpu_id(), p->cpu);
+#endif
+
 	if(p->cpu == multicpu_id())
 		return p->th(ticks);
 	else {
