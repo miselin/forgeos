@@ -30,6 +30,9 @@ typedef unsigned short          __forge_uint16_t;
 typedef signed int              __forge_int32_t;
 typedef unsigned int            __forge_uint32_t;
 
+/// Variable of a size that can be read or written atomically.
+typedef volatile __forge_uint32_t atomic_t;
+
 #ifdef __x86_64__
 typedef signed long             __forge_int64_t;
 typedef unsigned long           __forge_uint64_t;
