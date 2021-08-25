@@ -215,7 +215,7 @@ static int lapic_localint(struct intr_stack *s, void *p __unused) {
         } else if(s->intnum == LAPIC_TIMER) {
             struct timer *tim = *((struct timer **) multicpu_percpu_at(MULTICPU_PERCPU_CPUTIMER));
             if(tim) {
-                timer_ticked(tim, ((LAPIC_TIMER_MS << TIMERRES_SHIFT) | TIMERRES_MILLI));
+                ret = timer_ticked(tim, ((LAPIC_TIMER_MS << TIMERRES_SHIFT) | TIMERRES_MILLI));
             }
         }
 

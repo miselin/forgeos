@@ -28,8 +28,9 @@
 
 // #define VERBOSE_LOGGING
 
-#define RESCHED_IDLE_RETURN         0
-#define RESCHED_IDLE_RUNTHREAD      1
+#define RESCHED_IDLE_RETURN             0
+#define RESCHED_IDLE_RUNTHREAD          1
+#define RESCHED_IDLE_RUNTHREAD_RESTORE  2
 
 static size_t nextpid = 0;
 
@@ -61,7 +62,7 @@ static atomic_t priolevel = 0;
 /** Initialises the architecture-specific context layer (for create_context). */
 extern void init_context();
 
-static void reschedule_internal(size_t action_on_idle);
+static void reschedule_internal(size_t action_on_idle, void *lock);
 
 static void **get_prio_queues() {
     return (void **) prio_queues;
@@ -114,7 +115,7 @@ static int sched_timer(uint64_t ticks) {
     get_current_thread()->timeslice -= ticks;
 
     int doresched = get_current_thread()->timeslice ? 0 : 1;
-    dprintf("sched timer: %d\n", doresched);
+    // dprintf("doresched: %d\n", doresched);
     return doresched;
 }
 
@@ -178,7 +179,9 @@ void sched_cpualive(void *lock) {
         set_current_thread(t);
 
         install_sched_timer();
-        switch_threads(0, t, lock);
+        reschedule_internal(RESCHED_IDLE_RUNTHREAD_RESTORE, lock);
+    } else {
+        dprintf("scheduler: no global idle thread (cpu %d)\n", multicpu_id());
     }
 }
 
@@ -239,6 +242,7 @@ void switch_threads(struct thread *old, struct thread *new, void *lock) {
         }
     }
 
+    dprintf("switch_threads %x -> %x lock=%p\n", old, new, lock);
     restore_thread_context(new->ctx, lock ? spinlock_getatom(lock) : lock);
 }
 
@@ -326,22 +330,22 @@ static void go_next_priolevel() {
     }
 }
 
-static int is_idle(size_t action_on_idle, unative_t intstate) {
+static int is_idle(size_t action_on_idle, unative_t intstate, void *lock) {
     int empty = queue_empty(ready_queue);
 
     // Handle idle.
-    if((empty) && ((get_current_thread() == get_idle_thread()) || (action_on_idle == RESCHED_IDLE_RETURN))) {
+    if((empty) && ((get_current_thread() == get_idle_thread() && (action_on_idle != RESCHED_IDLE_RUNTHREAD_RESTORE)) || (action_on_idle == RESCHED_IDLE_RETURN))) {
         return 1;
     } else if(empty) {
-        if(action_on_idle == RESCHED_IDLE_RUNTHREAD) {
+        if(action_on_idle == RESCHED_IDLE_RUNTHREAD || action_on_idle == RESCHED_IDLE_RUNTHREAD_RESTORE) {
             dprintf("cpu %d became idle\n", multicpu_id());
             get_idle_thread()->state = THREAD_STATE_RUNNING;
             get_idle_thread()->timeslice = THREAD_DEFAULT_TIMESLICE;
 
-            if(get_current_thread() != get_idle_thread()) {
+            if((action_on_idle == RESCHED_IDLE_RUNTHREAD_RESTORE) || (get_current_thread() != get_idle_thread())) {
                 struct thread *tmp = get_current_thread();
                 set_current_thread(get_idle_thread());
-                switch_threads(tmp, get_idle_thread(), 0);
+                switch_threads(tmp, get_idle_thread(), lock);
             }
 
             if (intstate) {
@@ -385,7 +389,7 @@ static int is_idle(size_t action_on_idle, unative_t intstate) {
 #endif
 }
 
-static void reschedule_internal(size_t action_on_idle) {
+static void reschedule_internal(size_t action_on_idle, void *lock) {
     /// \note Scheduling is performed on each core and refers to the global
     ///       queues to receive threads to execute. Therefore, if the system
     ///       has four cores, and four threads in the ready queue, each core
@@ -438,7 +442,7 @@ static void reschedule_internal(size_t action_on_idle) {
     }
 
     // Gone to idle state (ie, no threads ready).
-    if(is_idle(action_on_idle, intstate)) {
+    if(is_idle(action_on_idle, intstate, lock)) {
         if(intstate) {
             interrupts_enable();
         }
@@ -466,7 +470,7 @@ static void reschedule_internal(size_t action_on_idle) {
             interrupts_enable();
         }
 
-        reschedule();
+        reschedule_internal(RESCHED_IDLE_RUNTHREAD, lock);
 
         return;
     }
@@ -488,7 +492,7 @@ static void reschedule_internal(size_t action_on_idle) {
 
         struct thread *tmp = get_current_thread();
         set_current_thread(thr);
-        switch_threads(tmp, thr, 0);
+        switch_threads(tmp, thr, lock);
     }
 
     if(intstate) {
@@ -643,11 +647,11 @@ static void reschedule_internal(size_t action_on_idle) {
 }
 
 void sched_yield() {
-    reschedule_internal(RESCHED_IDLE_RETURN);
+    reschedule_internal(RESCHED_IDLE_RETURN, 0);
 }
 
 void reschedule() {
-    reschedule_internal(RESCHED_IDLE_RUNTHREAD);
+    reschedule_internal(RESCHED_IDLE_RUNTHREAD, 0);
 }
 
 void init_scheduler() {

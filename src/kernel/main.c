@@ -40,6 +40,8 @@ extern void _start();
 KBOOT_IMAGE(0);
 
 void idle(void *p __unused) {
+    interrupts_enable();
+
     while(1) {
         // Always confirm interrupts are enabled before halting.
         // The halt should put the CPU into a low power state until an IRQ or
@@ -54,6 +56,8 @@ void idle(void *p __unused) {
 }
 
 void banner(void *p __unused) {
+    interrupts_enable();
+
     char idlebuf[81];
     size_t n = 0;
     while(1) {
@@ -73,7 +77,9 @@ void init2(void *p __unused) {
     if(multicpu_count() > 1) {
         kprintf("Starting %d additional processors...\n", multicpu_count() - 1);
         for(size_t i = 0; i < multicpu_count(); i++) {
+            kprintf("AP %d...\n", i + 1);
             multicpu_start(i);
+            kprintf("AP %d done!...\n", i + 1);
         }
     }
 
@@ -86,7 +92,7 @@ void init2(void *p __unused) {
     dprintf("FORGE initialisation complete.\n");
     kprintf("FORGE initialisation complete.\n");
 
-    while(1) __halt;
+    return;
 }
 
 void _kmain(uint32_t magic, phys_ptr_t tags) {
@@ -175,7 +181,7 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
     struct process *initproc = create_process("init", 0);
     struct thread *init_thread = create_thread(initproc, THREAD_PRIORITY_HIGH, init2, 0, 0, 0);
-    struct thread *idle_thread = create_thread(initproc, THREAD_PRIORITY_LOW, 0, 0, 0, 0);
+    struct thread *idle_thread = create_thread(initproc, THREAD_PRIORITY_LOW, idle, 0, 0, 0);
     struct thread *banner_thread = create_thread(initproc, THREAD_PRIORITY_LOW, banner, 0, 0, 0);
 
     sched_setidle(idle_thread);

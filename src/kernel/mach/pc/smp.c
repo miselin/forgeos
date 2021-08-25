@@ -51,10 +51,13 @@ extern void *pc_ap_pdir;
 
 #define WARM_RESET_VECTOR       0x0469
 
+extern void idle(void *p __unused);
+
 /// Called by an AP after it completes initial startup.
 void ap_startup() {
     multicpu_cpuinit();
-    while(1) __halt;
+
+    idle(0);
 }
 
 void multicpu_cpuinit() {

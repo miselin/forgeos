@@ -282,7 +282,7 @@ int platform_powerman_init() {
     dprintf("ok!\n");
 
     // Install event handlers.
-    dprintf("pc: acpi installing event handlers... ");
+    dprintf("pc: acpi installing event handlers...\n");
     if((AcpiGbl_FADT.Flags & ACPI_FADT_POWER_BUTTON) == 0) {
         AcpiInstallFixedEventHandler(ACPI_EVENT_POWER_BUTTON,
                                         pc_acpi_handle_event,
