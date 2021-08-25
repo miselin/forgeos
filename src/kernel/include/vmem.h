@@ -59,6 +59,10 @@
 /// stack to the correct area for the implementation.
 #define vmem_init		arch_vmem_init
 
+/// Finalizes any remaining virtual memory initialization such as removing
+/// large page mappings that were needed for kernel init.
+#define vmem_final_init		arch_vmem_final_init
+
 /// "Primes" the virtual memory allocator in a case where the physical memory
 /// allocator may be less-than-functional, by providing a page to be used as
 /// a replacement if @pmem_alloc() fails.
@@ -72,6 +76,7 @@ extern paddr_t arch_vmem_v2p(vaddr_t);
 extern vaddr_t arch_vmem_create();
 extern void arch_vmem_switch(vaddr_t);
 extern void arch_vmem_init();
+extern void arch_vmem_final_init();
 
 extern void arch_vmem_prime(paddr_t);
 

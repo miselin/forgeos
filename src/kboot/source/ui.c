@@ -707,6 +707,7 @@ static input_result_t ui_textbox_editor_input(ui_window_t *window, uint16_t key)
 	switch(key) {
 	case '\n':
 		textbox_edit_update = true;
+		__attribute__ ((fallthrough));
 	case '\e':
 		return INPUT_CLOSE;
 	default:

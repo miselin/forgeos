@@ -17,7 +17,7 @@
 XCOMPILER_PREFIX := i586-elf
 # Path to the cross compiler's bin directory. Set this only if
 # the cross compiler tools are not in your PATH.
-XCOMPILER_PATH :=
+XCOMPILER_PATH := 
 
 # Architecture to build for
 ARCH_TARGET := x86
@@ -54,6 +54,9 @@ ENABLE_WERROR :=
 
 # END CONFIGURATION SECTION
 
+
+# REPO_BASE_DIR is the base source directory, containing the top-level Makefile
+REPO_BASE_DIR := $(PWD)
 
 # BUILD_SRC is set on invocation of of make in the OUTPUT_DIR.
 ifndef BUILD_SRC
@@ -271,7 +274,8 @@ kermit: $(UIMAGE)
 endif
 
 $(DIRS): cleanlog
-	@$(MAKE) -C $(BUILD_SRC)/src/$@ 2>&1 | tee -a $(BUILD_DIR)/build.log; exit $${PIPESTATUS[0]}
+	@mkdir -p $(OBJDIR)/$@
+	@$(MAKE) REPO_BASE_DIR=$(REPO_BASE_DIR) OBJDIR=$(OBJDIR)/$@ -C $(BUILD_SRC)/src/$@ 2>&1 | tee -a $(BUILD_DIR)/build.log; exit $${PIPESTATUS[0]}
 
 cleanlog:
 	@echo "System build started at `date`\n" | tee $(BUILD_DIR)/build.log

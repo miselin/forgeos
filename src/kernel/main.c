@@ -81,7 +81,7 @@ void init2(void *p __unused) {
     start_scheduler();
 
     kprintf("Initialising power management...\n");
-    powerman_init();
+    // powerman_init();
 
     dprintf("FORGE initialisation complete.\n");
     kprintf("FORGE initialisation complete.\n");
@@ -156,6 +156,9 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
     kprintf("Initialising scheduler...\n");
     init_scheduler();
+
+    kprintf("Finalizing virtual memory initialization...\n");
+    vmem_final_init();
 
 #ifdef _TESTING
 	perform_tests();

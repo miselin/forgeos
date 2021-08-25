@@ -271,18 +271,10 @@ void arch_vmem_init() {
 	// This is tricky. Update the stack pointer, live.
 	uintptr_t ebp = 0;
 	__asm__ volatile("mov %%ebp, %0" : "=r" (ebp));
-	__asm__ volatile("mov %0, %%esp" :: "r" (STACK_TOP - stacksz) : "esp");
+	__asm__ volatile("mov %0, %%esp" :: "r" (STACK_TOP - stacksz));
 
 	// Just moved the stack, a barrier is definitely necessary.
 	__barrier;
-
-	// And now we can knock out the big page mapping the first 4 MB of RAM,
-	// essentially completely unmapping the first 4 MB of RAM entirely.
-	// By now, things like KBoot tags should be used and ACPI stuff should be
-	// mapped in, or about to be mapped in.
-	/// \todo move kboot tags to high memory.
-	uint32_t *pdir = (uint32_t *) PDIR_VIRT;
-	pdir[0] = 0;
 
 	// Just completely flush the TLB.
 	__asm__ volatile("mov %%cr3, %%eax; mov %%eax, %%cr3" ::: "eax", "memory");
@@ -317,6 +309,19 @@ void arch_vmem_init() {
 	reload_gdt();
 
 	dprintf("gdtr limit: %x, base: %x\n", gdtr.limit, gdtr.base);
+}
+
+void arch_vmem_final_init() {
+	// We can knock out the big page mapping the first 4 MB of RAM,
+	// essentially completely unmapping the first 4 MB of RAM entirely.
+	// By now, things like KBoot tags should be used and ACPI stuff should be
+	// mapped in, or about to be mapped in.
+	/// \todo move kboot tags to high memory.
+	uint32_t *pdir = (uint32_t *) PDIR_VIRT;
+	// pdir[0] = 0;
+
+	// Full TLB flush.
+	__asm__ volatile("mov %%cr3, %%eax; mov %%eax, %%cr3" ::: "eax", "memory");
 }
 
 void vmem_multicpu_init() {

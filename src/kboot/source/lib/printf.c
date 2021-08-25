@@ -349,6 +349,7 @@ int do_printf(printf_helper_t helper, void *data, const char *fmt, va_list args)
 			break;
 		case 'x':
 			flags |= PRINTF_LOW_CASE;
+			__attribute__ ((fallthrough));
 		case 'X':
 			base = 16;
 			break;

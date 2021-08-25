@@ -133,7 +133,7 @@ endif # PC platform specific targets
 $(OBJDIR)/loader.elf: LDFLAGS += -T $(OBJDIR)/source/platform/$(PLATFORM)/link.ld
 $(OBJDIR)/loader.elf: $(OBJECTS) $(DPADD)
 	@echo "  LINKING     loader.elf"
-	@$(LD) $(LDFLAGS) -o $@  $(OBJECTS) $(LIBS)
+	$(LD) $(LDFLAGS) -o $@  $(OBJECTS) $(LIBS)
 
 $(OBJDIR)/loader: $(OBJDIR)/loader.elf
 	@echo "  OBJCOPY     loader"

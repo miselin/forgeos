@@ -116,6 +116,7 @@ static input_result_t boot_error_window_input(ui_window_t *window, uint16_t key)
 		return INPUT_RENDER;
 	case '\e':
 		platform_reboot();
+		__attribute__ ((fallthrough));
 	default:
 		return INPUT_HANDLED;
 	}

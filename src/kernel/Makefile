@@ -1,8 +1,10 @@
+DEFS := -D_FORGEOS=1
+
 # Set ARCH_CFLAGS and ARCH_DEFINE automatically depending on how ARCH_TARGET is set
 ifeq "$(ARCH_TARGET)" "x86"
-  ARCH_CFLAGS :=
+  ARCH_CFLAGS := -fomit-frame-pointer
   ARCH_ASFLAGS :=
-  ARCH_DEFINE := -DX86
+  ARCH_DEFINE := -DX86=1
   ARCH_LLCFLAGS := -march=x86
 endif
 ifeq "$(ARCH_TARGET)" "arm"
@@ -48,7 +50,8 @@ endif
 
 # Examples on how to set build flags depending on the build environment
 ifeq "$(BUILD_ENV)" "debug"
-  CFLAGS += -g -O3 -DDEBUG
+  CFLAGS += -g -O3
+  DEFS += -DDEBUG=1
 endif
 
 ifeq "$(BUILD_ENV)" "release"
@@ -56,20 +59,23 @@ ifeq "$(BUILD_ENV)" "release"
 endif
 
 ifeq "$(BUILD_ENV)" "testing"
-  CFLAGS += -g -O3 -D_TESTING
+  CFLAGS += -g -O3
+  DEFS += -D_TESTING=1
 endif
 
 OBJDIR := $(OBJDIR)/kernel
 
 DIRS := . arch/$(ARCH_TARGET) arch/$(ARCH_TARGET)/$(ARCH_SUBTARGET) mach/$(PLATFORM_TARGET) include
 
-INCLUDES := -Iinclude -Iarch/$(ARCH_TARGET)/include -Iarch/$(ARCH_TARGET)/$(ARCH_SUBTARGET)/include -Imach/$(PLATFORM_TARGET) -Imach/$(PLATFORM_TARGET)/include
+INCLUDES := -Iinclude -Iarch/$(ARCH_TARGET)/include -Iarch/$(ARCH_TARGET)/$(ARCH_SUBTARGET)/include -Imach/$(PLATFORM_TARGET) -Imach/$(PLATFORM_TARGET)/include -I$(BUILD_DIR)
 LIBDIRS :=
 
 ifeq "$(PLATFORM_TARGET)" "pc"
-  DIRS += $(shell find mach/$(PLATFORM_TARGET)/acpica -type d)
+  DIRS += mach/$(PLATFORM_TARGET)/acpica $(shell find mach/$(PLATFORM_TARGET)/acpica/components -type d)
   INCLUDES += -Imach/$(PLATFORM_TARGET)/acpica/include -Imach/$(PLATFORM_TARGET)/acpica/include/platform
 endif
+
+CFLAGS += -include $(BUILD_DIR)/kconfig.h
 
 ifeq "$(USE_CLANG)" "yes"
   # compiler-rt automatically linked.
@@ -86,18 +92,18 @@ ifeq "$(USE_CLANG)" "yes"
 
     # compiler-rt still doesn't give __builtin_memset or __builtin_memcpy, they
     # just forward straight on to memcpy/memset.
-    CFLAGS += -DNO_BUILTIN_MEMFUNCS
+    DEFS += -DNO_BUILTIN_MEMFUNCS
   endif
 else
   libgcc = $(shell $(CC) -print-file-name=libgcc.a)
 endif
 LIBS := $(libgcc)
 
-ASMFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.s")
-SRCFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.c")
-HDRFILES := $(shell find $(DIRS) -maxdepth 1 -type f -name "*.h")
+ASMFILES := $(abspath $(shell find $(DIRS) -maxdepth 1 -type f -name "*.s"))
+SRCFILES := $(abspath $(shell find $(DIRS) -maxdepth 1 -type f -name "*.c"))
+HDRFILES := $(abspath $(shell find $(DIRS) -maxdepth 1 -type f -name "*.h"))
 
-OBJFILES := $(abspath $(patsubst %.s,$(OBJDIR)/%.gcc.o,$(ASMFILES)))
+OBJFILES := $(patsubst %.s,$(OBJDIR)/%.gcc.o,$(ASMFILES))
 ifeq "$(USE_CLANG)" "yes"
   ifeq "$(ARCH_TARGET)" "arm"
     ASMOBJS := $(patsubst %.s,$(OBJDIR)/%.gcc.o,$(ASMFILES))
@@ -127,12 +133,12 @@ WARNINGS := -Wall -Wextra -pedantic -Wshadow -Wpointer-arith -Wcast-align \
 
 CFLAGS += -std=gnu99 -nostdinc -nostdlib -ffreestanding
 
-CFLAGS += $(ARCH_CFLAGS) $(ARCH_DEFINE)
-CFLAGS += $(ARCH_SUBTARGET_CFLAGS) $(ARCH_SUBTARGET_DEFINE)
-CFLAGS += $(PLATFORM_CFLAGS) $(PLATFORM_DEFINES)
+CFLAGS += $(ARCH_CFLAGS)
+CFLAGS += $(ARCH_SUBTARGET_CFLAGS)
+CFLAGS += $(PLATFORM_CFLAGS)
 CFLAGS += $(WARNINGS)
 
-CFLAGS += -D_FORGEOS
+DEFS += $(ARCH_DEFINE) $(ARCH_SUBTARGET_DEFINE) $(PLATFORM_DEFINES)
 
 ifneq "$(ENABLE_WERROR)" ""
   CFLAGS += -Werror
@@ -156,7 +162,7 @@ ifeq "$(USE_CLANG)" "yes"
     LLVM_ASFLAGS := -c
   endif
 
-$(KERNEL): $(OBJFILES) $(ASMOBJS)
+$(KERNEL): $(BUILD_DIR)/kconfig.h $(OBJFILES) $(ASMOBJS)
 	@echo Linking kernel...
 	@mkdir -p $(OBJDIR)/llbc
 	@$(LLVMLD) -o $(OBJDIR)/llbc/kernel.bc $(OBJFILES)
@@ -165,7 +171,7 @@ $(KERNEL): $(OBJFILES) $(ASMOBJS)
 	@$(LD) $(LDFLAGS) $(LIBDIRS) -o $@ -T $(KERNEL_LSCRIPT) $(OBJDIR)/llbc/kernel.bo $(ASMOBJS) $(LIBS)
 	-@$(RM) -r $(OBJDIR)/llbc
 else
-$(KERNEL): $(OBJFILES) $(ASMOBJS)
+$(KERNEL): $(BUILD_DIR)/kconfig.h $(OBJFILES) $(ASMOBJS)
 	@echo Linking kernel...
 	@$(LD) $(LDFLAGS) $(LIBDIRS) -o $@ -T $(KERNEL_LSCRIPT) $(OBJFILES) $(ASMOBJS) $(LIBS)
 endif
@@ -181,3 +187,6 @@ analyse:
 
 include $(BUILD_SRC)/scripts/rules.mk
 
+$(BUILD_DIR)/kconfig.h: $(REPO_BASE_DIR)/scripts/genconfig.py Makefile
+	@echo Generating kconfig.h...
+	@python3 $(REPO_BASE_DIR)/scripts/genconfig.py $@ $(DEFS)
