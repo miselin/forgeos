@@ -137,7 +137,7 @@ int powerman_enter(int new_state) {
     }
 
     // Prepare to enter the new state, if we can.
-    dprintf("powerman: preparing to enter new state... ");
+    dprintf("powerman: preparing to enter new state...\n");
     if(platform_powerman_prep(new_state) != 0) {
         dprintf("fail - notifying all callbacks and returning to state %d\n", current_state);
 
@@ -153,7 +153,7 @@ int powerman_enter(int new_state) {
     current_state = new_state;
 
     // Enter the new state proper.
-    dprintf("powerman: entering new state... ");
+    dprintf("powerman: entering new state...\n");
     if(platform_powerman_enter(new_state) != 0) {
         dprintf("fail - notifying all callbacks and returning to state %d\n", old_state);
 
