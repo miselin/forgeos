@@ -251,7 +251,7 @@ void arch_vmem_init() {
 	uintptr_t stack_base = STACK_TOP - STACK_SIZE;
 	uintptr_t stack_virt = stack_base;
 	for(c = stack_phys; c < (stack_phys + STACK_SIZE); c += 0x1000, stack_virt += 0x1000) {
-		vmem_map(stack_virt, c, VMEM_READWRITE);
+		vmem_map(stack_virt, c, VMEM_SUPERVISOR | VMEM_READWRITE);
 	}
 
 	// We need to copy the existing KBoot stack, and then we need to switch stacks.
@@ -276,11 +276,19 @@ void arch_vmem_init() {
 	// Just moved the stack, a barrier is definitely necessary.
 	__barrier;
 
-	// Just completely flush the TLB.
-	__asm__ volatile("mov %%cr3, %%eax; mov %%eax, %%cr3" ::: "eax", "memory");
+	// We can knock out the big page mapping the first 4 MB of RAM,
+	// essentially completely unmapping the first 4 MB of RAM entirely.
+	// By now, things like KBoot tags should be used and ACPI stuff should be
+	// mapped in, or about to be mapped in.
+	/// \todo move kboot tags to high memory.
+	uint32_t *pdir = (uint32_t *) PDIR_VIRT;
+	pdir[0] = 0;
 
 	/// \todo massive hack
 	vmem_map(0xB8000, 0xB8000, VMEM_SUPERVISOR | VMEM_GLOBAL | VMEM_READWRITE);
+
+	// Just completely flush the TLB.
+	__asm__ volatile("mov %%cr3, %%eax; mov %%eax, %%cr3" ::: "eax", "memory");
 
 	dprintf("stack is now at %x ebp is %x\n", (STACK_TOP - stacksz), ebp);
 
@@ -312,13 +320,6 @@ void arch_vmem_init() {
 }
 
 void arch_vmem_final_init() {
-	// We can knock out the big page mapping the first 4 MB of RAM,
-	// essentially completely unmapping the first 4 MB of RAM entirely.
-	// By now, things like KBoot tags should be used and ACPI stuff should be
-	// mapped in, or about to be mapped in.
-	/// \todo move kboot tags to high memory.
-	uint32_t *pdir = (uint32_t *) PDIR_VIRT;
-	// pdir[0] = 0;
 
 	// Full TLB flush.
 	__asm__ volatile("mov %%cr3, %%eax; mov %%eax, %%cr3" ::: "eax", "memory");

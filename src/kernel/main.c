@@ -81,10 +81,12 @@ void init2(void *p __unused) {
     start_scheduler();
 
     kprintf("Initialising power management...\n");
-    // powerman_init();
+    powerman_init();
 
     dprintf("FORGE initialisation complete.\n");
     kprintf("FORGE initialisation complete.\n");
+
+    while(1) __halt;
 }
 
 void _kmain(uint32_t magic, phys_ptr_t tags) {
@@ -173,16 +175,16 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
 
     struct process *initproc = create_process("init", 0);
     struct thread *init_thread = create_thread(initproc, THREAD_PRIORITY_HIGH, init2, 0, 0, 0);
-    struct thread *idle_thread = create_thread(initproc, THREAD_PRIORITY_LOW, idle, 0, 0, 0);
+    struct thread *idle_thread = create_thread(initproc, THREAD_PRIORITY_LOW, 0, 0, 0, 0);
     struct thread *banner_thread = create_thread(initproc, THREAD_PRIORITY_LOW, banner, 0, 0, 0);
 
     dprintf("banner thread is %x\n", banner_thread);
 
     sched_setidle(idle_thread);
     thread_wake(banner_thread);
-    switch_threads(0, init_thread, 0, 0);
+    sched_kickstart();  // kick off the first thread
 
-    while(1)
-        __halt;
+    // kickstart kicks into the idle thread, so we become that now.
+    idle(0);
 }
 

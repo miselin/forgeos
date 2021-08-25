@@ -72,22 +72,22 @@ static void **get_prio_already_queues() {
 }
 
 static struct thread *get_current_thread() {
-    struct thread **current_thread = (struct current_thread **) multicpu_percpu_at(MULTICPU_PERCPU_CURRTHREAD);
+    struct thread **current_thread = (struct thread **) multicpu_percpu_at(MULTICPU_PERCPU_CURRTHREAD);
     return *current_thread;
 }
 
 static void set_current_thread(struct thread *t) {
-    struct thread **current_thread = (struct current_thread **) multicpu_percpu_at(MULTICPU_PERCPU_CURRTHREAD);
+    struct thread **current_thread = (struct thread **) multicpu_percpu_at(MULTICPU_PERCPU_CURRTHREAD);
     *current_thread = t;
 }
 
 static struct thread *get_idle_thread() {
-    struct thread **idle_thread = (struct current_thread **) multicpu_percpu_at(MULTICPU_PERCPU_IDLETHREAD);
+    struct thread **idle_thread = (struct thread **) multicpu_percpu_at(MULTICPU_PERCPU_IDLETHREAD);
     return *idle_thread;
 }
 
 static void set_idle_thread(struct thread *t) {
-    struct thread **idle_thread = (struct current_thread **) multicpu_percpu_at(MULTICPU_PERCPU_IDLETHREAD);
+    struct thread **idle_thread = (struct thread **) multicpu_percpu_at(MULTICPU_PERCPU_IDLETHREAD);
     *idle_thread = t;
 }
 
@@ -178,7 +178,7 @@ void sched_cpualive(void *lock) {
         set_current_thread(t);
 
         install_sched_timer();
-        switch_threads(0, t, 1, lock);
+        switch_threads(0, t, lock);
     }
 }
 
@@ -224,7 +224,7 @@ struct thread *create_thread(struct process *parent, uint32_t prio, thread_entry
     return t;
 }
 
-void switch_threads(struct thread *old, struct thread *new, unative_t intstate, void *lock) {
+void switch_threads(struct thread *old, struct thread *new, void *lock) {
 #ifdef VERBOSE_LOGGING
     dprintf("switch_threads: %x -> %x\n", old, new);
 #endif
@@ -232,13 +232,14 @@ void switch_threads(struct thread *old, struct thread *new, unative_t intstate, 
         if(!get_current_thread())
             set_current_thread(new);
         new->state = THREAD_STATE_RUNNING;
+    } else {
+        if (save_thread_context(old->ctx) == 0) {
+            // context-restored
+            return;
+        }
+    }
 
-        switch_context(0, new->ctx, intstate, lock ? spinlock_getatom(lock) : lock);
-    }
-    else {
-        dprintf("cpu %d old ctx %p -> new ctx %p\n", multicpu_id(), old->ctx, new->ctx);
-        switch_context(old->ctx, new->ctx, intstate, lock ? spinlock_getatom(lock) : lock);
-    }
+    restore_thread_context(new->ctx, lock ? spinlock_getatom(lock) : lock);
 }
 
 void thread_kill() {
@@ -340,7 +341,11 @@ static int is_idle(size_t action_on_idle, unative_t intstate) {
             if(get_current_thread() != get_idle_thread()) {
                 struct thread *tmp = get_current_thread();
                 set_current_thread(get_idle_thread());
-                switch_threads(tmp, get_idle_thread(), intstate, 0);
+                switch_threads(tmp, get_idle_thread(), 0);
+            }
+
+            if (intstate) {
+                interrupts_enable();
             }
 
             return 1;
@@ -471,7 +476,7 @@ static void reschedule_internal(size_t action_on_idle) {
     thr->state = THREAD_STATE_RUNNING;
 
 #ifdef VERBOSE_LOGGING
-    dprintf("reschedule: queues now run: %sempty / already: %sempty\n", queue_empty(queues[get_current_priolevel()]) ? "" : "not ", queue_empty(already_queues[get_current_priolevel()]) ? "" : "not ");
+    // dprintf("reschedule: queues now run: %sempty / already: %sempty\n", queue_empty(queues[get_current_priolevel()]) ? "" : "not ", queue_empty(already_queues[get_current_priolevel()]) ? "" : "not ");
 #endif
 
     // Perform the context switch if this isn't the already-running thread.
@@ -483,8 +488,10 @@ static void reschedule_internal(size_t action_on_idle) {
 
         struct thread *tmp = get_current_thread();
         set_current_thread(thr);
-        switch_threads(tmp, thr, intstate, 0);
-    } else if(intstate) {
+        switch_threads(tmp, thr, 0);
+    }
+
+    if(intstate) {
         interrupts_enable();
     }
 
@@ -672,5 +679,10 @@ void start_scheduler() {
     install_sched_timer();
 
     spinlock_release(sched_spinlock);
+}
+
+void sched_kickstart() {
+    set_current_thread(get_idle_thread());
+    reschedule();
 }
 

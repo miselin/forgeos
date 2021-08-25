@@ -98,8 +98,11 @@ extern struct thread *create_thread(struct process *parent, uint32_t prio, threa
 /** Performs a context switch to a new context. */
 extern void switch_context(context_t *oldctx, context_t *newctx, unative_t wasints, void *lock);
 
-/** Performs a context switch between two threads. */
-extern void switch_threads(struct thread *old, struct thread *new, unative_t intstate, void *lock);
+/** Saves the given thread's context. Returns zero when restored from the saved context. */
+extern __returns_twice int save_thread_context(context_t *ctx);
+
+/** Restores the given thread's context. */
+extern __noreturn int restore_thread_context(context_t *ctx, void *lock);
 
 /** Creates a new context (archictecture-specific). */
 extern void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_t stacksz, void *param);
@@ -145,6 +148,9 @@ extern void sched_setidle(struct thread *t);
 
 /** Notifies the scheduler of a new CPU being active. */
 extern void sched_cpualive(void *lock);
+
+/** Kickstarts the cooperative phase of the scheduler to begin scheduling. */
+extern void sched_kickstart();
 
 /** Function to be called when a thread returns from its entry point. */
 extern void thread_return() __attribute__((naked));

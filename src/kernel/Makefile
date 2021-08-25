@@ -2,7 +2,7 @@ DEFS := -D_FORGEOS=1
 
 # Set ARCH_CFLAGS and ARCH_DEFINE automatically depending on how ARCH_TARGET is set
 ifeq "$(ARCH_TARGET)" "x86"
-  ARCH_CFLAGS := -fomit-frame-pointer
+  ARCH_CFLAGS :=
   ARCH_ASFLAGS :=
   ARCH_DEFINE := -DX86=1
   ARCH_LLCFLAGS := -march=x86

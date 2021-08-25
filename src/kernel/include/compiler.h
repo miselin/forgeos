@@ -30,6 +30,8 @@
 #define __noreturn        __attribute__((noreturn))
 #define __noinline        __attribute__((noinline))
 
+#define __returns_twice   __attribute__((returns_twice))
+
 #ifdef ARM
 #define atomic_bool_compare_and_swap __arm_bool_compare_and_swap
 #define atomic_val_compare_and_swap __arm_val_compare_and_swap

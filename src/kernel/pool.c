@@ -86,8 +86,9 @@ void *pool_alloc(void *pool) {
     uintptr_t addr = p->base + (buffer_idx * p->buffer_size);
 
     if(!vmem_ismapped(addr)) {
-        for(size_t i = 0; i < ((p->buffer_size + 0xFFF) / 0x1000); i++)
+        for(size_t i = 0; i < ((p->buffer_size + 0xFFF) / 0x1000); i++) {
             vmem_map(addr + (i * 0x1000), (paddr_t) ~0, VMEM_READWRITE | VMEM_SUPERVISOR);
+        }
     }
 
     p->alloc_count++;

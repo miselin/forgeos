@@ -68,7 +68,7 @@ void create_context(context_t *ctx, thread_entry_t start, uintptr_t stack, size_
 
     ctx->esp = (uint32_t) stackp;
 
-    dprintf("new x86 context %p: eip=%x, esp=%p-%x\n", ctx, ctx->eip, stack_ptr, stack_top + sizeof(unative_t));
+    dprintf("new x86 context %p: eip=%x, esp=%x, ebp=%x (stack: %x-%x)\n", ctx, ctx->eip, ctx->esp, ctx->ebp, ctx->stackbase, stack_top + sizeof(unative_t));
 }
 
 void clone_context(context_t *old, context_t *new) {
