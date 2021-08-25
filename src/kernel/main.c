@@ -178,10 +178,9 @@ void _kmain(uint32_t magic, phys_ptr_t tags) {
     struct thread *idle_thread = create_thread(initproc, THREAD_PRIORITY_LOW, 0, 0, 0, 0);
     struct thread *banner_thread = create_thread(initproc, THREAD_PRIORITY_LOW, banner, 0, 0, 0);
 
-    dprintf("banner thread is %x\n", banner_thread);
-
     sched_setidle(idle_thread);
     thread_wake(banner_thread);
+    thread_wake(init_thread);
     sched_kickstart();  // kick off the first thread
 
     // kickstart kicks into the idle thread, so we become that now.
