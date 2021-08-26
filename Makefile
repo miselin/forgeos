@@ -228,7 +228,7 @@ DIRS += kboot
 endif
 DIRS += kernel
 
-.PHONY: analyse analyze clean cleanlog closelog kermit $(DIRS)
+.PHONY: analyse analyze clean cleanlog closelog kermit qemu $(DIRS)
 
 all: $(DIRS) closelog $(OUTIMAGE)
 
@@ -256,6 +256,9 @@ $(CDIMAGE): kernel kboot
 				-b System/Boot/cdboot.img -no-emul-boot -boot-load-size 4 \
 				-boot-info-table -o $(CDIMAGE) -V 'FORGEOS' $(INSTDIR)/
 	@echo "ISO image has been saved to: $(CDIMAGE)\n"
+
+qemu: $(CDIMAGE)
+	qemu-system-x86_64 -m 16 -cdrom $(CDIMAGE) -boot d -serial file:$(PWD)/build/serial.txt -monitor stdio -no-reboot
 endif
 
 ifneq "$(UIMAGE)" ""

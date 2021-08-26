@@ -40,7 +40,7 @@ def main():
 
     output += v
 
-  output += '#endif // _KCONFIG_H'
+  output += '#endif // _KCONFIG_H\n'
 
   with open(outfile, 'w') as f:
     f.write(output)
