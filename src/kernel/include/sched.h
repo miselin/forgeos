@@ -153,6 +153,6 @@ extern void sched_cpualive(void *lock);
 extern void sched_kickstart();
 
 /** Function to be called when a thread returns from its entry point. */
-extern void thread_return() __attribute__((naked));
+extern void thread_return() __noreturn;
 
 #endif

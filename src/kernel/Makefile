@@ -2,16 +2,18 @@ DEFS := -D_FORGEOS=1
 
 # Set ARCH_CFLAGS and ARCH_DEFINE automatically depending on how ARCH_TARGET is set
 ifeq "$(ARCH_TARGET)" "x86"
-  ARCH_CFLAGS :=
+  ARCH_CFLAGS := -fno-stack-protector
   ARCH_ASFLAGS :=
   ARCH_DEFINE := -DX86=1
   ARCH_LLCFLAGS := -march=x86
+  ARCH_LDFLAGS :=
 endif
 ifeq "$(ARCH_TARGET)" "arm"
   ARCH_CFLAGS :=
   ARCH_ASFLAGS :=
   ARCH_DEFINE := -DARM
   ARCH_LLCFLAGS := -march=arm
+  ARCH_LDFLAGS :=
 endif
 
 # Set ARCH_SUBTARGET_CFLAGS and ARCH_SUBTARGET_DEFINE automatically depending on how ARCH_SUBTARGET is set
@@ -19,6 +21,7 @@ ifeq "$(ARCH_SUBTARGET)" "x86"
   ARCH_SUBTARGET_CFLAGS := -mtune=i686 -m32  -mno-sse -mno-mmx -mno-sse2 -mno-3dnow
   ARCH_SUBTARGET_ASFLAGS := -m32  -mno-sse -mno-mmx -mno-sse2 -mno-3dnow
   ARCH_SUBTARGET_DEFINE :=
+  ARCH_SUBTARGET_LDFLAGS :=
   CLANG_ASFLAGS := -arch x86 -mcpu=i686
 
   CLANG_TRIPLE := -ccc-host-triple i686-unknown-none
@@ -27,6 +30,7 @@ endif
 ifeq "$(ARCH_SUBTARGET)" "armv7"
   ARCH_SUBTARGET_CFLAGS := -march=armv7-a
   ARCH_SUBTARGET_ASFLAGS := -march=armv7-a
+  ARCH_SUBTARGET_LDFLAGS :=
   CLANG_ASFLAGS := -arch arm
 
   CLANG_TRIPLE := -ccc-host-triple armv7-unknown-gnueabi
@@ -69,6 +73,7 @@ DIRS := . arch/$(ARCH_TARGET) arch/$(ARCH_TARGET)/$(ARCH_SUBTARGET) mach/$(PLATF
 
 INCLUDES := -Iinclude -Iarch/$(ARCH_TARGET)/include -Iarch/$(ARCH_TARGET)/$(ARCH_SUBTARGET)/include -Imach/$(PLATFORM_TARGET) -Imach/$(PLATFORM_TARGET)/include -I$(BUILD_DIR)
 LIBDIRS :=
+PLATFORM_LDFLAGS :=
 
 ifeq "$(PLATFORM_TARGET)" "pc"
   DIRS += mach/$(PLATFORM_TARGET)/acpica $(shell find mach/$(PLATFORM_TARGET)/acpica/components -type d)
@@ -148,6 +153,8 @@ CFLAGS := $(strip $(CFLAGS))
 
 LDFLAGS := -nostdlib -nostartfiles
 ASFLAGS := $(ARCH_ASFLAGS) $(ARCH_SUBTARGET_ASFLAGS) $(PLATFORM_ASFLAGS)
+
+LDFLAGS += $(ARCH_LDFLAGS) $(ARCH_SUBTARGET_LDFLAGS) $(PLATFORM_LDFLAGS)
 
 LINT_FLAGS := $(CFLAGS) $(INCLUDES)
 LINT_IGNORE := dlmalloc.c

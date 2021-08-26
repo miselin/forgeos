@@ -15,7 +15,7 @@
  */
 
 #ifndef _SPINLOCK_H
-#define _sPINLOCK_H
+#define _SPINLOCK_H
 
 /**
  * Create a spinlock.
