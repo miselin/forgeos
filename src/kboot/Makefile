@@ -90,7 +90,8 @@ CFLAGS += -Os
 DPADD := $(OBJDIR)/source/platform/$(PLATFORM)/link.ld
 
 WARNINGS := -Wall -Wextra -Werror -Wno-variadic-macros -Wno-unused-parameter -Wwrite-strings
-WARNINGS += -Wmissing-declarations -Wredundant-decls -Wno-format
+WARNINGS += -Wmissing-declarations -Wredundant-decls -Wno-format -Wno-format-security
+WARNINGS += -Wno-address-of-packed-member
 
 ifneq "$(USE_CLANG)" "yes"
   WARNINGS += -Wno-unused-but-set-variable
