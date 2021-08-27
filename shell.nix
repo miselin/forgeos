@@ -1,11 +1,22 @@
-let pkgs = import <nixpkgs> {
-  crossSystem = (import <nixpkgs/lib>).systems.examples.i686-embedded;
-};
+{pkgs}:
+
+let
+
+  pkgs = import <nixpkgs> {
+    crossSystem = (import <nixpkgs/lib>).systems.examples.i686-embedded;
+  };
+
 in
   pkgs.callPackage (
-    {mkShell}:
+    {mkShell, gnumake, python3, cdrkit, qemu}:
     mkShell {
-      nativeBuildInputs = [ ];
-      buildInputs = [ ];
+      depsBuildBuild = [
+        gnumake
+        python3
+        cdrkit
+        qemu
+      ];
+      buildInputs = [
+      ];
     }
   ) {}
