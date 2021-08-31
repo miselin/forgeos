@@ -151,6 +151,8 @@ ifneq "$(XCOMPILER_PREFIX)" ""
   else
     LLC := llc
     CLANG := clang
+    LLVMLD := llvm-link
+    LLVMAS := llvm-mc
   endif
 endif
 

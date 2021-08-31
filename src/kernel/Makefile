@@ -24,7 +24,7 @@ ifeq "$(ARCH_SUBTARGET)" "x86"
   ARCH_SUBTARGET_LDFLAGS :=
   CLANG_ASFLAGS := -arch x86 -mcpu=i686
 
-  CLANG_TRIPLE := -ccc-host-triple i686-unknown-none
+  CLANG_TRIPLE := -target i686-unknown-none
   ARCH_LLCFLAGS += -mcpu=i686 -mattr=-sse,-sse2,-mmx,-3dnow
 endif
 ifeq "$(ARCH_SUBTARGET)" "armv7"
@@ -33,7 +33,7 @@ ifeq "$(ARCH_SUBTARGET)" "armv7"
   ARCH_SUBTARGET_LDFLAGS :=
   CLANG_ASFLAGS := -arch arm
 
-  CLANG_TRIPLE := -ccc-host-triple armv7-unknown-gnueabi
+  CLANG_TRIPLE := -target armv7-unknown-gnueabi
   ARCH_SUBTARGET_DEFINE := -DARMV7
 endif
 
