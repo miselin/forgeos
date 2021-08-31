@@ -90,6 +90,9 @@ ifeq "$(USE_CLANG)" "yes"
   # Add in the CLANG-specific flags
   CFLAGS += $(CLANG_TRIPLE) -emit-llvm -integrated-as
 
+  # Lock safety annotations
+  CFLAGS += -Wthread-safety -Werror=thread-safety-analysis -fcolor-diagnostics
+
   # compiler-rt does not build as easily on non-x86, however, so use libgcc for
   # now. Hopefully this won't be an issue for too much longer.
   ifneq "$(ARCH_TARGET)" "x86"

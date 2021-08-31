@@ -73,6 +73,12 @@ void banner(void *p __unused) {
     }
 }
 
+#include <annotate.h>
+#include <spinlock.h>
+
+static spinlock_t *spinlock;
+static int foo GUARDED_BY(spinlock) = 0;
+
 void init2(void *p __unused) {
     if(multicpu_count() > 1) {
         kprintf("Starting %d additional processors...\n", multicpu_count() - 1);
@@ -82,6 +88,10 @@ void init2(void *p __unused) {
             kprintf("AP %d done!...\n", i + 1);
         }
     }
+
+    spinlock_acquire(spinlock);
+    foo = 1234;
+    spinlock_release(spinlock);
 
     dprintf("Starting the scheduler...\n");
     start_scheduler();

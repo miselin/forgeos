@@ -62,43 +62,51 @@ extern void *dlrealloc(void *, size_t);
 extern void dlfree(void *);
 
 static void *alloc_spinlock = 0;
+static char alloc_spinlock_region[16] = {0};
 
 void init_malloc() {
-	alloc_spinlock = create_spinlock();
+}
+
+static void init_malloc_lock() {
+	if (alloc_spinlock) {
+		return;
+	}
+
+	alloc_spinlock = create_spinlock_at(alloc_spinlock_region, sizeof(alloc_spinlock_region));
 }
 
 void *malloc(size_t s) {
-	if(alloc_spinlock)
-		spinlock_acquire(alloc_spinlock);
+	init_malloc_lock();
+
+	spinlock_acquire(alloc_spinlock);
 
 	void *ret = dlmalloc(s);
 
-	if(alloc_spinlock)
-		spinlock_release(alloc_spinlock);
+	spinlock_release(alloc_spinlock);
 
 	return ret;
 }
 
 void *realloc(void *p, size_t s) {
-	if(alloc_spinlock)
-		spinlock_acquire(alloc_spinlock);
+	init_malloc_lock();
+
+	spinlock_acquire(alloc_spinlock);
 
 	void *ret = dlrealloc(p, s);
 
-	if(alloc_spinlock)
-		spinlock_release(alloc_spinlock);
+	spinlock_release(alloc_spinlock);
 
 	return ret;
 }
 
 void free(void *p) {
-	if(alloc_spinlock)
-		spinlock_acquire(alloc_spinlock);
+	init_malloc_lock();
+
+	spinlock_acquire(alloc_spinlock);
 
 	dlfree(p);
 
-	if(alloc_spinlock)
-		spinlock_release(alloc_spinlock);
+	spinlock_release(alloc_spinlock);
 }
 
 void *malloc_nolock(size_t sz) {

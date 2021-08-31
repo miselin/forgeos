@@ -17,25 +17,34 @@
 #ifndef _SPINLOCK_H
 #define _SPINLOCK_H
 
+#include "annotate.h"
+
+typedef void *spinlock_t CAPABILITY("mutex");
+
 /**
  * Create a spinlock.
  */
-extern void *create_spinlock();
+extern spinlock_t create_spinlock();
+
+/**
+ * Create a spinlock in the given buffer. Useful if memory allocation is not yet available.
+ */
+extern spinlock_t create_spinlock_at(void *static_region, size_t static_region_size);
 
 /**
  * Destroy a spinlock.
  */
-extern void delete_spinlock(void *s);
+extern void delete_spinlock(spinlock_t s);
 
 /**
  * Get a pointer to the spinlock's atomic state (ie, the 'locked'/'unlocked' state.
  */
-extern void *spinlock_getatom(void *s);
+extern void *spinlock_getatom(spinlock_t s);
 
 /**
  * Get the interrupt state before the spinlock was acquired.
  */
-uint8_t spinlock_intstate(void *s);
+uint8_t spinlock_intstate(spinlock_t s);
 
 /**
  * Acquire the lock. Blocks if the lock is already attained.
@@ -43,11 +52,11 @@ uint8_t spinlock_intstate(void *s);
  * enabled, a kernel panic will occur due to a probable deadlock.
  * Disables interrupts as a side-effect.
  */
-extern void spinlock_acquire(void *s);
+extern void spinlock_acquire(spinlock_t s) ACQUIRE(s) NO_THREAD_SAFETY_ANALYSIS;
 
 /**
  * Releases the lock.
  */
-extern void spinlock_release(void *s);
+extern void spinlock_release(spinlock_t s) RELEASE(s) NO_THREAD_SAFETY_ANALYSIS;
 
 #endif

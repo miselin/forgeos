@@ -122,7 +122,7 @@ int multicpu_init() {
     return 0;
 }
 
-int start_processor(uint8_t id) {
+int start_processor(uint8_t id) NO_THREAD_SAFETY_ANALYSIS {
     dprintf("x86 AP startup - id %d\n", id);
 
     // Don't start APs if init hasn't been done yet.

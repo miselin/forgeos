@@ -200,7 +200,7 @@ static int handle_ioapic_irq(struct intr_stack *s, void *p __unused) {
     return ret;
 }
 
-static int lapic_localint(struct intr_stack *s, void *p __unused) {
+static int lapic_localint(struct intr_stack *s, void *p __unused) NO_THREAD_SAFETY_ANALYSIS {
     int ret = 0;
     if(s->intnum == LAPIC_SPURIOUS) {
         dprintf("Local APIC: spurious interrupt\n");
@@ -652,7 +652,7 @@ uint32_t multicpu_count() {
     return list_len(proc_list);
 }
 
-void multicpu_call(uint32_t cpu, crosscpu_func_t func, void *param) {
+void multicpu_call(uint32_t cpu, crosscpu_func_t func, void *param) NO_THREAD_SAFETY_ANALYSIS {
     if((multicpu_count() == 1) || (crosscpu_lock == 0)) {
         dprintf("multicpu_call: uniprocessor system, or no additional processors started\n");
         func(param);

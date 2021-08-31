@@ -29,15 +29,22 @@
 struct spinlock {
 	uint32_t locked;
 	uint8_t wasints;
-} __packed;
+	uint8_t isstatic;
+};
 
-void *create_spinlock() {
+spinlock_t create_spinlock() {
 	void *r = malloc(sizeof(struct spinlock));
 	memset(r, 0, sizeof(struct spinlock));
 	return r;
 }
 
-void delete_spinlock(void *s) {
+spinlock_t create_spinlock_at(void *static_region, size_t static_region_size) {
+	assert(static_region_size >= sizeof(struct spinlock));
+	memset(static_region, 0, sizeof(struct spinlock));
+	return (spinlock_t) static_region;
+}
+
+void delete_spinlock(spinlock_t s) {
 	if(!s)
 		return;
 
@@ -46,7 +53,7 @@ void delete_spinlock(void *s) {
 	free(s);
 }
 
-void *spinlock_getatom(void *s) {
+void *spinlock_getatom(spinlock_t s) {
 	if(!s)
 		return NULL;
 
@@ -54,7 +61,7 @@ void *spinlock_getatom(void *s) {
 	return (void *) &sl->locked;
 }
 
-uint8_t spinlock_intstate(void *s) {
+uint8_t spinlock_intstate(spinlock_t s) {
 	if(!s)
 		return 0;
 
@@ -62,7 +69,7 @@ uint8_t spinlock_intstate(void *s) {
 	return sl->wasints;
 }
 
-void spinlock_acquire(void *s) {
+void spinlock_acquire(spinlock_t s) {
 	if(!s)
 		return;
 
@@ -77,7 +84,7 @@ void spinlock_acquire(void *s) {
 	assert(sl->locked);
 }
 
-void spinlock_release(void *s) {
+void spinlock_release(spinlock_t s) {
 	if(!s)
 		return;
 

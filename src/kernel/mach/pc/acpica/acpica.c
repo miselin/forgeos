@@ -213,13 +213,13 @@ void AcpiOsDeleteLock(ACPI_HANDLE Handle) {
     delete_spinlock(Handle);
 }
 
-ACPI_CPU_FLAGS AcpiOsAcquireLock(ACPI_SPINLOCK Handle) {
+ACPI_CPU_FLAGS AcpiOsAcquireLock(ACPI_SPINLOCK Handle) ACQUIRE(Handle) {
     dprintf("acpi: acquire spinlock\n");
     spinlock_acquire(Handle);
     return 0;
 }
 
-void AcpiOsReleaseLock(ACPI_SPINLOCK Handle, ACPI_CPU_FLAGS Flags __unused) {
+void AcpiOsReleaseLock(ACPI_SPINLOCK Handle, ACPI_CPU_FLAGS Flags __unused) RELEASE(Handle) {
     dprintf("acpi: release spinlock\n");
     spinlock_release(Handle);
 }
