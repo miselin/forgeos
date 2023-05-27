@@ -36,6 +36,10 @@ static size_t nextpid = 0;
 
 #define QUEUE_COUNT (THREAD_PRIORITY_LOW + 1)
 
+/// Global scheduler lock - to ensure queue operations are done atomically.
+static void *sched_spinlock = 0;
+
+/// Ready queue, onto which processes are added when they are ready to be run.
 void *ready_queue = 0;
 
 /// Primary priority queues.
@@ -46,9 +50,6 @@ void *prio_already_queues[QUEUE_COUNT] = {0};
 
 /// Zombie thread queue.
 static void *zombie_queue = 0;
-
-/// Global scheduler lock - to ensure queue operations are done atomically.
-static void *sched_spinlock = 0;
 
 /// Idle thread in the system that we can clone onto new CPUs as they come up.
 static struct thread *g_idle_thread = 0;

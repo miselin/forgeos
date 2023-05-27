@@ -71,7 +71,7 @@ OBJDIR := $(OBJDIR)/kernel
 
 DIRS := . arch/$(ARCH_TARGET) arch/$(ARCH_TARGET)/$(ARCH_SUBTARGET) mach/$(PLATFORM_TARGET) include
 
-INCLUDES := -Iinclude -Iarch/$(ARCH_TARGET)/include -Iarch/$(ARCH_TARGET)/$(ARCH_SUBTARGET)/include -Imach/$(PLATFORM_TARGET) -Imach/$(PLATFORM_TARGET)/include -I$(BUILD_DIR)
+INCLUDES := -Iinclude -Iinclude/shared -Iarch/$(ARCH_TARGET)/include -Iarch/$(ARCH_TARGET)/$(ARCH_SUBTARGET)/include -Imach/$(PLATFORM_TARGET) -Imach/$(PLATFORM_TARGET)/include -I$(BUILD_DIR)
 LIBDIRS :=
 PLATFORM_LDFLAGS :=
 

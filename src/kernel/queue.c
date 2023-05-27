@@ -16,9 +16,6 @@
 
 #include <compiler.h>
 #include <malloc.h>
-#include <sched.h>
-#include <util.h>
-#include <io.h>
 
 #define QUEUE_MAGIC		0xDEADBEEF
 

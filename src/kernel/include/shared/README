@@ -1,0 +1,4 @@
+Headers that need to be accessible to tests live here.
+
+This means we don't give the entire include directory to
+tests (sched.h and other headers shadow real Linux headers).

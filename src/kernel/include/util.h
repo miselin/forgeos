@@ -17,7 +17,9 @@
 #ifndef _UTIL_H
 #define _UTIL_H
 
+#ifndef _UNIT_TESTING
 #include <types.h>
+#endif
 
 #define STACK_FLAGS_NOMEMLOCK       1
 

@@ -22,6 +22,8 @@
 // Should be in the arch-specific includes directory.
 #include_next <sched.h>
 
+#include <annotate.h>
+
 #ifndef _CONTEXT_T_DEFINED
 #define _CONTEXT_T_DEFINED
 #warning This architecture does not define a context_t!

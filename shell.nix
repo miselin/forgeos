@@ -1,5 +1,3 @@
-{pkgs}:
-
 let
 
   pkgs = import <nixpkgs> {
